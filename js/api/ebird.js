@@ -65,12 +65,13 @@ export class EBirdAPI {
      * @param {number} dist - Search radius in km (max 50)
      * @returns {Promise<Array>} Array of hotspot objects
      */
-    async getNearbyHotspots(lat, lng, dist = 50) {
+    async getNearbyHotspots(lat, lng, dist = 50, back = 30) {
         // eBird API wants 2 decimal places for coordinates
         const data = await this.fetchWithAuth('/ref/hotspot/geo', {
             lat: lat.toFixed(2),
             lng: lng.toFixed(2),
             dist: Math.min(dist, 50),
+            back: Math.min(Math.max(back, 1), 30),
             fmt: 'json'
         });
 

@@ -639,7 +639,8 @@ class BirdingHotspotsApp {
             let hotspots = await this.ebirdApi.getNearbyHotspots(
                 origin.lat,
                 origin.lng,
-                searchRange
+                searchRange,
+                CONFIG.DEFAULT_DAYS_BACK
             );
 
             if (!hotspots || hotspots.length === 0) {
