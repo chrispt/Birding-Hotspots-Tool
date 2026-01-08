@@ -647,12 +647,22 @@ class BirdingHotspotsApp {
                 throw new Error(ErrorMessages[ErrorTypes.NO_HOTSPOTS]);
             }
 
+            // Debug: Log raw hotspot data from API
+            console.log('Raw hotspots from API:', hotspots.length);
+            console.log('Looking for Ferrum College:', hotspots.find(h => h.locName?.toLowerCase().includes('ferrum')));
+
             // Sort by distance from origin before limiting (eBird API doesn't guarantee order)
             hotspots.sort((a, b) => {
                 const distA = calculateDistance(origin.lat, origin.lng, a.lat, a.lng);
                 const distB = calculateDistance(origin.lat, origin.lng, b.lat, b.lng);
                 return distA - distB;
             });
+
+            // Debug: Log sorted hotspots with distances
+            console.log('After distance sort, first 15:', hotspots.slice(0, 15).map(h => ({
+                name: h.locName,
+                dist: calculateDistance(origin.lat, origin.lng, h.lat, h.lng).toFixed(2) + ' km'
+            })));
 
             // Limit to configured max
             hotspots = hotspots.slice(0, CONFIG.MAX_HOTSPOTS);

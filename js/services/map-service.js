@@ -1,10 +1,10 @@
 /**
  * Static map generation service for PDF reports
+ * Fetches real OpenStreetMap tiles and overlays markers
  */
 
 /**
- * Generate a canvas-based map image
- * This creates a simple map visualization when external services aren't available
+ * Generate a map image with real OpenStreetMap tiles
  * @param {number} centerLat - Center latitude
  * @param {number} centerLng - Center longitude
  * @param {Array} hotspots - Array of hotspot objects
@@ -22,13 +22,166 @@ export async function generateCanvasMap(centerLat, centerLng, hotspots, options 
     canvas.height = height;
     const ctx = canvas.getContext('2d');
 
-    // Calculate bounds
+    // Calculate bounds that include all hotspots
     const bounds = calculateBounds(centerLat, centerLng, hotspots);
-    const padding = 0.1; // 10% padding
-    const latRange = (bounds.maxLat - bounds.minLat) * (1 + padding * 2);
-    const lngRange = (bounds.maxLng - bounds.minLng) * (1 + padding * 2);
 
-    // Background
+    // Calculate appropriate zoom level
+    const zoom = calculateZoom(bounds, width, height);
+
+    // Try to fetch and draw OSM tiles
+    let tilesLoaded = false;
+    try {
+        await drawOSMTiles(ctx, bounds, zoom, width, height);
+        tilesLoaded = true;
+    } catch (e) {
+        console.warn('Could not load OSM tiles, using fallback background:', e);
+        drawFallbackBackground(ctx, width, height);
+    }
+
+    // Create coordinate conversion function based on bounds
+    const toCanvas = createCoordinateConverter(bounds, width, height);
+
+    // Draw markers on top of map
+    drawMarkers(ctx, hotspots, centerLat, centerLng, toCanvas);
+
+    // Draw legend
+    drawLegend(ctx, width, height);
+
+    return canvas.toDataURL('image/png');
+}
+
+/**
+ * Calculate appropriate zoom level for the given bounds
+ */
+function calculateZoom(bounds, width, height) {
+    const latDiff = bounds.maxLat - bounds.minLat;
+    const lngDiff = bounds.maxLng - bounds.minLng;
+
+    // Calculate zoom based on the larger dimension
+    // Each zoom level doubles the resolution
+    const latZoom = Math.log2(180 / latDiff) - Math.log2(height / 256);
+    const lngZoom = Math.log2(360 / lngDiff) - Math.log2(width / 256);
+
+    // Use the smaller zoom (to fit everything) and clamp to reasonable range
+    const zoom = Math.floor(Math.min(latZoom, lngZoom));
+    return Math.max(1, Math.min(zoom, 16));
+}
+
+/**
+ * Convert lat/lng to tile coordinates
+ */
+function latLngToTile(lat, lng, zoom) {
+    const n = Math.pow(2, zoom);
+    const x = Math.floor((lng + 180) / 360 * n);
+    const latRad = lat * Math.PI / 180;
+    const y = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n);
+    return { x, y };
+}
+
+/**
+ * Convert tile coordinates back to lat/lng (top-left corner of tile)
+ */
+function tileToLatLng(x, y, zoom) {
+    const n = Math.pow(2, zoom);
+    const lng = x / n * 360 - 180;
+    const latRad = Math.atan(Math.sinh(Math.PI * (1 - 2 * y / n)));
+    const lat = latRad * 180 / Math.PI;
+    return { lat, lng };
+}
+
+/**
+ * Fetch and draw OpenStreetMap tiles
+ */
+async function drawOSMTiles(ctx, bounds, zoom, width, height) {
+    const tileSize = 256;
+
+    // Get tile coordinates for bounds corners
+    const topLeftTile = latLngToTile(bounds.maxLat, bounds.minLng, zoom);
+    const bottomRightTile = latLngToTile(bounds.minLat, bounds.maxLng, zoom);
+
+    // Calculate pixel offset for proper alignment
+    const topLeftCoord = tileToLatLng(topLeftTile.x, topLeftTile.y, zoom);
+    const bottomRightCoord = tileToLatLng(bottomRightTile.x + 1, bottomRightTile.y + 1, zoom);
+
+    // Total size in tiles
+    const tilesX = bottomRightTile.x - topLeftTile.x + 1;
+    const tilesY = bottomRightTile.y - topLeftTile.y + 1;
+
+    // Create a temporary canvas for tiles
+    const tileCanvas = document.createElement('canvas');
+    tileCanvas.width = tilesX * tileSize;
+    tileCanvas.height = tilesY * tileSize;
+    const tileCtx = tileCanvas.getContext('2d');
+
+    // Fill with background color in case some tiles fail
+    tileCtx.fillStyle = '#E8F5E9';
+    tileCtx.fillRect(0, 0, tileCanvas.width, tileCanvas.height);
+
+    // Fetch all tiles in parallel
+    const tilePromises = [];
+    for (let y = topLeftTile.y; y <= bottomRightTile.y; y++) {
+        for (let x = topLeftTile.x; x <= bottomRightTile.x; x++) {
+            const tileX = x - topLeftTile.x;
+            const tileY = y - topLeftTile.y;
+            tilePromises.push(
+                fetchTile(x, y, zoom)
+                    .then(img => {
+                        tileCtx.drawImage(img, tileX * tileSize, tileY * tileSize);
+                    })
+                    .catch(() => {
+                        // Draw placeholder for failed tiles
+                        tileCtx.fillStyle = '#D7E9D8';
+                        tileCtx.fillRect(tileX * tileSize, tileY * tileSize, tileSize, tileSize);
+                    })
+            );
+        }
+    }
+
+    await Promise.all(tilePromises);
+
+    // Calculate which portion of the tile canvas to draw
+    const totalLatRange = topLeftCoord.lat - bottomRightCoord.lat;
+    const totalLngRange = bottomRightCoord.lng - topLeftCoord.lng;
+
+    const boundsLatRange = bounds.maxLat - bounds.minLat;
+    const boundsLngRange = bounds.maxLng - bounds.minLng;
+
+    // Source rectangle (portion of tile canvas to use)
+    const srcX = ((bounds.minLng - topLeftCoord.lng) / totalLngRange) * tileCanvas.width;
+    const srcY = ((topLeftCoord.lat - bounds.maxLat) / totalLatRange) * tileCanvas.height;
+    const srcW = (boundsLngRange / totalLngRange) * tileCanvas.width;
+    const srcH = (boundsLatRange / totalLatRange) * tileCanvas.height;
+
+    // Draw the relevant portion scaled to fit
+    ctx.drawImage(tileCanvas, srcX, srcY, srcW, srcH, 0, 0, width, height);
+}
+
+/**
+ * Fetch a single OSM tile
+ */
+function fetchTile(x, y, zoom) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+
+        // Use multiple tile servers for better performance
+        const servers = ['a', 'b', 'c'];
+        const server = servers[Math.floor(Math.random() * servers.length)];
+        img.src = `https://${server}.tile.openstreetmap.org/${zoom}/${x}/${y}.png`;
+
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error('Failed to load tile'));
+
+        // Timeout after 5 seconds
+        setTimeout(() => reject(new Error('Tile load timeout')), 5000);
+    });
+}
+
+/**
+ * Draw fallback background when tiles can't be loaded
+ */
+function drawFallbackBackground(ctx, width, height) {
+    // Light green background
     ctx.fillStyle = '#E8F5E9';
     ctx.fillRect(0, 0, width, height);
 
@@ -47,19 +200,33 @@ export async function generateCanvasMap(centerLat, centerLng, hotspots, options 
         ctx.lineTo(width, y);
         ctx.stroke();
     }
+}
 
-    // Convert lat/lng to canvas coordinates
-    function toCanvas(lat, lng) {
-        const x = ((lng - bounds.minLng + latRange * padding / 2) / lngRange) * width;
-        const y = height - ((lat - bounds.minLat + latRange * padding / 2) / latRange) * height;
+/**
+ * Create a function to convert lat/lng to canvas coordinates
+ */
+function createCoordinateConverter(bounds, width, height) {
+    return function(lat, lng) {
+        const x = ((lng - bounds.minLng) / (bounds.maxLng - bounds.minLng)) * width;
+        const y = height - ((lat - bounds.minLat) / (bounds.maxLat - bounds.minLat)) * height;
         return { x, y };
-    }
+    };
+}
 
+/**
+ * Draw markers for hotspots and home location
+ */
+function drawMarkers(ctx, hotspots, centerLat, centerLng, toCanvas) {
     // Draw hotspot markers
     hotspots.forEach((h, i) => {
         const pos = toCanvas(h.lat, h.lng);
 
-        // Marker circle
+        // Marker circle with shadow
+        ctx.beginPath();
+        ctx.arc(pos.x + 2, pos.y + 2, 12, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+        ctx.fill();
+
         ctx.beginPath();
         ctx.arc(pos.x, pos.y, 12, 0, Math.PI * 2);
         ctx.fillStyle = '#FF5722';
@@ -76,8 +243,14 @@ export async function generateCanvasMap(centerLat, centerLng, hotspots, options 
         ctx.fillText((i + 1).toString(), pos.x, pos.y);
     });
 
-    // Draw home marker (larger, green)
+    // Draw home marker (larger, green) with shadow
     const homePos = toCanvas(centerLat, centerLng);
+
+    ctx.beginPath();
+    ctx.arc(homePos.x + 2, homePos.y + 2, 15, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+    ctx.fill();
+
     ctx.beginPath();
     ctx.arc(homePos.x, homePos.y, 15, 0, Math.PI * 2);
     ctx.fillStyle = '#2E7D32';
@@ -98,15 +271,20 @@ export async function generateCanvasMap(centerLat, centerLng, hotspots, options 
     ctx.lineTo(homePos.x + 6, homePos.y);
     ctx.closePath();
     ctx.fill();
+}
 
-    // Legend
+/**
+ * Draw legend in bottom-left corner
+ */
+function drawLegend(ctx, width, height) {
+    // Legend background
     ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
     ctx.fillRect(10, height - 60, 150, 50);
     ctx.strokeStyle = '#BDBDBD';
     ctx.lineWidth = 1;
     ctx.strokeRect(10, height - 60, 150, 50);
 
-    // Legend items
+    // Your Location item
     ctx.beginPath();
     ctx.arc(30, height - 42, 8, 0, Math.PI * 2);
     ctx.fillStyle = '#2E7D32';
@@ -118,6 +296,7 @@ export async function generateCanvasMap(centerLat, centerLng, hotspots, options 
     ctx.textBaseline = 'middle';
     ctx.fillText('Your Location', 45, height - 42);
 
+    // Birding Hotspot item
     ctx.beginPath();
     ctx.arc(30, height - 22, 8, 0, Math.PI * 2);
     ctx.fillStyle = '#FF5722';
@@ -125,8 +304,6 @@ export async function generateCanvasMap(centerLat, centerLng, hotspots, options 
 
     ctx.fillStyle = '#212121';
     ctx.fillText('Birding Hotspot', 45, height - 22);
-
-    return canvas.toDataURL('image/png');
 }
 
 /**
@@ -149,9 +326,9 @@ function calculateBounds(centerLat, centerLng, hotspots) {
         maxLng = Math.max(maxLng, h.lng);
     }
 
-    // Add some padding
-    const latPadding = (maxLat - minLat) * 0.1 || 0.01;
-    const lngPadding = (maxLng - minLng) * 0.1 || 0.01;
+    // Add some padding (15%)
+    const latPadding = (maxLat - minLat) * 0.15 || 0.02;
+    const lngPadding = (maxLng - minLng) * 0.15 || 0.02;
 
     return {
         minLat: minLat - latPadding,
@@ -160,4 +337,3 @@ function calculateBounds(centerLat, centerLng, hotspots) {
         maxLng: maxLng + lngPadding
     };
 }
-
