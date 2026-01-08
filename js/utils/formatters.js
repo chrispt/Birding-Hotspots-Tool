@@ -17,17 +17,20 @@ export function formatDate(date) {
 }
 
 /**
- * Format distance in km with appropriate precision
+ * Format distance in miles with appropriate precision
  * @param {number} distanceKm - Distance in kilometers
- * @returns {string} Formatted distance string
+ * @returns {string} Formatted distance string in miles
  */
 export function formatDistance(distanceKm) {
-    if (distanceKm < 1) {
-        return `${Math.round(distanceKm * 1000)} m`;
-    } else if (distanceKm < 10) {
-        return `${distanceKm.toFixed(1)} km`;
+    const distanceMiles = distanceKm * 0.621371;
+    if (distanceMiles < 0.1) {
+        // Convert to feet for very short distances
+        const feet = Math.round(distanceMiles * 5280);
+        return `${feet} ft`;
+    } else if (distanceMiles < 10) {
+        return `${distanceMiles.toFixed(1)} mi`;
     } else {
-        return `${Math.round(distanceKm)} km`;
+        return `${Math.round(distanceMiles)} mi`;
     }
 }
 

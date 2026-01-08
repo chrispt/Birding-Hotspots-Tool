@@ -51,7 +51,7 @@ export const ErrorMessages = {
     [ErrorTypes.INVALID_API_KEY]: 'Invalid eBird API key. Please verify your key at ebird.org/api/keygen.',
     [ErrorTypes.RATE_LIMITED]: 'Too many requests. Please wait a moment and try again.',
     [ErrorTypes.NETWORK_ERROR]: 'Network error. Please check your internet connection.',
-    [ErrorTypes.NO_HOTSPOTS]: 'No birding hotspots found within 50km of this location.',
+    [ErrorTypes.NO_HOTSPOTS]: 'No birding hotspots found within 31 miles of this location.',
     [ErrorTypes.INVALID_COORDINATES]: 'Invalid coordinates. Latitude must be -90 to 90, longitude must be -180 to 180.',
     [ErrorTypes.LOCATION_DENIED]: 'Location access was denied. Please enter your location manually.'
 };

@@ -70,7 +70,7 @@ export async function generatePDFReport(data, onProgress = () => {}) {
     yPos += 5;
     doc.text(`Sorted by: ${sortMethod === 'species' ? 'Most Species' : 'Closest Distance'}`, margin, yPos);
     yPos += 5;
-    doc.text(`Showing top ${hotspots.length} hotspots within 50 km`, margin, yPos);
+    doc.text(`Showing top ${hotspots.length} hotspots within 31 miles`, margin, yPos);
     yPos += 10;
 
     // ========== MAP ==========

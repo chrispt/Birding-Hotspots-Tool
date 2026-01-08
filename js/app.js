@@ -59,12 +59,23 @@ class BirdingHotspotsApp {
 
             // Map preview
             mapPreviewSection: document.getElementById('mapPreviewSection'),
-            mapPreviewFrame: document.getElementById('mapPreviewFrame'),
-            openInGoogleMaps: document.getElementById('openInGoogleMaps')
+            mapPreviewContainer: document.getElementById('mapPreviewContainer'),
+            openInGoogleMaps: document.getElementById('openInGoogleMaps'),
+
+            // Address error
+            addressError: document.getElementById('addressError')
         };
 
         // Debounce timer for address input
         this.addressDebounceTimer = null;
+
+        // Leaflet map instance
+        this.previewMap = null;
+        this.previewMarker = null;
+
+        // Track if address has been validated
+        this.addressValidated = false;
+        this.validatedCoords = null;
 
         this.initializeEventListeners();
         this.loadSavedData();
@@ -234,8 +245,10 @@ class BirdingHotspotsApp {
             clearTimeout(this.addressDebounceTimer);
         }
 
-        // Hide map preview while typing
-        // We'll show it on blur or after a delay
+        // Clear validation state and error when user types
+        this.addressValidated = false;
+        this.validatedCoords = null;
+        this.clearAddressError();
     }
 
     /**
@@ -246,32 +259,85 @@ class BirdingHotspotsApp {
 
         if (address.length < 3) {
             this.hideMapPreview();
+            this.addressValidated = false;
+            this.validatedCoords = null;
             return;
         }
 
         try {
             const result = await geocodeAddress(address);
+            this.addressValidated = true;
+            this.validatedCoords = { lat: result.lat, lng: result.lng };
+            this.clearAddressError();
             this.showMapPreview(result.lat, result.lng);
         } catch (error) {
-            // Don't show error on blur, just hide map
+            // Show error on blur if geocoding fails
+            this.addressValidated = false;
+            this.validatedCoords = null;
+            this.showAddressError('Could not find this address. Please check and try again.');
             this.hideMapPreview();
         }
     }
 
     /**
-     * Show the map preview with Google Maps embed
+     * Show inline address error
+     */
+    showAddressError(message) {
+        this.elements.addressError.textContent = message;
+        this.elements.addressError.classList.remove('hidden');
+        this.elements.address.classList.add('error');
+    }
+
+    /**
+     * Clear inline address error
+     */
+    clearAddressError() {
+        this.elements.addressError.textContent = '';
+        this.elements.addressError.classList.add('hidden');
+        this.elements.address.classList.remove('error');
+    }
+
+    /**
+     * Show the map preview with Leaflet/OpenStreetMap
      */
     showMapPreview(lat, lng) {
-        // Update iframe src with Google Maps embed
-        const embedUrl = `https://www.google.com/maps?q=${lat},${lng}&z=15&output=embed`;
-        this.elements.mapPreviewFrame.src = embedUrl;
+        // Show the map preview section first
+        this.elements.mapPreviewSection.classList.remove('hidden');
 
         // Update "Open in Google Maps" link
         const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
         this.elements.openInGoogleMaps.href = mapsUrl;
 
-        // Show the map preview section
-        this.elements.mapPreviewSection.classList.remove('hidden');
+        // Initialize or update Leaflet map
+        if (!this.previewMap) {
+            // Create new map instance
+            this.previewMap = L.map(this.elements.mapPreviewContainer).setView([lat, lng], 15);
+
+            // Add OpenStreetMap tiles
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(this.previewMap);
+
+            // Add marker
+            this.previewMarker = L.marker([lat, lng]).addTo(this.previewMap);
+        } else {
+            // Update existing map
+            this.previewMap.setView([lat, lng], 15);
+
+            // Update marker position
+            if (this.previewMarker) {
+                this.previewMarker.setLatLng([lat, lng]);
+            } else {
+                this.previewMarker = L.marker([lat, lng]).addTo(this.previewMap);
+            }
+        }
+
+        // Force map to recalculate size (needed when container was hidden)
+        setTimeout(() => {
+            if (this.previewMap) {
+                this.previewMap.invalidateSize();
+            }
+        }, 100);
     }
 
     /**
@@ -279,7 +345,6 @@ class BirdingHotspotsApp {
      */
     hideMapPreview() {
         this.elements.mapPreviewSection.classList.add('hidden');
-        this.elements.mapPreviewFrame.src = '';
     }
 
     /**
@@ -443,6 +508,31 @@ class BirdingHotspotsApp {
             const apiKeyValidation = validateApiKey(this.elements.apiKey.value);
             if (!apiKeyValidation.valid) {
                 throw new Error(apiKeyValidation.error);
+            }
+
+            // Validate address if in address mode
+            const inputMode = document.querySelector('[name="inputMode"]:checked').value;
+            if (inputMode === 'address') {
+                const address = this.elements.address.value.trim();
+                if (address.length < 3) {
+                    this.showAddressError('Please enter an address.');
+                    this.isProcessing = false;
+                    return;
+                }
+
+                // If address hasn't been validated yet, try to validate it now
+                if (!this.addressValidated) {
+                    try {
+                        const result = await geocodeAddress(address);
+                        this.addressValidated = true;
+                        this.validatedCoords = { lat: result.lat, lng: result.lng };
+                        this.clearAddressError();
+                    } catch (error) {
+                        this.showAddressError('Could not find this address. Please check and try again.');
+                        this.isProcessing = false;
+                        return;
+                    }
+                }
             }
 
             // Save API key if remember is checked

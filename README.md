@@ -4,7 +4,7 @@ A web-based tool to discover the best birding locations near any address. Enter 
 
 ## Features
 
-- **Address or GPS Input**: Enter any address or GPS coordinates to find birding hotspots within 50 km
+- **Address or GPS Input**: Enter any address or GPS coordinates to find birding hotspots within 31 miles
 - **Current Location**: Use your device's GPS to automatically detect your location
 - **Flexible Sorting**: Sort hotspots by most species observed or by closest distance
 - **PDF Report Generation**: Download a comprehensive PDF report including:
@@ -87,6 +87,7 @@ Then visit `http://localhost:8000`
 
 - **jsPDF**: Client-side PDF generation
 - **QRCode.js**: QR code generation for hotspot links
+- **Leaflet**: Interactive map preview with OpenStreetMap tiles
 
 ### Browser Compatibility
 
