@@ -647,6 +647,13 @@ class BirdingHotspotsApp {
                 throw new Error(ErrorMessages[ErrorTypes.NO_HOTSPOTS]);
             }
 
+            // Sort by distance from origin before limiting (eBird API doesn't guarantee order)
+            hotspots.sort((a, b) => {
+                const distA = calculateDistance(origin.lat, origin.lng, a.lat, a.lng);
+                const distB = calculateDistance(origin.lat, origin.lng, b.lat, b.lng);
+                return distA - distB;
+            });
+
             // Limit to configured max
             hotspots = hotspots.slice(0, CONFIG.MAX_HOTSPOTS);
 
