@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Find nearby birding hotspots and generate PDF reports with species lists">
+    <title>Birding Hotspots Finder</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <svg class="bird-icon" viewBox="0 0 24 24" width="32" height="32">
+                    <path fill="currentColor" d="M23 11.5l-3.5-5.5c-.3-.5-.8-.8-1.3-.9L12 4.5 5.8 5.1c-.6.1-1 .4-1.3.9L1 11.5c-.3.5-.2 1.1.2 1.5l4 4c.4.4 1 .5 1.5.2l2.3-1.4 2 2c.4.4 1 .4 1.4 0l2-2 2.3 1.4c.5.3 1.1.2 1.5-.2l4-4c.4-.4.5-1 .2-1.5zM12 15c-1.7 0-3-1.3-3-3s1.3-3 3-3 3 1.3 3 3-1.3 3-3 3z"/>
+                </svg>
+                <h1>Birding Hotspots Finder</h1>
+            </div>
+            <p class="tagline">Discover the best birding spots near your location</p>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Location Section -->
+            <section class="card">
+                <h2 class="section-title">Location</h2>
+
+                <div class="input-mode-toggle">
+                    <label class="radio-label">
+                        <input type="radio" name="inputMode" value="address" checked>
+                        <span class="radio-custom"></span>
+                        Address
+                    </label>
+                    <label class="radio-label">
+                        <input type="radio" name="inputMode" value="gps">
+                        <span class="radio-custom"></span>
+                        GPS Coordinates
+                    </label>
+                </div>
+
+                <!-- Address Input -->
+                <div id="addressInput" class="input-group">
+                    <label for="address" class="input-label">Enter Address</label>
+                    <input type="text" id="address" class="text-input" placeholder="123 Main St, City, State">
+                </div>
+
+                <!-- GPS Input -->
+                <div id="gpsInput" class="input-group hidden">
+                    <div class="gps-fields">
+                        <div class="gps-field">
+                            <label for="latitude" class="input-label">Latitude</label>
+                            <input type="text" id="latitude" class="text-input" placeholder="40.7128">
+                        </div>
+                        <div class="gps-field">
+                            <label for="longitude" class="input-label">Longitude</label>
+                            <input type="text" id="longitude" class="text-input" placeholder="-74.0060">
+                        </div>
+                    </div>
+                </div>
+
+                <button type="button" id="useCurrentLocation" class="btn btn-secondary">
+                    <svg viewBox="0 0 24 24" width="18" height="18">
+                        <path fill="currentColor" d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0013 3.06V1h-2v2.06A8.994 8.994 0 003.06 11H1v2h2.06A8.994 8.994 0 0011 20.94V23h2v-2.06A8.994 8.994 0 0020.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/>
+                    </svg>
+                    Use My Current Location
+                </button>
+            </section>
+
+            <!-- API Key Section -->
+            <section class="card">
+                <h2 class="section-title">
+                    eBird API Key
+                    <a href="https://ebird.org/api/keygen" target="_blank" rel="noopener" class="help-link" title="Get your free API key">
+                        <svg viewBox="0 0 24 24" width="18" height="18">
+                            <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"/>
+                        </svg>
+                    </a>
+                </h2>
+                <div class="input-group">
+                    <input type="password" id="apiKey" class="text-input" placeholder="Enter your eBird API key">
+                    <button type="button" id="toggleApiKey" class="btn-icon" title="Show/hide API key">
+                        <svg id="eyeIcon" viewBox="0 0 24 24" width="20" height="20">
+                            <path fill="currentColor" d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+                        </svg>
+                    </button>
+                </div>
+                <label class="checkbox-label">
+                    <input type="checkbox" id="rememberKey">
+                    <span class="checkbox-custom"></span>
+                    Remember my API key
+                </label>
+            </section>
+
+            <!-- Sort Options Section -->
+            <section class="card">
+                <h2 class="section-title">Sort Hotspots By</h2>
+                <div class="sort-options">
+                    <label class="radio-label radio-card">
+                        <input type="radio" name="sortMethod" value="species" checked>
+                        <span class="radio-custom"></span>
+                        <div class="radio-content">
+                            <span class="radio-title">Most Species</span>
+                            <span class="radio-desc">Prioritize locations with the highest bird diversity</span>
+                        </div>
+                    </label>
+                    <label class="radio-label radio-card">
+                        <input type="radio" name="sortMethod" value="distance">
+                        <span class="radio-custom"></span>
+                        <div class="radio-content">
+                            <span class="radio-title">Closest Distance</span>
+                            <span class="radio-desc">Find the nearest birding hotspots first</span>
+                        </div>
+                    </label>
+                </div>
+            </section>
+
+            <!-- Saved Locations Section -->
+            <section class="card">
+                <h2 class="section-title">Saved Locations</h2>
+                <div id="favoritesList" class="favorites-list">
+                    <p class="no-favorites">No saved locations yet</p>
+                </div>
+                <button type="button" id="saveFavorite" class="btn btn-secondary btn-small">
+                    <svg viewBox="0 0 24 24" width="16" height="16">
+                        <path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                    </svg>
+                    Save Current Location
+                </button>
+            </section>
+
+            <!-- Generate Button -->
+            <button type="button" id="generateReport" class="btn btn-primary btn-large">
+                <svg viewBox="0 0 24 24" width="24" height="24">
+                    <path fill="currentColor" d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
+                </svg>
+                Generate PDF Report
+            </button>
+
+            <!-- Error Message -->
+            <div id="errorMessage" class="error-message hidden"></div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>Data provided by <a href="https://ebird.org" target="_blank" rel="noopener">eBird</a> (Cornell Lab of Ornithology)</p>
+        </footer>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay hidden">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <p id="loadingStatus" class="loading-status">Initializing...</p>
+            <div class="progress-bar">
+                <div id="progressFill" class="progress-bar-fill" style="width: 0%"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Save Favorite Modal -->
+    <div id="saveFavoriteModal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <h3>Save Location</h3>
+            <div class="input-group">
+                <label for="favoriteName" class="input-label">Location Name</label>
+                <input type="text" id="favoriteName" class="text-input" placeholder="e.g., Home, Cabin, Hotel">
+            </div>
+            <div class="modal-actions">
+                <button type="button" id="cancelSaveFavorite" class="btn btn-secondary">Cancel</button>
+                <button type="button" id="confirmSaveFavorite" class="btn btn-primary">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- External Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <!-- Application Scripts -->
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>

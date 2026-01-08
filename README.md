@@ -1,28 +1,120 @@
-# Birding Hotspots Tool
+# Birding Hotspots Finder
 
-A tool to discover the best birding locations near any address. Enter where you're staying and find nearby birding hotspots ranked by the number of species observed.
+A web-based tool to discover the best birding locations near any address. Enter where you're staying and generate a PDF report of nearby birding hotspots with species lists, maps, and directions.
 
 ## Features
 
-- **Address-based Search**: Enter any address to find birding hotspots in the surrounding area
-- **Species Count Ranking**: Hotspots are sorted by the number of species reported, helping you prioritize the most biodiverse locations
-- **Local Discovery**: Perfect for planning birding excursions when traveling or exploring new areas
-
-## Usage
-
-1. Enter the address where you'll be staying
-2. View the list of nearby birding hotspots
-3. Hotspots are automatically sorted by number of species (highest first)
-4. Plan your birding adventures based on the results
-
-## Data Source
-
-This tool uses the [eBird API](https://documenter.getpostman.com/view/664302/S1ENwy59) from the Cornell Lab of Ornithology to retrieve hotspot data and species counts.
+- **Address or GPS Input**: Enter any address or GPS coordinates to find birding hotspots within 50 km
+- **Current Location**: Use your device's GPS to automatically detect your location
+- **Flexible Sorting**: Sort hotspots by most species observed or by closest distance
+- **PDF Report Generation**: Download a comprehensive PDF report including:
+  - Visual map showing all hotspot locations
+  - Species count for each hotspot (last 30 days)
+  - Navigation-friendly addresses for each hotspot
+  - Google Maps directions links
+  - QR codes linking to eBird hotspot pages
+  - Complete bird species lists with rare/notable species highlighted
+- **Saved Locations**: Save frequently-used starting locations for quick access
+- **Notable Species**: Rare and uncommon species are automatically highlighted
 
 ## Getting Started
 
-*Instructions coming soon*
+### Prerequisites
+
+You'll need a free eBird API key to use this tool:
+
+1. Visit [eBird API Key Generator](https://ebird.org/api/keygen)
+2. Sign in with your eBird account (or create one for free)
+3. Generate your API key
+4. Copy the key for use in the application
+
+### Using the Tool
+
+1. **Open the Application**: Visit the hosted page on GitHub Pages or open `index.html` locally
+2. **Enter Your Location**:
+   - Type an address in the address field, OR
+   - Enter GPS coordinates (latitude/longitude), OR
+   - Click "Use My Current Location" to use your device's GPS
+3. **Enter Your API Key**: Paste your eBird API key (optionally check "Remember" to save it)
+4. **Choose Sorting Method**:
+   - **Most Species**: Prioritizes hotspots with the highest bird diversity
+   - **Closest Distance**: Prioritizes hotspots nearest to your location
+5. **Generate Report**: Click the button to create and download your PDF report
+
+### Saving Favorite Locations
+
+1. Enter a location (address or coordinates)
+2. Click "Save Current Location"
+3. Give it a name (e.g., "Home", "Beach House", "Cabin")
+4. Click saved locations anytime to quickly use them
+
+## Deployment
+
+This is a static web application that can be hosted on any web server, including GitHub Pages.
+
+### GitHub Pages Deployment
+
+1. Fork or clone this repository
+2. Go to repository Settings > Pages
+3. Select the branch to deploy (usually `main`)
+4. Your site will be available at `https://yourusername.github.io/repository-name`
+
+### Local Development
+
+Simply open `index.html` in a modern web browser. No build process or server required.
+
+**Note**: Some browsers may restrict certain features (like geolocation) when running from `file://`. For full functionality, serve the files using a local HTTP server:
+
+```bash
+# Using Python
+python -m http.server 8000
+
+# Using Node.js
+npx serve
+```
+
+Then visit `http://localhost:8000`
+
+## Technical Details
+
+### APIs Used
+
+- **eBird API v2**: Bird observation data from Cornell Lab of Ornithology
+- **OpenStreetMap Nominatim**: Address geocoding (free, no API key required)
+- **Rate limiting**: Nominatim requests are throttled to 1 per second as required
+
+### Libraries
+
+- **jsPDF**: Client-side PDF generation
+- **QRCode.js**: QR code generation for hotspot links
+
+### Browser Compatibility
+
+Works in all modern browsers:
+- Chrome/Edge 80+
+- Firefox 75+
+- Safari 13+
+
+Requires JavaScript enabled and an internet connection for API calls.
+
+## Privacy
+
+- Your eBird API key is stored only in your browser's localStorage (if you choose "Remember")
+- Location data is sent only to eBird and OpenStreetMap for API queries
+- No data is collected or stored on any server
+
+## Data Attribution
+
+Bird observation data provided by [eBird](https://ebird.org), a project of the Cornell Lab of Ornithology. Maps and geocoding powered by [OpenStreetMap](https://www.openstreetmap.org) contributors.
 
 ## License
 
 MIT License
+
+Copyright (c) 2024
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
