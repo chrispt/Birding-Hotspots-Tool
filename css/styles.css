@@ -249,6 +249,19 @@ body {
     color: var(--text-secondary);
 }
 
+/* Range Options */
+.range-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+@media (max-width: 480px) {
+    .range-options {
+        flex-direction: column;
+    }
+}
+
 /* Checkbox */
 .checkbox-label {
     display: flex;

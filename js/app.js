@@ -40,6 +40,9 @@ class BirdingHotspotsApp {
             // Sort options
             sortMethodRadios: document.querySelectorAll('[name="sortMethod"]'),
 
+            // Search range
+            searchRangeRadios: document.querySelectorAll('[name="searchRange"]'),
+
             // Favorites
             favoritesList: document.getElementById('favoritesList'),
             saveFavorite: document.getElementById('saveFavorite'),
@@ -564,6 +567,14 @@ class BirdingHotspotsApp {
     }
 
     /**
+     * Get selected search range in km
+     */
+    getSearchRange() {
+        const selected = document.querySelector('[name="searchRange"]:checked');
+        return selected ? parseInt(selected.value, 10) : 50; // Default 50km (max)
+    }
+
+    /**
      * Main report generation handler
      */
     async handleGenerateReport() {
@@ -624,10 +635,11 @@ class BirdingHotspotsApp {
 
             // Fetch nearby hotspots
             this.updateLoading('Fetching nearby hotspots...', 15);
+            const searchRange = this.getSearchRange();
             let hotspots = await this.ebirdApi.getNearbyHotspots(
                 origin.lat,
                 origin.lng,
-                CONFIG.DEFAULT_SEARCH_RADIUS
+                searchRange
             );
 
             if (!hotspots || hotspots.length === 0) {
@@ -644,7 +656,7 @@ class BirdingHotspotsApp {
                 const notable = await this.ebirdApi.getNotableObservationsNearby(
                     origin.lat,
                     origin.lng,
-                    CONFIG.DEFAULT_SEARCH_RADIUS,
+                    searchRange,
                     CONFIG.DEFAULT_DAYS_BACK
                 );
                 notableSpecies = new Set(notable.map(o => o.speciesCode));
@@ -654,7 +666,14 @@ class BirdingHotspotsApp {
 
             // Enrich hotspot data
             this.updateLoading('Loading hotspot details...', 30);
-            const enrichedHotspots = await this.enrichHotspots(hotspots, origin, notableSpecies);
+            let enrichedHotspots = await this.enrichHotspots(hotspots, origin, notableSpecies);
+
+            // Filter out hotspots with zero species observed
+            enrichedHotspots = enrichedHotspots.filter(h => h.speciesCount > 0);
+
+            if (enrichedHotspots.length === 0) {
+                throw new Error('No hotspots with recent bird observations found in this area. Try expanding your search range.');
+            }
 
             // Sort based on user selection
             const sortMethod = document.querySelector('[name="sortMethod"]:checked').value;

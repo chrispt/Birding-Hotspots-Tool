@@ -1,46 +1,14 @@
 /**
  * Geocoding module - Convert addresses to coordinates
- * Uses Google Maps JavaScript API for geocoding
+ * Uses LocationIQ REST API for geocoding
  */
-import { ErrorTypes, ErrorMessages } from '../utils/constants.js';
-
-// Singleton geocoder instance
-let geocoder = null;
+import { CONFIG, ErrorTypes, ErrorMessages } from '../utils/constants.js';
 
 // Cache for geocoding results (session-level for performance)
 const geocodeCache = new Map();
 
-// Timeout duration for geocoding requests (ms)
-const GEOCODE_TIMEOUT = 10000;
-
 /**
- * Wrap a promise with a timeout
- * @param {Promise} promise - The promise to wrap
- * @param {number} ms - Timeout in milliseconds
- * @param {string} errorMessage - Error message if timeout occurs
- * @returns {Promise} Promise that rejects if timeout exceeded
- */
-function withTimeout(promise, ms, errorMessage) {
-    const timeout = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error(errorMessage)), ms);
-    });
-    return Promise.race([promise, timeout]);
-}
-
-/**
- * Get or create the Google Geocoder instance
- * @returns {google.maps.Geocoder|null}
- */
-function getGeocoder() {
-    if (!geocoder && window.google && window.google.maps) {
-        geocoder = new google.maps.Geocoder();
-    }
-    return geocoder;
-}
-
-/**
- * Convert an address to coordinates using Google Geocoding API
- * Uses session-level cache to avoid redundant API calls
+ * Convert an address to coordinates using LocationIQ API
  * @param {string} address - The address to geocode
  * @returns {Promise<Object>} Object with lat, lng, and address properties
  * @throws {Error} If geocoding fails or times out
@@ -52,38 +20,58 @@ export async function geocodeAddress(address) {
         return geocodeCache.get(cacheKey);
     }
 
-    const geo = getGeocoder();
-    if (!geo) {
-        throw new Error('Google Maps API not loaded. Please refresh the page.');
-    }
-
-    const geocodePromise = new Promise((resolve, reject) => {
-        geo.geocode({ address }, (results, status) => {
-            if (status === 'OK' && results.length > 0) {
-                const result = results[0];
-                const response = {
-                    lat: result.geometry.location.lat(),
-                    lng: result.geometry.location.lng(),
-                    address: result.formatted_address,
-                    precision: result.geometry.location_type
-                };
-                // Cache the result for future calls
-                geocodeCache.set(cacheKey, response);
-                resolve(response);
-            } else if (status === 'ZERO_RESULTS') {
-                reject(new Error(ErrorMessages[ErrorTypes.GEOCODING_FAILED]));
-            } else if (status === 'OVER_QUERY_LIMIT') {
-                reject(new Error(ErrorMessages[ErrorTypes.RATE_LIMITED]));
-            } else if (status === 'REQUEST_DENIED') {
-                reject(new Error('Google Maps API request denied. Please check the API key.'));
-            } else {
-                reject(new Error(ErrorMessages[ErrorTypes.GEOCODING_FAILED]));
-            }
-        });
+    const params = new URLSearchParams({
+        key: CONFIG.LOCATIONIQ_API_KEY,
+        q: address,
+        format: 'json',
+        limit: '1'
     });
 
-    // Add timeout to prevent hanging indefinitely
-    return withTimeout(geocodePromise, GEOCODE_TIMEOUT, 'Geocoding request timed out. Please try again.');
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), CONFIG.GEOCODE_TIMEOUT);
+
+    try {
+        const response = await fetch(
+            `${CONFIG.LOCATIONIQ_BASE}/search?${params}`,
+            { signal: controller.signal }
+        );
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+            if (response.status === 429) {
+                throw new Error(ErrorMessages[ErrorTypes.RATE_LIMITED]);
+            }
+            if (response.status === 401 || response.status === 403) {
+                throw new Error('LocationIQ API key is invalid. Please check your API key.');
+            }
+            throw new Error(ErrorMessages[ErrorTypes.GEOCODING_FAILED]);
+        }
+
+        const data = await response.json();
+
+        if (!data || data.length === 0) {
+            throw new Error(ErrorMessages[ErrorTypes.GEOCODING_FAILED]);
+        }
+
+        const result = data[0];
+        const geocodeResult = {
+            lat: parseFloat(result.lat),
+            lng: parseFloat(result.lon),
+            address: result.display_name,
+            precision: result.type
+        };
+
+        // Cache the result
+        geocodeCache.set(cacheKey, geocodeResult);
+        return geocodeResult;
+
+    } catch (error) {
+        clearTimeout(timeoutId);
+        if (error.name === 'AbortError') {
+            throw new Error('Geocoding request timed out. Please try again.');
+        }
+        throw error;
+    }
 }
 
 /**

@@ -1,41 +1,11 @@
 /**
  * Reverse geocoding module - Convert coordinates to addresses
- * Uses Google Maps JavaScript API for geocoding
+ * Uses LocationIQ REST API for geocoding
  */
-
-// Singleton geocoder instance
-let geocoder = null;
-
-// Timeout duration for geocoding requests (ms)
-const GEOCODE_TIMEOUT = 10000;
+import { CONFIG } from '../utils/constants.js';
 
 /**
- * Wrap a promise with a timeout that resolves with a fallback value
- * @param {Promise} promise - The promise to wrap
- * @param {number} ms - Timeout in milliseconds
- * @param {*} fallbackValue - Value to resolve with if timeout occurs
- * @returns {Promise} Promise that resolves with fallback if timeout exceeded
- */
-function withTimeoutFallback(promise, ms, fallbackValue) {
-    const timeout = new Promise((resolve) => {
-        setTimeout(() => resolve(fallbackValue), ms);
-    });
-    return Promise.race([promise, timeout]);
-}
-
-/**
- * Get or create the Google Geocoder instance
- * @returns {google.maps.Geocoder|null}
- */
-function getGeocoder() {
-    if (!geocoder && window.google && window.google.maps) {
-        geocoder = new google.maps.Geocoder();
-    }
-    return geocoder;
-}
-
-/**
- * Reverse geocode coordinates to an address using Google Geocoding API
+ * Reverse geocode coordinates to an address using LocationIQ API
  * @param {number} lat - Latitude
  * @param {number} lng - Longitude
  * @returns {Promise<Object>} Object with address information
@@ -47,41 +17,61 @@ export async function reverseGeocode(lat, lng) {
         raw: null
     };
 
-    const geo = getGeocoder();
-    if (!geo) {
-        // Return fallback if Google Maps not loaded
-        return fallback;
-    }
-
-    const geocodePromise = new Promise((resolve) => {
-        geo.geocode({ location: { lat, lng } }, (results, status) => {
-            if (status === 'OK' && results.length > 0) {
-                const result = results[0];
-                resolve({
-                    displayName: result.formatted_address,
-                    address: formatNavigationAddress(result.address_components),
-                    raw: result.address_components
-                });
-            } else {
-                // Return fallback on any error
-                resolve(fallback);
-            }
-        });
+    const params = new URLSearchParams({
+        key: CONFIG.LOCATIONIQ_API_KEY,
+        lat: lat.toString(),
+        lon: lng.toString(),
+        format: 'json'
     });
 
-    // Add timeout to prevent hanging - resolve with fallback instead of rejecting
-    return withTimeoutFallback(geocodePromise, GEOCODE_TIMEOUT, fallback);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), CONFIG.GEOCODE_TIMEOUT);
+
+    try {
+        const response = await fetch(
+            `${CONFIG.LOCATIONIQ_BASE}/reverse?${params}`,
+            { signal: controller.signal }
+        );
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+            console.warn(`Reverse geocoding failed with status: ${response.status}`);
+            return fallback;
+        }
+
+        const data = await response.json();
+
+        if (!data || !data.display_name) {
+            return fallback;
+        }
+
+        return {
+            displayName: data.display_name,
+            address: formatNavigationAddress(data.address),
+            raw: data.address
+        };
+
+    } catch (error) {
+        clearTimeout(timeoutId);
+        if (error.name === 'AbortError') {
+            console.warn('Reverse geocoding timed out');
+        } else {
+            console.warn('Reverse geocoding failed:', error);
+        }
+        return fallback;
+    }
 }
 
 /**
  * Batch reverse geocode multiple locations
- * No rate limiting needed with Google (3,000 QPS allowed)
+ * Note: Rate limited to 2 req/sec on free tier, so we add delays
  * @param {Array} locations - Array of {lat, lng} objects
  * @param {Function} onProgress - Progress callback (current, total)
  * @returns {Promise<Array>} Array of address results
  */
 export async function batchReverseGeocode(locations, onProgress) {
     const results = [];
+    const RATE_LIMIT_DELAY = 500; // 2 req/sec = 500ms between requests
 
     for (let i = 0; i < locations.length; i++) {
         const loc = locations[i];
@@ -91,6 +81,11 @@ export async function batchReverseGeocode(locations, onProgress) {
         if (onProgress) {
             onProgress(i + 1, locations.length);
         }
+
+        // Rate limiting: wait between requests (except for last one)
+        if (i < locations.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, RATE_LIMIT_DELAY));
+        }
     }
 
     return results;
@@ -98,52 +93,44 @@ export async function batchReverseGeocode(locations, onProgress) {
 
 /**
  * Format address for GPS navigation use
- * @param {Array} addressComponents - Google Maps address components array
+ * @param {Object} addressObj - LocationIQ address object
  * @returns {string} Navigation-friendly address
  */
-function formatNavigationAddress(addressComponents) {
-    if (!addressComponents || addressComponents.length === 0) {
+function formatNavigationAddress(addressObj) {
+    if (!addressObj) {
         return 'Address unavailable';
     }
-
-    // Create a lookup map for address components
-    const components = {};
-    addressComponents.forEach(comp => {
-        comp.types.forEach(type => {
-            components[type] = comp.long_name;
-        });
-    });
 
     const parts = [];
 
     // Street address
-    if (components.street_number && components.route) {
-        parts.push(`${components.street_number} ${components.route}`);
-    } else if (components.route) {
-        parts.push(components.route);
-    } else if (components.neighborhood || components.sublocality) {
-        parts.push(components.neighborhood || components.sublocality);
+    if (addressObj.house_number && addressObj.road) {
+        parts.push(`${addressObj.house_number} ${addressObj.road}`);
+    } else if (addressObj.road) {
+        parts.push(addressObj.road);
+    } else if (addressObj.neighbourhood) {
+        parts.push(addressObj.neighbourhood);
     }
 
     // City/Town
-    const city = components.locality || components.sublocality_level_1 || components.administrative_area_level_2;
+    const city = addressObj.city || addressObj.town || addressObj.village || addressObj.county;
     if (city) {
         parts.push(city);
     }
 
     // State/Province
-    if (components.administrative_area_level_1) {
-        parts.push(components.administrative_area_level_1);
+    if (addressObj.state) {
+        parts.push(addressObj.state);
     }
 
     // Postal code (useful for navigation)
-    if (components.postal_code) {
-        parts.push(components.postal_code);
+    if (addressObj.postcode) {
+        parts.push(addressObj.postcode);
     }
 
     // Country (only if nothing else is available)
-    if (parts.length === 0 && components.country) {
-        parts.push(components.country);
+    if (parts.length === 0 && addressObj.country) {
+        parts.push(addressObj.country);
     }
 
     return parts.length > 0 ? parts.join(', ') : 'Address unavailable';

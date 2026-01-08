@@ -5,6 +5,10 @@ export const CONFIG = {
     // eBird API
     EBIRD_API_BASE: 'https://api.ebird.org/v2',
 
+    // LocationIQ Geocoding API
+    LOCATIONIQ_API_KEY: 'pk.dde574cf08ddd6cd62d8f57dc614c587',
+    LOCATIONIQ_BASE: 'https://us1.locationiq.com/v1',
+
     // Static Maps
     GEOAPIFY_BASE: 'https://maps.geoapify.com/v1',
 
@@ -12,6 +16,9 @@ export const CONFIG = {
     DEFAULT_SEARCH_RADIUS: 50,  // km (max for eBird)
     DEFAULT_DAYS_BACK: 30,
     MAX_HOTSPOTS: 10,
+
+    // Geocoding
+    GEOCODE_TIMEOUT: 10000,  // 10 seconds
 
     // Local storage keys
     STORAGE_KEYS: {
@@ -42,7 +49,7 @@ export const ErrorMessages = {
     [ErrorTypes.INVALID_API_KEY]: 'Invalid eBird API key. Please verify your key at ebird.org/api/keygen.',
     [ErrorTypes.RATE_LIMITED]: 'Too many requests. Please wait a moment and try again.',
     [ErrorTypes.NETWORK_ERROR]: 'Network error. Please check your internet connection.',
-    [ErrorTypes.NO_HOTSPOTS]: 'No birding hotspots found within 31 miles of this location.',
+    [ErrorTypes.NO_HOTSPOTS]: 'No birding hotspots found within the selected search range.',
     [ErrorTypes.INVALID_COORDINATES]: 'Invalid coordinates. Latitude must be -90 to 90, longitude must be -180 to 180.',
     [ErrorTypes.LOCATION_DENIED]: 'Location access was denied. Please enter your location manually.'
 };
