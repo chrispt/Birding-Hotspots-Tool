@@ -55,8 +55,16 @@ class BirdingHotspotsApp {
             // Loading
             loadingOverlay: document.getElementById('loadingOverlay'),
             loadingStatus: document.getElementById('loadingStatus'),
-            progressFill: document.getElementById('progressFill')
+            progressFill: document.getElementById('progressFill'),
+
+            // Map preview
+            mapPreviewSection: document.getElementById('mapPreviewSection'),
+            mapPreviewFrame: document.getElementById('mapPreviewFrame'),
+            openInGoogleMaps: document.getElementById('openInGoogleMaps')
         };
+
+        // Debounce timer for address input
+        this.addressDebounceTimer = null;
 
         this.initializeEventListeners();
         this.loadSavedData();
@@ -88,6 +96,10 @@ class BirdingHotspotsApp {
 
         // Generate report
         this.elements.generateReport.addEventListener('click', () => this.handleGenerateReport());
+
+        // Address input change - update map preview with debounce
+        this.elements.address.addEventListener('input', () => this.handleAddressInputChange());
+        this.elements.address.addEventListener('blur', () => this.handleAddressBlur());
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
@@ -167,14 +179,38 @@ class BirdingHotspotsApp {
         try {
             const position = await getCurrentPosition();
 
-            // Switch to GPS mode and fill in coordinates
-            document.querySelector('[name="inputMode"][value="gps"]').checked = true;
-            this.toggleInputMode('gps');
+            // Reverse geocode to get address
+            this.elements.useCurrentLocation.textContent = 'Finding address...';
+            let address = '';
+            try {
+                const reverseResult = await reverseGeocode(position.lat, position.lng);
+                if (reverseResult.address && reverseResult.address !== 'Address unavailable') {
+                    address = reverseResult.address;
+                }
+            } catch (e) {
+                console.warn('Reverse geocoding failed:', e);
+            }
 
-            this.elements.latitude.value = position.lat.toFixed(6);
-            this.elements.longitude.value = position.lng.toFixed(6);
+            // Switch to Address mode and fill in the address
+            document.querySelector('[name="inputMode"][value="address"]').checked = true;
+            this.toggleInputMode('address');
 
-            this.currentLocation = position;
+            // Fill in the address field
+            if (address) {
+                this.elements.address.value = address;
+            } else {
+                // Fallback to coordinates if no address found
+                this.elements.address.value = `${position.lat.toFixed(6)}, ${position.lng.toFixed(6)}`;
+            }
+
+            this.currentLocation = {
+                lat: position.lat,
+                lng: position.lng,
+                address: address
+            };
+
+            // Show map preview for verification
+            this.showMapPreview(position.lat, position.lng);
 
         } catch (error) {
             this.showError(error.message);
@@ -187,6 +223,63 @@ class BirdingHotspotsApp {
                 Use My Current Location
             `;
         }
+    }
+
+    /**
+     * Handle address input change with debounce
+     */
+    handleAddressInputChange() {
+        // Clear any existing timer
+        if (this.addressDebounceTimer) {
+            clearTimeout(this.addressDebounceTimer);
+        }
+
+        // Hide map preview while typing
+        // We'll show it on blur or after a delay
+    }
+
+    /**
+     * Handle address input blur - geocode and show map
+     */
+    async handleAddressBlur() {
+        const address = this.elements.address.value.trim();
+
+        if (address.length < 3) {
+            this.hideMapPreview();
+            return;
+        }
+
+        try {
+            const result = await geocodeAddress(address);
+            this.showMapPreview(result.lat, result.lng);
+        } catch (error) {
+            // Don't show error on blur, just hide map
+            this.hideMapPreview();
+        }
+    }
+
+    /**
+     * Show the map preview with Google Maps embed
+     */
+    showMapPreview(lat, lng) {
+        // Update iframe src with Google Maps embed
+        const embedUrl = `https://www.google.com/maps?q=${lat},${lng}&z=15&output=embed`;
+        this.elements.mapPreviewFrame.src = embedUrl;
+
+        // Update "Open in Google Maps" link
+        const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+        this.elements.openInGoogleMaps.href = mapsUrl;
+
+        // Show the map preview section
+        this.elements.mapPreviewSection.classList.remove('hidden');
+    }
+
+    /**
+     * Hide the map preview
+     */
+    hideMapPreview() {
+        this.elements.mapPreviewSection.classList.add('hidden');
+        this.elements.mapPreviewFrame.src = '';
     }
 
     /**
@@ -266,12 +359,17 @@ class BirdingHotspotsApp {
             info.addEventListener('click', () => {
                 const lat = parseFloat(info.dataset.lat);
                 const lng = parseFloat(info.dataset.lng);
+                const address = info.dataset.address;
 
-                document.querySelector('[name="inputMode"][value="gps"]').checked = true;
-                this.toggleInputMode('gps');
+                // Switch to Address mode and fill in the address
+                document.querySelector('[name="inputMode"][value="address"]').checked = true;
+                this.toggleInputMode('address');
 
-                this.elements.latitude.value = lat.toFixed(6);
-                this.elements.longitude.value = lng.toFixed(6);
+                // Use the saved address or coordinates
+                this.elements.address.value = address || `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+
+                // Show map preview for verification
+                this.showMapPreview(lat, lng);
             });
 
             // Delete button
