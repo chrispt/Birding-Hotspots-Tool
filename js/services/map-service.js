@@ -1,67 +1,6 @@
 /**
- * Static map generation service
+ * Static map generation service for PDF reports
  */
-
-/**
- * Generate a static map URL with markers for hotspots
- * Uses OpenStreetMap-based static map services
- * @param {number} centerLat - Center latitude
- * @param {number} centerLng - Center longitude
- * @param {Array} hotspots - Array of hotspot objects with lat, lng
- * @param {Object} options - Map options
- * @returns {string} Static map URL
- */
-export function generateStaticMapUrl(centerLat, centerLng, hotspots, options = {}) {
-    const {
-        width = 800,
-        height = 400,
-        zoom = null
-    } = options;
-
-    // Calculate bounding box to determine zoom level
-    const bounds = calculateBounds(centerLat, centerLng, hotspots);
-
-    // Build markers string for all hotspots
-    const markers = hotspots.map((h, i) => `${h.lng},${h.lat}`).join('|');
-    const homeMarker = `${centerLng},${centerLat}`;
-
-    // Use staticmapmaker.com's OpenStreetMap service (no API key required)
-    // This is a simple fallback that works without any API key
-    const baseUrl = 'https://staticmap.openstreetmap.de/staticmap.php';
-
-    const params = new URLSearchParams({
-        center: `${centerLat},${centerLng}`,
-        zoom: zoom || calculateZoomLevel(bounds, width, height),
-        size: `${width}x${height}`,
-        maptype: 'mapnik'
-    });
-
-    // Add markers (home + hotspots)
-    // Home marker (green)
-    params.append('markers', `${centerLat},${centerLng},ol-marker-green`);
-
-    // Hotspot markers (red)
-    hotspots.forEach((h, i) => {
-        params.append('markers', `${h.lat},${h.lng},ol-marker`);
-    });
-
-    return `${baseUrl}?${params.toString()}`;
-}
-
-/**
- * Generate a simple map URL that can be opened in a browser
- * @param {number} centerLat - Center latitude
- * @param {number} centerLng - Center longitude
- * @param {Array} hotspots - Array of hotspot objects
- * @returns {string} OpenStreetMap URL
- */
-export function generateInteractiveMapUrl(centerLat, centerLng, hotspots) {
-    // Use OpenStreetMap with a marker at center
-    const bounds = calculateBounds(centerLat, centerLng, hotspots);
-    const bbox = `${bounds.minLng},${bounds.minLat},${bounds.maxLng},${bounds.maxLat}`;
-
-    return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${centerLat},${centerLng}`;
-}
 
 /**
  * Generate a canvas-based map image
@@ -222,22 +161,3 @@ function calculateBounds(centerLat, centerLng, hotspots) {
     };
 }
 
-/**
- * Calculate appropriate zoom level for bounds
- * @param {Object} bounds - Bounds object
- * @param {number} width - Map width
- * @param {number} height - Map height
- * @returns {number} Zoom level (1-18)
- */
-function calculateZoomLevel(bounds, width, height) {
-    const latRange = bounds.maxLat - bounds.minLat;
-    const lngRange = bounds.maxLng - bounds.minLng;
-
-    // Approximate zoom calculation
-    const latZoom = Math.floor(Math.log2(180 / latRange));
-    const lngZoom = Math.floor(Math.log2(360 / lngRange));
-
-    // Use the more restrictive zoom and clamp to valid range
-    const zoom = Math.min(latZoom, lngZoom);
-    return Math.max(1, Math.min(zoom, 15));
-}

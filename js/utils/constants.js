@@ -5,9 +5,6 @@ export const CONFIG = {
     // eBird API
     EBIRD_API_BASE: 'https://api.ebird.org/v2',
 
-    // Geocoding
-    NOMINATIM_BASE: 'https://nominatim.openstreetmap.org',
-
     // Static Maps
     GEOAPIFY_BASE: 'https://maps.geoapify.com/v1',
 
@@ -15,12 +12,6 @@ export const CONFIG = {
     DEFAULT_SEARCH_RADIUS: 50,  // km (max for eBird)
     DEFAULT_DAYS_BACK: 30,
     MAX_HOTSPOTS: 10,
-
-    // Rate limiting
-    NOMINATIM_RATE_LIMIT: 1100,  // ms between requests (slightly over 1s to be safe)
-
-    // App identification for Nominatim
-    APP_USER_AGENT: 'BirdingHotspotsTool/1.0 (https://github.com/birding-hotspots-tool)',
 
     // Local storage keys
     STORAGE_KEYS: {

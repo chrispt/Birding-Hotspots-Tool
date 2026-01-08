@@ -99,9 +99,21 @@ export function validateAddress(address) {
         };
     }
 
+    // Check for obvious injection attempts (XSS, script injection)
+    if (/<script|javascript:|on\w+\s*=/i.test(trimmed)) {
+        return {
+            valid: false,
+            error: 'Invalid characters in address'
+        };
+    }
+
+    // Sanitize: remove potentially dangerous characters while keeping valid address chars
+    // Allow letters, numbers, spaces, commas, periods, hyphens, apostrophes, # (apt numbers)
+    const sanitized = trimmed.replace(/[<>"`]/g, '');
+
     return {
         valid: true,
-        address: trimmed
+        address: sanitized
     };
 }
 

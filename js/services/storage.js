@@ -98,37 +98,6 @@ export const storage = {
     },
 
     /**
-     * Get a favorite by ID
-     * @param {number} id - The favorite ID
-     * @returns {Object|null} The favorite object or null
-     */
-    getFavoriteById(id) {
-        const favorites = this.getFavorites();
-        return favorites.find(f => f.id === id) || null;
-    },
-
-    /**
-     * Update a favorite location
-     * @param {number} id - The favorite ID to update
-     * @param {Object} updates - Object with fields to update
-     * @returns {Object|null} The updated favorite or null
-     */
-    updateFavorite(id, updates) {
-        try {
-            const favorites = this.getFavorites();
-            const index = favorites.findIndex(f => f.id === id);
-            if (index === -1) return null;
-
-            favorites[index] = { ...favorites[index], ...updates };
-            localStorage.setItem(STORAGE_KEYS.FAVORITES, JSON.stringify(favorites));
-            return favorites[index];
-        } catch (e) {
-            console.warn('Could not update favorite in localStorage:', e);
-            return null;
-        }
-    },
-
-    /**
      * Check if storage is available
      * @returns {boolean} True if localStorage is available
      */

@@ -167,10 +167,12 @@ body {
 .radio-label {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     cursor: pointer;
     font-size: 0.95rem;
     color: var(--text-primary);
+    min-height: 44px;
+    padding: 8px 0;
 }
 
 .radio-label input[type="radio"] {
@@ -178,8 +180,8 @@ body {
 }
 
 .radio-custom {
-    width: 20px;
-    height: 20px;
+    width: 24px;
+    height: 24px;
     border: 2px solid var(--border-color);
     border-radius: 50%;
     position: relative;
@@ -197,8 +199,8 @@ body {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%) scale(0);
-    width: 10px;
-    height: 10px;
+    width: 12px;
+    height: 12px;
     background: var(--primary-color);
     border-radius: 50%;
     transition: transform var(--transition);
@@ -251,10 +253,12 @@ body {
 .checkbox-label {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     cursor: pointer;
     font-size: 0.9rem;
     color: var(--text-secondary);
+    min-height: 44px;
+    padding: 8px 0;
 }
 
 .checkbox-label input[type="checkbox"] {
@@ -262,8 +266,8 @@ body {
 }
 
 .checkbox-custom {
-    width: 18px;
-    height: 18px;
+    width: 22px;
+    height: 22px;
     border: 2px solid var(--border-color);
     border-radius: 4px;
     position: relative;
@@ -279,10 +283,10 @@ body {
 .checkbox-custom::after {
     content: '';
     position: absolute;
-    top: 2px;
-    left: 5px;
-    width: 5px;
-    height: 9px;
+    top: 3px;
+    left: 7px;
+    width: 6px;
+    height: 10px;
     border: solid white;
     border-width: 0 2px 2px 0;
     transform: rotate(45deg) scale(0);
@@ -329,8 +333,9 @@ body {
 }
 
 .btn-small {
-    padding: 8px 14px;
+    padding: 10px 16px;
     font-size: 0.875rem;
+    min-height: 44px;
 }
 
 .btn-large {
@@ -343,15 +348,20 @@ body {
 .btn-icon {
     background: transparent;
     border: none;
-    padding: 8px;
+    padding: 12px;
     cursor: pointer;
     color: var(--text-secondary);
     border-radius: var(--radius);
     transition: all var(--transition);
     position: absolute;
-    right: 8px;
+    right: 4px;
     top: 50%;
     transform: translateY(-50%);
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .btn-icon:hover {
@@ -419,9 +429,14 @@ body {
     border: none;
     color: var(--text-light);
     cursor: pointer;
-    padding: 4px;
+    padding: 10px;
     border-radius: 4px;
     transition: all var(--transition);
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .favorite-delete:hover {
@@ -663,9 +678,26 @@ body {
 }
 
 /* Responsive Design */
-@media (max-width: 480px) {
+
+/* Tablet breakpoint */
+@media (max-width: 768px) {
     .container {
         padding: 16px;
+    }
+
+    .card {
+        padding: 18px;
+    }
+
+    .sort-options {
+        flex-direction: column;
+    }
+}
+
+/* Mobile breakpoint */
+@media (max-width: 480px) {
+    .container {
+        padding: 14px;
     }
 
     .header h1 {
@@ -689,6 +721,72 @@ body {
         padding: 14px 20px;
         font-size: 1rem;
     }
+}
+
+/* Small phone breakpoint */
+@media (max-width: 360px) {
+    .container {
+        padding: 12px;
+    }
+
+    .header h1 {
+        font-size: 1.35rem;
+    }
+
+    .card {
+        padding: 14px;
+    }
+
+    .map-preview-container {
+        min-height: 150px;
+    }
+
+    #mapPreviewContainer {
+        height: 150px !important;
+    }
+
+    .section-title {
+        font-size: 0.95rem;
+    }
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+    /* Remove hover effects on touch devices */
+    .btn:hover {
+        transform: none;
+    }
+
+    .btn-primary:hover {
+        box-shadow: var(--shadow);
+    }
+
+    .radio-card:hover {
+        border-color: var(--border-color);
+    }
+
+    .favorite-item:hover {
+        background: var(--background);
+    }
+
+    /* Active state feedback for touch */
+    .btn:active {
+        transform: scale(0.98);
+        opacity: 0.9;
+    }
+
+    .radio-card:active {
+        border-color: var(--primary-light);
+    }
+
+    .favorite-item:active {
+        background: #E8F5E9;
+    }
+}
+
+/* Touch highlight color */
+* {
+    -webkit-tap-highlight-color: rgba(46, 125, 50, 0.2);
 }
 
 /* Print Styles */

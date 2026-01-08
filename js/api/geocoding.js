@@ -1,54 +1,69 @@
 /**
  * Geocoding module - Convert addresses to coordinates
+ * Uses Google Maps JavaScript API for geocoding
  */
-import { CONFIG, ErrorTypes, ErrorMessages } from '../utils/constants.js';
+import { ErrorTypes, ErrorMessages } from '../utils/constants.js';
+
+// Singleton geocoder instance
+let geocoder = null;
+
+// Cache for geocoding results (session-level for performance)
+const geocodeCache = new Map();
 
 /**
- * Convert an address to coordinates using OpenStreetMap Nominatim
+ * Get or create the Google Geocoder instance
+ * @returns {google.maps.Geocoder|null}
+ */
+function getGeocoder() {
+    if (!geocoder && window.google && window.google.maps) {
+        geocoder = new google.maps.Geocoder();
+    }
+    return geocoder;
+}
+
+/**
+ * Convert an address to coordinates using Google Geocoding API
+ * Uses session-level cache to avoid redundant API calls
  * @param {string} address - The address to geocode
- * @returns {Promise<Object>} Object with lat and lng properties
+ * @returns {Promise<Object>} Object with lat, lng, and address properties
  * @throws {Error} If geocoding fails
  */
 export async function geocodeAddress(address) {
-    const url = new URL(`${CONFIG.NOMINATIM_BASE}/search`);
-    url.searchParams.set('q', address);
-    url.searchParams.set('format', 'json');
-    url.searchParams.set('limit', '1');
-    url.searchParams.set('addressdetails', '1');
+    // Check cache first
+    const cacheKey = address.toLowerCase().trim();
+    if (geocodeCache.has(cacheKey)) {
+        return geocodeCache.get(cacheKey);
+    }
 
-    try {
-        const response = await fetch(url, {
-            headers: {
-                'User-Agent': CONFIG.APP_USER_AGENT
+    const geo = getGeocoder();
+    if (!geo) {
+        throw new Error('Google Maps API not loaded. Please refresh the page.');
+    }
+
+    return new Promise((resolve, reject) => {
+        geo.geocode({ address }, (results, status) => {
+            if (status === 'OK' && results.length > 0) {
+                const result = results[0];
+                const response = {
+                    lat: result.geometry.location.lat(),
+                    lng: result.geometry.location.lng(),
+                    address: result.formatted_address,
+                    precision: result.geometry.location_type
+                };
+                // Cache the result for future calls
+                geocodeCache.set(cacheKey, response);
+                resolve(response);
+            } else if (status === 'ZERO_RESULTS') {
+                reject(new Error(ErrorMessages[ErrorTypes.GEOCODING_FAILED]));
+            } else if (status === 'OVER_QUERY_LIMIT') {
+                reject(new Error(ErrorMessages[ErrorTypes.RATE_LIMITED]));
+            } else if (status === 'REQUEST_DENIED') {
+                reject(new Error('Google Maps API request denied. Please check the API key.'));
+            } else {
+                reject(new Error(ErrorMessages[ErrorTypes.GEOCODING_FAILED]));
             }
         });
-
-        if (!response.ok) {
-            if (response.status === 429) {
-                throw new Error(ErrorMessages[ErrorTypes.RATE_LIMITED]);
-            }
-            throw new Error(ErrorMessages[ErrorTypes.NETWORK_ERROR]);
-        }
-
-        const data = await response.json();
-
-        if (!data || data.length === 0) {
-            throw new Error(ErrorMessages[ErrorTypes.GEOCODING_FAILED]);
-        }
-
-        const result = data[0];
-        return {
-            lat: parseFloat(result.lat),
-            lng: parseFloat(result.lon),
-            displayName: result.display_name,
-            address: formatAddressFromResult(result)
-        };
-    } catch (error) {
-        if (error.message.includes('fetch')) {
-            throw new Error(ErrorMessages[ErrorTypes.NETWORK_ERROR]);
-        }
-        throw error;
-    }
+    });
 }
 
 /**
@@ -95,40 +110,4 @@ export function getCurrentPosition() {
             }
         );
     });
-}
-
-/**
- * Format address from Nominatim result
- * @param {Object} result - Nominatim result object
- * @returns {string} Formatted address string
- */
-function formatAddressFromResult(result) {
-    if (!result.address) {
-        return result.display_name || '';
-    }
-
-    const addr = result.address;
-    const parts = [];
-
-    // Build a concise address
-    if (addr.house_number && addr.road) {
-        parts.push(`${addr.house_number} ${addr.road}`);
-    } else if (addr.road) {
-        parts.push(addr.road);
-    }
-
-    const city = addr.city || addr.town || addr.village || addr.hamlet;
-    if (city) {
-        parts.push(city);
-    }
-
-    if (addr.state) {
-        parts.push(addr.state);
-    }
-
-    if (addr.postcode) {
-        parts.push(addr.postcode);
-    }
-
-    return parts.join(', ') || result.display_name || '';
 }

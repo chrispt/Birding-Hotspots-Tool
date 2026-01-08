@@ -80,8 +80,7 @@ Then visit `http://localhost:8000`
 ### APIs Used
 
 - **eBird API v2**: Bird observation data from Cornell Lab of Ornithology
-- **OpenStreetMap Nominatim**: Address geocoding (free, no API key required)
-- **Rate limiting**: Nominatim requests are throttled to 1 per second as required
+- **Google Maps Geocoding API**: Address geocoding and reverse geocoding for accurate location resolution
 
 ### Libraries
 

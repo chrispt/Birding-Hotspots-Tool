@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(cd c:UserschrisOneDriveDocuments\"\"Birding Hotspots Tool\" && findstr /r \"touch|@media|matchMedia|resize\" js\\\\*.js js\\\\**\\\\*.js 2>nul || echo \"No touch/media queries found in JS \")"
     ]
   }
 }

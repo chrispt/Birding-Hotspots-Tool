@@ -112,6 +112,9 @@ class BirdingHotspotsApp {
         this.elements.address.addEventListener('input', () => this.handleAddressInputChange());
         this.elements.address.addEventListener('blur', () => this.handleAddressBlur());
 
+        // Initialize event delegation for favorites (single listener, no memory leak)
+        this.initializeFavoritesDelegation();
+
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
@@ -158,12 +161,20 @@ class BirdingHotspotsApp {
         const isPassword = this.elements.apiKey.type === 'password';
         this.elements.apiKey.type = isPassword ? 'text' : 'password';
 
-        // Update icon
+        // Update icon using safe DOM manipulation
         const eyePath = isPassword
             ? 'M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z'
             : 'M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46A11.804 11.804 0 001 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z';
 
-        this.elements.eyeIcon.innerHTML = `<path fill="currentColor" d="${eyePath}"/>`;
+        // Clear and rebuild SVG path safely
+        const svg = this.elements.eyeIcon;
+        while (svg.firstChild) {
+            svg.removeChild(svg.firstChild);
+        }
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('fill', 'currentColor');
+        path.setAttribute('d', eyePath);
+        svg.appendChild(path);
     }
 
     /**
@@ -227,13 +238,30 @@ class BirdingHotspotsApp {
             this.showError(error.message);
         } finally {
             this.elements.useCurrentLocation.disabled = false;
-            this.elements.useCurrentLocation.innerHTML = `
-                <svg viewBox="0 0 24 24" width="18" height="18">
-                    <path fill="currentColor" d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0013 3.06V1h-2v2.06A8.994 8.994 0 003.06 11H1v2h2.06A8.994 8.994 0 0011 20.94V23h2v-2.06A8.994 8.994 0 0020.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/>
-                </svg>
-                Use My Current Location
-            `;
+            this.resetLocationButton();
         }
+    }
+
+    /**
+     * Reset the location button to its default state using safe DOM manipulation
+     */
+    resetLocationButton() {
+        const btn = this.elements.useCurrentLocation;
+        // Clear existing content safely
+        while (btn.firstChild) {
+            btn.removeChild(btn.firstChild);
+        }
+        // Create SVG icon
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('viewBox', '0 0 24 24');
+        svg.setAttribute('width', '18');
+        svg.setAttribute('height', '18');
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('fill', 'currentColor');
+        path.setAttribute('d', 'M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0013 3.06V1h-2v2.06A8.994 8.994 0 003.06 11H1v2h2.06A8.994 8.994 0 0011 20.94V23h2v-2.06A8.994 8.994 0 0020.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z');
+        svg.appendChild(path);
+        btn.appendChild(svg);
+        btn.appendChild(document.createTextNode(' Use My Current Location'));
     }
 
     /**
@@ -391,37 +419,24 @@ class BirdingHotspotsApp {
     }
 
     /**
-     * Render the favorites list
+     * Initialize event delegation for favorites list (call once during setup)
      */
-    renderFavorites() {
-        const favorites = storage.getFavorites();
+    initializeFavoritesDelegation() {
+        this.elements.favoritesList.addEventListener('click', (e) => {
+            const item = e.target.closest('.favorite-item');
+            if (!item) return;
 
-        if (favorites.length === 0) {
-            this.elements.favoritesList.innerHTML = '<p class="no-favorites">No saved locations yet</p>';
-            return;
-        }
+            const deleteBtn = e.target.closest('.favorite-delete');
+            if (deleteBtn) {
+                e.stopPropagation();
+                const id = parseInt(item.dataset.id, 10);
+                storage.removeFavorite(id);
+                this.renderFavorites();
+                return;
+            }
 
-        this.elements.favoritesList.innerHTML = favorites.map(fav => `
-            <div class="favorite-item" data-id="${fav.id}">
-                <div class="favorite-info" data-lat="${fav.lat}" data-lng="${fav.lng}" data-address="${fav.address || ''}">
-                    <span class="favorite-name">${this.escapeHtml(fav.name)}</span>
-                    <span class="favorite-address">${this.escapeHtml(fav.address || `${fav.lat.toFixed(4)}, ${fav.lng.toFixed(4)}`)}</span>
-                </div>
-                <button class="favorite-delete" title="Remove">
-                    <svg viewBox="0 0 24 24" width="18" height="18">
-                        <path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-                    </svg>
-                </button>
-            </div>
-        `).join('');
-
-        // Add click handlers
-        this.elements.favoritesList.querySelectorAll('.favorite-item').forEach(item => {
             const info = item.querySelector('.favorite-info');
-            const deleteBtn = item.querySelector('.favorite-delete');
-
-            // Click on favorite to use it
-            info.addEventListener('click', () => {
+            if (info) {
                 const lat = parseFloat(info.dataset.lat);
                 const lng = parseFloat(info.dataset.lng);
                 const address = info.dataset.address;
@@ -435,15 +450,69 @@ class BirdingHotspotsApp {
 
                 // Show map preview for verification
                 this.showMapPreview(lat, lng);
-            });
+            }
+        });
+    }
 
-            // Delete button
-            deleteBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const id = parseInt(item.dataset.id);
-                storage.removeFavorite(id);
-                this.renderFavorites();
-            });
+    /**
+     * Render the favorites list using safe DOM manipulation
+     */
+    renderFavorites() {
+        const favorites = storage.getFavorites();
+        const container = this.elements.favoritesList;
+
+        // Clear existing content safely
+        while (container.firstChild) {
+            container.removeChild(container.firstChild);
+        }
+
+        if (favorites.length === 0) {
+            const p = document.createElement('p');
+            p.className = 'no-favorites';
+            p.textContent = 'No saved locations yet';
+            container.appendChild(p);
+            return;
+        }
+
+        favorites.forEach(fav => {
+            const item = document.createElement('div');
+            item.className = 'favorite-item';
+            item.dataset.id = fav.id;
+
+            const info = document.createElement('div');
+            info.className = 'favorite-info';
+            info.dataset.lat = fav.lat;
+            info.dataset.lng = fav.lng;
+            info.dataset.address = fav.address || '';
+
+            const name = document.createElement('span');
+            name.className = 'favorite-name';
+            name.textContent = fav.name;
+
+            const address = document.createElement('span');
+            address.className = 'favorite-address';
+            address.textContent = fav.address || `${fav.lat.toFixed(4)}, ${fav.lng.toFixed(4)}`;
+
+            info.appendChild(name);
+            info.appendChild(address);
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'favorite-delete';
+            deleteBtn.title = 'Remove';
+
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.setAttribute('viewBox', '0 0 24 24');
+            svg.setAttribute('width', '18');
+            svg.setAttribute('height', '18');
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('fill', 'currentColor');
+            path.setAttribute('d', 'M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z');
+            svg.appendChild(path);
+            deleteBtn.appendChild(svg);
+
+            item.appendChild(info);
+            item.appendChild(deleteBtn);
+            container.appendChild(item);
         });
     }
 
@@ -621,57 +690,58 @@ class BirdingHotspotsApp {
     }
 
     /**
-     * Enrich hotspots with additional data
+     * Enrich hotspots with additional data (parallelized for speed)
      */
     async enrichHotspots(hotspots, origin, notableSpecies) {
-        const enriched = [];
+        this.updateLoading('Fetching hotspot observations...', 35);
 
-        for (let i = 0; i < hotspots.length; i++) {
-            const hotspot = hotspots[i];
-            const progress = 30 + ((i / hotspots.length) * 50);
-            this.updateLoading(`Processing hotspot ${i + 1} of ${hotspots.length}...`, progress);
+        // Fetch all observations in parallel
+        const observationsPromises = hotspots.map(hotspot =>
+            this.ebirdApi.getRecentObservations(hotspot.locId, CONFIG.DEFAULT_DAYS_BACK)
+                .catch(e => {
+                    console.warn(`Could not fetch observations for ${hotspot.locId}:`, e);
+                    return [];
+                })
+        );
 
-            // Get recent observations
-            let observations = [];
-            try {
-                observations = await this.ebirdApi.getRecentObservations(
-                    hotspot.locId,
-                    CONFIG.DEFAULT_DAYS_BACK
-                );
-            } catch (e) {
-                console.warn(`Could not fetch observations for ${hotspot.locId}:`, e);
-            }
+        this.updateLoading('Fetching hotspot addresses...', 50);
 
-            // Get address via reverse geocoding
-            let address = 'Address unavailable';
-            try {
-                const addrResult = await reverseGeocode(hotspot.lat, hotspot.lng);
-                if (addrResult.address && addrResult.address !== 'Address unavailable') {
-                    address = addrResult.address;
-                }
-            } catch (e) {
-                console.warn('Reverse geocoding failed:', e);
-            }
+        // Fetch all addresses in parallel
+        const addressPromises = hotspots.map(hotspot =>
+            reverseGeocode(hotspot.lat, hotspot.lng)
+                .catch(e => {
+                    console.warn('Reverse geocoding failed:', e);
+                    return { address: 'Address unavailable' };
+                })
+        );
 
-            // Calculate distance
+        // Wait for all parallel requests
+        this.updateLoading('Processing hotspot data...', 65);
+        const [allObservations, allAddresses] = await Promise.all([
+            Promise.all(observationsPromises),
+            Promise.all(addressPromises)
+        ]);
+
+        this.updateLoading('Building hotspot details...', 80);
+
+        // Process results (fast, no waiting)
+        return hotspots.map((hotspot, i) => {
+            const observations = allObservations[i];
+            const addrResult = allAddresses[i];
             const distance = calculateDistance(origin.lat, origin.lng, hotspot.lat, hotspot.lng);
-
-            // Process bird list
             const birds = processObservations(observations, notableSpecies);
 
-            enriched.push({
+            return {
                 locId: hotspot.locId,
                 name: hotspot.locName,
                 lat: hotspot.lat,
                 lng: hotspot.lng,
                 speciesCount: birds.length,
-                address,
+                address: addrResult.address || 'Address unavailable',
                 distance,
                 birds
-            });
-        }
-
-        return enriched;
+            };
+        });
     }
 
     /**
@@ -724,15 +794,6 @@ class BirdingHotspotsApp {
      */
     hideError() {
         this.elements.errorMessage.classList.add('hidden');
-    }
-
-    /**
-     * Escape HTML to prevent XSS
-     */
-    escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
     }
 }
 

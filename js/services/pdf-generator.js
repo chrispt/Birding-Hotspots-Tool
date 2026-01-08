@@ -94,13 +94,25 @@ export async function generatePDFReport(data, onProgress = () => {}) {
         // Continue without map
     }
 
+    // ========== PRE-GENERATE QR CODES IN PARALLEL ==========
+    onProgress('Generating QR codes...', 25);
+
+    let qrCodes = [];
+    if (isQRCodeAvailable()) {
+        const qrPromises = hotspots.map(hotspot => {
+            const ebirdUrl = getEbirdHotspotUrl(hotspot.locId);
+            return generateQRCode(ebirdUrl, { size: 150 }).catch(() => null);
+        });
+        qrCodes = await Promise.all(qrPromises);
+    }
+
     // ========== HOTSPOTS ==========
     const qrSize = 20; // QR code size in mm
 
     for (let i = 0; i < hotspots.length; i++) {
         const hotspot = hotspots[i];
-        const progress = 20 + ((i / hotspots.length) * 70);
-        onProgress(`Processing hotspot ${i + 1} of ${hotspots.length}...`, progress);
+        const progress = 30 + ((i / hotspots.length) * 60);
+        onProgress(`Adding hotspot ${i + 1} of ${hotspots.length}...`, progress);
 
         // Estimate space needed for this hotspot
         const birdLines = Math.ceil(hotspot.birds.length / 3); // Rough estimate
@@ -145,14 +157,9 @@ export async function generatePDFReport(data, onProgress = () => {}) {
         doc.textWithLink('View on eBird', margin, yPos, { url: ebirdUrl });
         yPos += 5;
 
-        // QR code for eBird page (positioned to the right)
-        if (isQRCodeAvailable()) {
-            try {
-                const qrDataUrl = await generateQRCode(ebirdUrl, { size: 150 });
-                doc.addImage(qrDataUrl, 'PNG', pageWidth - margin - qrSize, detailsStartY - 2, qrSize, qrSize);
-            } catch (err) {
-                console.warn('Could not generate QR code:', err);
-            }
+        // QR code for eBird page (positioned to the right) - use pre-generated
+        if (qrCodes[i]) {
+            doc.addImage(qrCodes[i], 'PNG', pageWidth - margin - qrSize, detailsStartY - 2, qrSize, qrSize);
         }
 
         // Bird list
