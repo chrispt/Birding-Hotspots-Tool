@@ -6,6 +6,23 @@
 // Singleton geocoder instance
 let geocoder = null;
 
+// Timeout duration for geocoding requests (ms)
+const GEOCODE_TIMEOUT = 10000;
+
+/**
+ * Wrap a promise with a timeout that resolves with a fallback value
+ * @param {Promise} promise - The promise to wrap
+ * @param {number} ms - Timeout in milliseconds
+ * @param {*} fallbackValue - Value to resolve with if timeout occurs
+ * @returns {Promise} Promise that resolves with fallback if timeout exceeded
+ */
+function withTimeoutFallback(promise, ms, fallbackValue) {
+    const timeout = new Promise((resolve) => {
+        setTimeout(() => resolve(fallbackValue), ms);
+    });
+    return Promise.race([promise, timeout]);
+}
+
 /**
  * Get or create the Google Geocoder instance
  * @returns {google.maps.Geocoder|null}
@@ -24,17 +41,19 @@ function getGeocoder() {
  * @returns {Promise<Object>} Object with address information
  */
 export async function reverseGeocode(lat, lng) {
+    const fallback = {
+        displayName: `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
+        address: 'Address unavailable',
+        raw: null
+    };
+
     const geo = getGeocoder();
     if (!geo) {
         // Return fallback if Google Maps not loaded
-        return {
-            displayName: `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
-            address: 'Address unavailable',
-            raw: null
-        };
+        return fallback;
     }
 
-    return new Promise((resolve) => {
+    const geocodePromise = new Promise((resolve) => {
         geo.geocode({ location: { lat, lng } }, (results, status) => {
             if (status === 'OK' && results.length > 0) {
                 const result = results[0];
@@ -45,14 +64,13 @@ export async function reverseGeocode(lat, lng) {
                 });
             } else {
                 // Return fallback on any error
-                resolve({
-                    displayName: `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
-                    address: 'Address unavailable',
-                    raw: null
-                });
+                resolve(fallback);
             }
         });
     });
+
+    // Add timeout to prevent hanging - resolve with fallback instead of rejecting
+    return withTimeoutFallback(geocodePromise, GEOCODE_TIMEOUT, fallback);
 }
 
 /**

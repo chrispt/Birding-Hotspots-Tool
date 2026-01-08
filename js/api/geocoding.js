@@ -10,6 +10,23 @@ let geocoder = null;
 // Cache for geocoding results (session-level for performance)
 const geocodeCache = new Map();
 
+// Timeout duration for geocoding requests (ms)
+const GEOCODE_TIMEOUT = 10000;
+
+/**
+ * Wrap a promise with a timeout
+ * @param {Promise} promise - The promise to wrap
+ * @param {number} ms - Timeout in milliseconds
+ * @param {string} errorMessage - Error message if timeout occurs
+ * @returns {Promise} Promise that rejects if timeout exceeded
+ */
+function withTimeout(promise, ms, errorMessage) {
+    const timeout = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error(errorMessage)), ms);
+    });
+    return Promise.race([promise, timeout]);
+}
+
 /**
  * Get or create the Google Geocoder instance
  * @returns {google.maps.Geocoder|null}
@@ -26,7 +43,7 @@ function getGeocoder() {
  * Uses session-level cache to avoid redundant API calls
  * @param {string} address - The address to geocode
  * @returns {Promise<Object>} Object with lat, lng, and address properties
- * @throws {Error} If geocoding fails
+ * @throws {Error} If geocoding fails or times out
  */
 export async function geocodeAddress(address) {
     // Check cache first
@@ -40,7 +57,7 @@ export async function geocodeAddress(address) {
         throw new Error('Google Maps API not loaded. Please refresh the page.');
     }
 
-    return new Promise((resolve, reject) => {
+    const geocodePromise = new Promise((resolve, reject) => {
         geo.geocode({ address }, (results, status) => {
             if (status === 'OK' && results.length > 0) {
                 const result = results[0];
@@ -64,6 +81,9 @@ export async function geocodeAddress(address) {
             }
         });
     });
+
+    // Add timeout to prevent hanging indefinitely
+    return withTimeout(geocodePromise, GEOCODE_TIMEOUT, 'Geocoding request timed out. Please try again.');
 }
 
 /**
