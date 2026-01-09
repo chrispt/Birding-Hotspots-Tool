@@ -822,6 +822,76 @@ body {
     outline-offset: 2px;
 }
 
+/* About Section (Collapsible) */
+.about-section {
+    margin-bottom: 16px;
+}
+
+.about-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    list-style: none;
+    padding: 4px 0;
+}
+
+.about-toggle::-webkit-details-marker {
+    display: none;
+}
+
+.about-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.about-chevron {
+    transition: transform var(--transition);
+    color: var(--text-secondary);
+}
+
+details.about-section[open] .about-chevron {
+    transform: rotate(180deg);
+}
+
+.about-content {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-color);
+    color: #424242;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.about-content p {
+    margin: 0 0 12px 0;
+}
+
+.about-content ul {
+    margin: 0 0 12px 0;
+    padding-left: 20px;
+}
+
+.about-content li {
+    margin-bottom: 8px;
+}
+
+.about-content a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.about-content a:hover {
+    text-decoration: underline;
+}
+
+.about-note {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 0 !important;
+}
+
 /* Reduced Motion */
 @media (prefers-reduced-motion: reduce) {
     *,
