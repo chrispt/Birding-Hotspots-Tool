@@ -17,21 +17,29 @@ export async function generateCanvasMap(centerLat, centerLng, hotspots, options 
         height = 400
     } = options;
 
+    // Use 2x resolution for sharper output in PDFs
+    const scale = 2;
+    const canvasWidth = width * scale;
+    const canvasHeight = height * scale;
+
     const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
+    canvas.width = canvasWidth;
+    canvas.height = canvasHeight;
     const ctx = canvas.getContext('2d');
+
+    // Scale context for higher resolution
+    ctx.scale(scale, scale);
 
     // Calculate bounds that include all hotspots
     const bounds = calculateBounds(centerLat, centerLng, hotspots);
 
-    // Calculate appropriate zoom level
-    const zoom = calculateZoom(bounds, width, height);
+    // Calculate appropriate zoom level (use scaled dimensions for more tiles)
+    const zoom = calculateZoom(bounds, canvasWidth, canvasHeight);
 
     // Try to fetch and draw OSM tiles
     let tilesLoaded = false;
     try {
-        await drawOSMTiles(ctx, bounds, zoom, width, height);
+        await drawOSMTiles(ctx, bounds, zoom, width, height, scale);
         tilesLoaded = true;
     } catch (e) {
         console.warn('Could not load OSM tiles, using fallback background:', e);
@@ -58,13 +66,18 @@ function calculateZoom(bounds, width, height) {
     const lngDiff = bounds.maxLng - bounds.minLng;
 
     // Calculate zoom based on the larger dimension
-    // Each zoom level doubles the resolution
-    const latZoom = Math.log2(180 / latDiff) - Math.log2(height / 256);
-    const lngZoom = Math.log2(360 / lngDiff) - Math.log2(width / 256);
+    // Formula: zoom = log2(360 / lngDiff) for longitude
+    // We want enough tiles to cover the canvas at good resolution
+    const TILE_SIZE = 256;
 
-    // Use the smaller zoom (to fit everything) and clamp to reasonable range
+    // Calculate zoom needed for each dimension
+    const latZoom = Math.log2((360 / latDiff) * (height / TILE_SIZE));
+    const lngZoom = Math.log2((360 / lngDiff) * (width / TILE_SIZE));
+
+    // Use the smaller zoom (to fit everything) but add 1 for better resolution
+    // Then clamp to reasonable range (8-14 for regional maps)
     const zoom = Math.floor(Math.min(latZoom, lngZoom));
-    return Math.max(1, Math.min(zoom, 16));
+    return Math.max(8, Math.min(zoom, 14));
 }
 
 /**
@@ -92,7 +105,7 @@ function tileToLatLng(x, y, zoom) {
 /**
  * Fetch and draw OpenStreetMap tiles
  */
-async function drawOSMTiles(ctx, bounds, zoom, width, height) {
+async function drawOSMTiles(ctx, bounds, zoom, width, height, scale = 1) {
     const tileSize = 256;
 
     // Get tile coordinates for bounds corners
