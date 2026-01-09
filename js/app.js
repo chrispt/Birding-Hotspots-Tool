@@ -7,7 +7,7 @@ import { validateCoordinates, validateApiKey, validateAddress, validateFavoriteN
 import { calculateDistance, formatDistance } from './utils/formatters.js';
 import { storage } from './services/storage.js';
 import { geocodeAddress, getCurrentPosition } from './api/geocoding.js';
-import { reverseGeocode } from './api/reverse-geo.js';
+import { reverseGeocode, batchReverseGeocode } from './api/reverse-geo.js';
 import { EBirdAPI, processObservations } from './api/ebird.js';
 import { generatePDFReport, downloadPDF } from './services/pdf-generator.js';
 
@@ -741,23 +741,17 @@ class BirdingHotspotsApp {
                 })
         );
 
-        this.updateLoading('Fetching hotspot addresses...', 50);
+        // Wait for all observation requests
+        this.updateLoading('Processing observations...', 50);
+        const allObservations = await Promise.all(observationsPromises);
 
-        // Fetch all addresses in parallel
-        const addressPromises = hotspots.map(hotspot =>
-            reverseGeocode(hotspot.lat, hotspot.lng)
-                .catch(e => {
-                    console.warn('Reverse geocoding failed:', e);
-                    return { address: 'Address unavailable' };
-                })
-        );
-
-        // Wait for all parallel requests
-        this.updateLoading('Processing hotspot data...', 65);
-        const [allObservations, allAddresses] = await Promise.all([
-            Promise.all(observationsPromises),
-            Promise.all(addressPromises)
-        ]);
+        // Fetch addresses with rate limiting to avoid 429 errors
+        this.updateLoading('Fetching hotspot addresses...', 55);
+        const locations = hotspots.map(h => ({ lat: h.lat, lng: h.lng }));
+        const allAddresses = await batchReverseGeocode(locations, (current, total) => {
+            const progress = 55 + (current / total) * 20; // 55% to 75%
+            this.updateLoading(`Fetching address ${current}/${total}...`, progress);
+        });
 
         this.updateLoading('Building hotspot details...', 80);
 
