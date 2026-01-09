@@ -287,7 +287,14 @@ export async function generatePDFReport(data, onProgress = () => {}) {
  * @param {string} prefix - Filename prefix
  */
 export function downloadPDF(doc, prefix = 'birding-hotspots') {
-    const timestamp = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    // Format: "2026-01-08_1430" (local date with hour and minute)
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const timestamp = `${year}-${month}-${day}_${hours}${minutes}`;
     const filename = `${prefix}-${timestamp}.pdf`;
     doc.save(filename);
 }
