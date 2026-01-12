@@ -15,7 +15,6 @@ export const CONFIG = {
     // Search parameters
     DEFAULT_SEARCH_RADIUS: 50,  // km (max for eBird)
     DEFAULT_DAYS_BACK: 30,
-    MAX_HOTSPOTS: 10,
 
     // Geocoding
     GEOCODE_TIMEOUT: 10000,  // 10 seconds

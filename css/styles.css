@@ -123,6 +123,14 @@ body {
     margin-bottom: 6px;
 }
 
+/* Help Text */
+.help-text {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-top: 8px;
+    font-style: italic;
+}
+
 .text-input {
     width: 100%;
     padding: 12px 16px;

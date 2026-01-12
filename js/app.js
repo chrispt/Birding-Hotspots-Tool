@@ -43,6 +43,9 @@ class BirdingHotspotsApp {
             // Search range
             searchRangeRadios: document.querySelectorAll('[name="searchRange"]'),
 
+            // Hotspots count
+            hotspotsCountRadios: document.querySelectorAll('[name="hotspotsCount"]'),
+
             // Favorites
             favoritesList: document.getElementById('favoritesList'),
             saveFavorite: document.getElementById('saveFavorite'),
@@ -664,8 +667,9 @@ class BirdingHotspotsApp {
                 dist: calculateDistance(origin.lat, origin.lng, h.lat, h.lng).toFixed(2) + ' km'
             })));
 
-            // Limit to configured max
-            hotspots = hotspots.slice(0, CONFIG.MAX_HOTSPOTS);
+            // Limit to user-selected count
+            const hotspotsCount = parseInt(document.querySelector('[name="hotspotsCount"]:checked').value, 10);
+            hotspots = hotspots.slice(0, hotspotsCount);
 
             // Fetch notable species in the area
             this.updateLoading('Fetching notable species...', 25);
