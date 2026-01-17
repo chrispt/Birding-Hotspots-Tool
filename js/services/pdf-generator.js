@@ -284,17 +284,17 @@ export async function generatePDFReport(data, onProgress = () => {}) {
 /**
  * Download the PDF with a generated filename
  * @param {jsPDF} doc - The PDF document
- * @param {string} prefix - Filename prefix
+ * @param {string} sortMethod - The sort method used ('species' or 'distance')
  */
-export function downloadPDF(doc, prefix = 'birding-hotspots') {
+export function downloadPDF(doc, sortMethod = 'species') {
     const now = new Date();
-    // Format: "2026-01-08_1430" (local date with hour and minute)
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const day = String(now.getDate()).padStart(2, '0');
     const hours = String(now.getHours()).padStart(2, '0');
     const minutes = String(now.getMinutes()).padStart(2, '0');
     const timestamp = `${year}-${month}-${day}_${hours}${minutes}`;
-    const filename = `${prefix}-${timestamp}.pdf`;
+    const sortLabel = sortMethod === 'distance' ? 'closest' : 'most-species';
+    const filename = `birding-hotspots-${sortLabel}-${timestamp}.pdf`;
     doc.save(filename);
 }

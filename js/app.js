@@ -717,7 +717,7 @@ class BirdingHotspotsApp {
             });
 
             // Download PDF
-            downloadPDF(pdf);
+            downloadPDF(pdf, sortMethod);
 
             this.hideLoading();
 
