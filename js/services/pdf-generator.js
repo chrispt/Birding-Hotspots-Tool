@@ -293,7 +293,7 @@ export function downloadPDF(doc, sortMethod = 'species') {
     const day = String(now.getDate()).padStart(2, '0');
     const hours = String(now.getHours()).padStart(2, '0');
     const minutes = String(now.getMinutes()).padStart(2, '0');
-    const timestamp = `${year}-${month}-${day}_${hours}${minutes}`;
+    const timestamp = `${month}-${day}-${year}_${hours}${minutes}`;
     const sortLabel = sortMethod === 'distance' ? 'closest' : 'most-species';
     const filename = `birding-hotspots-${sortLabel}-${timestamp}.pdf`;
     doc.save(filename);
