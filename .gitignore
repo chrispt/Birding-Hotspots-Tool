@@ -1,1 +1,14 @@
+# Windows
 nul
+Thumbs.db
+desktop.ini
+
+# Claude Code local settings
+.claude/
+
+# IDE
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
