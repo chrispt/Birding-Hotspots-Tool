@@ -35,6 +35,26 @@ export function formatDistance(distanceKm) {
 }
 
 /**
+ * Format duration in human-readable format
+ * @param {number} seconds - Duration in seconds
+ * @returns {string} Formatted duration string (e.g., "15 min", "1 hr 23 min")
+ */
+export function formatDuration(seconds) {
+    if (seconds == null) return '';
+
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.round((seconds % 3600) / 60);
+
+    if (hours === 0) {
+        return `${minutes} min`;
+    } else if (minutes === 0) {
+        return `${hours} hr`;
+    } else {
+        return `${hours} hr ${minutes} min`;
+    }
+}
+
+/**
  * Format coordinates for display
  * @param {number} lat - Latitude
  * @param {number} lng - Longitude

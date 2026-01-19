@@ -4,7 +4,7 @@
 
 import { CONFIG, ErrorMessages, ErrorTypes } from './utils/constants.js';
 import { validateCoordinates, validateApiKey, validateAddress, validateFavoriteName } from './utils/validators.js';
-import { calculateDistance, formatDistance } from './utils/formatters.js';
+import { calculateDistance, formatDistance, formatDuration } from './utils/formatters.js';
 import { createSVGIcon, ICONS } from './utils/icons.js';
 import { clearElement } from './utils/dom-helpers.js';
 import { storage } from './services/storage.js';
@@ -12,6 +12,7 @@ import { geocodeAddress, getCurrentPosition } from './api/geocoding.js';
 import { reverseGeocode, batchReverseGeocode } from './api/reverse-geo.js';
 import { EBirdAPI, processObservations } from './api/ebird.js';
 import { generatePDFReport, downloadPDF } from './services/pdf-generator.js';
+import { getDrivingRoutes } from './api/routing.js';
 
 /**
  * Main application class
@@ -81,6 +82,7 @@ class BirdingHotspotsApp {
             exportPdfBtn: document.getElementById('exportPdfBtn'),
             sortBySpecies: document.getElementById('sortBySpecies'),
             sortByDistance: document.getElementById('sortByDistance'),
+            sortByDriving: document.getElementById('sortByDriving'),
             resultsMap: document.getElementById('resultsMap')
         };
 
@@ -139,6 +141,7 @@ class BirdingHotspotsApp {
         // Sort toggle buttons
         this.elements.sortBySpecies.addEventListener('click', () => this.handleSortChange('species'));
         this.elements.sortByDistance.addEventListener('click', () => this.handleSortChange('distance'));
+        this.elements.sortByDriving.addEventListener('click', () => this.handleSortChange('driving'));
 
         // Event delegation for species toggles
         this.elements.hotspotCards.addEventListener('click', (e) => {
@@ -761,9 +764,13 @@ class BirdingHotspotsApp {
         this.updateLoading('Fetching hotspot addresses...', 55);
         const locations = hotspots.map(h => ({ lat: h.lat, lng: h.lng }));
         const allAddresses = await batchReverseGeocode(locations, (current, total) => {
-            const progress = 55 + (current / total) * 20; // 55% to 75%
+            const progress = 55 + (current / total) * 15; // 55% to 70%
             this.updateLoading(`Fetching address ${current}/${total}...`, progress);
         });
+
+        // Fetch driving distances
+        this.updateLoading('Calculating driving distances...', 72);
+        const drivingRoutes = await getDrivingRoutes(origin.lat, origin.lng, locations);
 
         this.updateLoading('Building hotspot details...', 80);
 
@@ -773,6 +780,7 @@ class BirdingHotspotsApp {
             const addrResult = allAddresses[i];
             const distance = calculateDistance(origin.lat, origin.lng, hotspot.lat, hotspot.lng);
             const birds = processObservations(observations, notableSpecies);
+            const drivingRoute = drivingRoutes[i];
 
             return {
                 locId: hotspot.locId,
@@ -782,6 +790,8 @@ class BirdingHotspotsApp {
                 speciesCount: birds.length,
                 address: addrResult.address || 'Address unavailable',
                 distance,
+                drivingDistance: drivingRoute?.distance ?? null,
+                drivingDuration: drivingRoute?.duration ?? null,
                 birds
             };
         });
@@ -793,7 +803,15 @@ class BirdingHotspotsApp {
     sortHotspots(hotspots, method, origin) {
         if (method === 'species') {
             return [...hotspots].sort((a, b) => b.speciesCount - a.speciesCount);
+        } else if (method === 'driving') {
+            // Sort by driving distance, fall back to straight-line if unavailable
+            return [...hotspots].sort((a, b) => {
+                const distA = a.drivingDistance ?? a.distance;
+                const distB = b.drivingDistance ?? b.distance;
+                return distA - distB;
+            });
         } else {
+            // Sort by straight-line distance
             return [...hotspots].sort((a, b) => a.distance - b.distance);
         }
     }
@@ -808,6 +826,7 @@ class BirdingHotspotsApp {
         // Sync sort toggle buttons with current sort method
         this.elements.sortBySpecies.classList.toggle('active', sortMethod === 'species');
         this.elements.sortByDistance.classList.toggle('active', sortMethod === 'distance');
+        this.elements.sortByDriving.classList.toggle('active', sortMethod === 'driving');
 
         // Update meta information (sort is now shown in toggle, so removed from text)
         this.elements.resultsMeta.textContent = `${hotspots.length} hotspots found | ${generatedDate}`;
@@ -846,6 +865,14 @@ class BirdingHotspotsApp {
         const directionsUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin.lat},${origin.lng}&destination=${hotspot.lat},${hotspot.lng}`;
         const ebirdUrl = `https://ebird.org/hotspot/${hotspot.locId}`;
 
+        // Build driving distance text if available
+        let drivingText = '';
+        if (hotspot.drivingDistance != null && hotspot.drivingDuration != null) {
+            const drivingDistanceText = formatDistance(hotspot.drivingDistance);
+            const drivingDurationText = formatDuration(hotspot.drivingDuration);
+            drivingText = ` (${drivingDistanceText} · ${drivingDurationText} drive)`;
+        }
+
         // Check if there are notable species
         const hasNotable = hotspot.birds.some(b => b.isNotable);
 
@@ -875,11 +902,11 @@ class BirdingHotspotsApp {
         speciesStat.appendChild(createSVGIcon('check', 16));
         speciesStat.appendChild(document.createTextNode(` ${hotspot.speciesCount} species`));
 
-        // Distance stat
+        // Distance stat (straight-line + driving)
         const distanceStat = document.createElement('span');
         distanceStat.className = 'stat distance';
         distanceStat.appendChild(createSVGIcon('location', 16));
-        distanceStat.appendChild(document.createTextNode(` ${distanceText}`));
+        distanceStat.appendChild(document.createTextNode(` ${distanceText}${drivingText}`));
 
         stats.appendChild(speciesStat);
         stats.appendChild(distanceStat);
@@ -1111,6 +1138,7 @@ class BirdingHotspotsApp {
         // Update button states
         this.elements.sortBySpecies.classList.toggle('active', method === 'species');
         this.elements.sortByDistance.classList.toggle('active', method === 'distance');
+        this.elements.sortByDriving.classList.toggle('active', method === 'driving');
 
         // Re-sort the hotspots
         const sortedHotspots = this.sortHotspots(

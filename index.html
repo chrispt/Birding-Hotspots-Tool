@@ -162,7 +162,15 @@
                         <span class="radio-custom"></span>
                         <div class="radio-content">
                             <span class="radio-title">Closest Distance</span>
-                            <span class="radio-desc">Find the nearest birding hotspots first</span>
+                            <span class="radio-desc">Find the nearest birding hotspots (as the crow flies)</span>
+                        </div>
+                    </label>
+                    <label class="radio-label radio-card">
+                        <input type="radio" name="sortMethod" value="driving">
+                        <span class="radio-custom"></span>
+                        <div class="radio-content">
+                            <span class="radio-title">Shortest Drive</span>
+                            <span class="radio-desc">Sort by actual driving distance and time</span>
                         </div>
                     </label>
                 </div>
@@ -249,6 +257,9 @@
                         </button>
                         <button type="button" id="sortByDistance" class="sort-btn">
                             Closest
+                        </button>
+                        <button type="button" id="sortByDriving" class="sort-btn">
+                            Shortest Drive
                         </button>
                     </div>
                     <div class="results-actions">

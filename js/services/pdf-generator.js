@@ -3,7 +3,7 @@
  * Uses jsPDF library loaded via CDN
  */
 
-import { formatDistance, formatDate, getGoogleMapsDirectionsUrl, getEbirdHotspotUrl } from '../utils/formatters.js';
+import { formatDistance, formatDuration, formatDate, getGoogleMapsDirectionsUrl, getEbirdHotspotUrl } from '../utils/formatters.js';
 import { generateCanvasMap } from './map-service.js';
 import { generateQRCode, isQRCodeAvailable } from './qr-generator.js';
 
@@ -68,7 +68,8 @@ export async function generatePDFReport(data, onProgress = () => {}) {
     yPos += 5;
     doc.text(`Starting Location: ${origin.address || `${origin.lat.toFixed(4)}, ${origin.lng.toFixed(4)}`}`, margin, yPos);
     yPos += 5;
-    doc.text(`Sorted by: ${sortMethod === 'species' ? 'Most Species' : 'Closest Distance'}`, margin, yPos);
+    const sortLabels = { species: 'Most Species', distance: 'Closest Distance', driving: 'Shortest Drive' };
+    doc.text(`Sorted by: ${sortLabels[sortMethod] || sortMethod}`, margin, yPos);
     yPos += 5;
     doc.text(`Showing top ${hotspots.length} hotspots within 31 miles`, margin, yPos);
     yPos += 10;
@@ -135,8 +136,12 @@ export async function generatePDFReport(data, onProgress = () => {}) {
         doc.text(`Species (last 30 days): ${hotspot.speciesCount}`, margin, yPos);
         yPos += 5;
 
-        // Distance
-        doc.text(`Distance: ${formatDistance(hotspot.distance)}`, margin, yPos);
+        // Distance (straight-line and driving)
+        let distanceText = `Distance: ${formatDistance(hotspot.distance)}`;
+        if (hotspot.drivingDistance != null && hotspot.drivingDuration != null) {
+            distanceText += ` (${formatDistance(hotspot.drivingDistance)} · ${formatDuration(hotspot.drivingDuration)} drive)`;
+        }
+        doc.text(distanceText, margin, yPos);
         yPos += 5;
 
         // Address
@@ -294,7 +299,8 @@ export function downloadPDF(doc, sortMethod = 'species') {
     const hours = String(now.getHours()).padStart(2, '0');
     const minutes = String(now.getMinutes()).padStart(2, '0');
     const timestamp = `${month}-${day}-${year}_${hours}${minutes}`;
-    const sortLabel = sortMethod === 'distance' ? 'closest' : 'most-species';
+    const sortLabels = { species: 'most-species', distance: 'closest', driving: 'shortest-drive' };
+    const sortLabel = sortLabels[sortMethod] || 'most-species';
     const filename = `birding-hotspots-${sortLabel}-${timestamp}.pdf`;
     doc.save(filename);
 }
