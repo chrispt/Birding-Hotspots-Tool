@@ -1080,9 +1080,6 @@ class BirdingHotspotsApp {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         }).addTo(this.resultsMapInstance);
 
-        // Fit bounds with padding
-        this.resultsMapInstance.fitBounds(bounds, { padding: [30, 30] });
-
         // Clear existing markers
         this.resultsMarkers = [];
 
@@ -1115,9 +1112,14 @@ class BirdingHotspotsApp {
             this.resultsMarkers.push(marker);
         });
 
-        // Fix map rendering if container was hidden
+        // Fix map rendering if container was hidden, then fit bounds
         setTimeout(() => {
             this.resultsMapInstance.invalidateSize();
+            // Fit bounds after size is validated, with maxZoom to prevent over-zooming
+            this.resultsMapInstance.fitBounds(bounds, {
+                padding: [50, 50],
+                maxZoom: 12  // Prevent zooming in too far
+            });
         }, 100);
     }
 
