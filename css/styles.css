@@ -345,6 +345,11 @@ body {
     box-shadow: var(--shadow-hover);
 }
 
+.btn-primary:active {
+    transform: scale(0.98);
+    box-shadow: none;
+}
+
 .btn-secondary {
     background: transparent;
     color: var(--primary-color);
@@ -353,6 +358,10 @@ body {
 
 .btn-secondary:hover {
     background: rgba(46, 125, 50, 0.1);
+}
+
+.btn-secondary:active {
+    transform: scale(0.98);
 }
 
 .btn-small {
@@ -649,6 +658,10 @@ body {
     background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
     border-radius: 3px;
     transition: width 0.3s ease;
+}
+
+.cancel-btn {
+    margin-top: 20px;
 }
 
 /* Modal */

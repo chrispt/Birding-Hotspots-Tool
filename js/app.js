@@ -65,6 +65,7 @@ class BirdingHotspotsApp {
             loadingOverlay: document.getElementById('loadingOverlay'),
             loadingStatus: document.getElementById('loadingStatus'),
             progressFill: document.getElementById('progressFill'),
+            cancelSearch: document.getElementById('cancelSearch'),
 
             // Map preview
             mapPreviewSection: document.getElementById('mapPreviewSection'),
@@ -103,6 +104,9 @@ class BirdingHotspotsApp {
         this.addressValidated = false;
         this.validatedCoords = null;
 
+        // Track if search was cancelled
+        this.searchCancelled = false;
+
         this.initializeEventListeners();
         this.loadSavedData();
     }
@@ -133,6 +137,9 @@ class BirdingHotspotsApp {
 
         // Generate report
         this.elements.generateReport.addEventListener('click', () => this.handleGenerateReport());
+
+        // Cancel search
+        this.elements.cancelSearch.addEventListener('click', () => this.handleCancelSearch());
 
         // Results section buttons
         this.elements.newSearchBtn.addEventListener('click', () => this.handleNewSearch());
@@ -322,6 +329,12 @@ class BirdingHotspotsApp {
             return;
         }
 
+        // Show "verifying" feedback
+        this.elements.addressError.textContent = 'Verifying address...';
+        this.elements.addressError.classList.remove('hidden');
+        this.elements.addressError.style.color = 'var(--text-secondary)';
+        this.elements.address.classList.remove('error');
+
         try {
             const result = await geocodeAddress(address);
             this.addressValidated = true;
@@ -332,6 +345,7 @@ class BirdingHotspotsApp {
             // Show error on blur if geocoding fails
             this.addressValidated = false;
             this.validatedCoords = null;
+            this.elements.addressError.style.color = ''; // Reset to default (error color)
             this.showAddressError('Could not find this address. Please check and try again.');
             this.hideMapPreview();
         }
@@ -352,6 +366,7 @@ class BirdingHotspotsApp {
     clearAddressError() {
         this.elements.addressError.textContent = '';
         this.elements.addressError.classList.add('hidden');
+        this.elements.addressError.style.color = '';
         this.elements.address.classList.remove('error');
     }
 
@@ -458,9 +473,12 @@ class BirdingHotspotsApp {
             const deleteBtn = e.target.closest('.favorite-delete');
             if (deleteBtn) {
                 e.stopPropagation();
-                const id = parseInt(item.dataset.id, 10);
-                storage.removeFavorite(id);
-                this.renderFavorites();
+                const name = item.querySelector('.favorite-name')?.textContent || 'this location';
+                if (confirm(`Delete "${name}" from saved locations?`)) {
+                    const id = parseInt(item.dataset.id, 10);
+                    storage.removeFavorite(id);
+                    this.renderFavorites();
+                }
                 return;
             }
 
@@ -606,6 +624,7 @@ class BirdingHotspotsApp {
 
         this.hideError();
         this.isProcessing = true;
+        this.searchCancelled = false;
 
         try {
             // Validate API key
@@ -667,6 +686,11 @@ class BirdingHotspotsApp {
                 CONFIG.DEFAULT_DAYS_BACK
             );
 
+            if (this.searchCancelled) {
+                this.isProcessing = false;
+                return;
+            }
+
             if (!hotspots || hotspots.length === 0) {
                 throw new Error(ErrorMessages[ErrorTypes.NO_HOTSPOTS]);
             }
@@ -697,9 +721,19 @@ class BirdingHotspotsApp {
                 console.warn('Could not fetch notable species:', e);
             }
 
+            if (this.searchCancelled) {
+                this.isProcessing = false;
+                return;
+            }
+
             // Enrich hotspot data
             this.updateLoading('Loading hotspot details...', 30);
             let enrichedHotspots = await this.enrichHotspots(hotspots, origin, notableSpecies);
+
+            if (this.searchCancelled) {
+                this.isProcessing = false;
+                return;
+            }
 
             // Filter out hotspots with zero species observed
             enrichedHotspots = enrichedHotspots.filter(h => h.speciesCount > 0);
@@ -1108,6 +1142,14 @@ class BirdingHotspotsApp {
             // Remove highlight after animation
             setTimeout(() => card.classList.remove('highlight'), 2000);
         }
+    }
+
+    /**
+     * Handle cancel search button click
+     */
+    handleCancelSearch() {
+        this.searchCancelled = true;
+        this.hideLoading();
     }
 
     /**
