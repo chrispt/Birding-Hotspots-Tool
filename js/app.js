@@ -78,7 +78,8 @@ class BirdingHotspotsApp {
             newSearchBtn: document.getElementById('newSearchBtn'),
             exportPdfBtn: document.getElementById('exportPdfBtn'),
             sortBySpecies: document.getElementById('sortBySpecies'),
-            sortByDistance: document.getElementById('sortByDistance')
+            sortByDistance: document.getElementById('sortByDistance'),
+            resultsMap: document.getElementById('resultsMap')
         };
 
         // Debounce timer for address input
@@ -88,9 +89,11 @@ class BirdingHotspotsApp {
         this.currentResults = null;
         this.currentSortMethod = null;
 
-        // Leaflet map instance
+        // Leaflet map instances
         this.previewMap = null;
         this.previewMarker = null;
+        this.resultsMapInstance = null;
+        this.resultsMarkers = [];
 
         // Track if address has been validated
         this.addressValidated = false;
@@ -832,6 +835,9 @@ class BirdingHotspotsApp {
         // Update meta information (sort is now shown in toggle, so removed from text)
         this.elements.resultsMeta.textContent = `${hotspots.length} hotspots found | ${generatedDate}`;
 
+        // Initialize results map
+        this.initResultsMap(origin, hotspots);
+
         // Clear existing cards
         while (this.elements.hotspotCards.firstChild) {
             this.elements.hotspotCards.removeChild(this.elements.hotspotCards.firstChild);
@@ -1046,9 +1052,107 @@ class BirdingHotspotsApp {
     }
 
     /**
+     * Initialize or update the results map with hotspot markers
+     * @param {Object} origin - Origin coordinates {lat, lng}
+     * @param {Array} hotspots - Array of hotspot objects
+     */
+    initResultsMap(origin, hotspots) {
+        // Destroy existing map if it exists
+        if (this.resultsMapInstance) {
+            this.resultsMapInstance.remove();
+            this.resultsMapInstance = null;
+        }
+
+        // Calculate bounds to fit all points
+        const allPoints = [
+            [origin.lat, origin.lng],
+            ...hotspots.map(h => [h.lat, h.lng])
+        ];
+        const bounds = L.latLngBounds(allPoints);
+
+        // Initialize map
+        this.resultsMapInstance = L.map(this.elements.resultsMap, {
+            scrollWheelZoom: false  // Prevent accidental zooming while scrolling page
+        });
+
+        // Add OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(this.resultsMapInstance);
+
+        // Fit bounds with padding
+        this.resultsMapInstance.fitBounds(bounds, { padding: [30, 30] });
+
+        // Clear existing markers
+        this.resultsMarkers = [];
+
+        // Add origin marker (green with house icon)
+        const originIcon = L.divIcon({
+            className: 'origin-marker',
+            html: '<svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>',
+            iconSize: [32, 32],
+            iconAnchor: [16, 16]
+        });
+        L.marker([origin.lat, origin.lng], { icon: originIcon })
+            .bindPopup('Your Location')
+            .addTo(this.resultsMapInstance);
+
+        // Add hotspot markers (numbered, orange)
+        hotspots.forEach((hotspot, index) => {
+            const number = index + 1;
+            const hotspotIcon = L.divIcon({
+                className: 'hotspot-marker',
+                html: `${number}`,
+                iconSize: [28, 28],
+                iconAnchor: [14, 14]
+            });
+
+            const marker = L.marker([hotspot.lat, hotspot.lng], { icon: hotspotIcon })
+                .bindPopup(`<strong>${hotspot.name}</strong><br>${hotspot.speciesCount} species`)
+                .on('click', () => this.scrollToHotspotCard(number));
+
+            marker.addTo(this.resultsMapInstance);
+            this.resultsMarkers.push(marker);
+        });
+
+        // Fix map rendering if container was hidden
+        setTimeout(() => {
+            this.resultsMapInstance.invalidateSize();
+        }, 100);
+    }
+
+    /**
+     * Scroll to and highlight a hotspot card
+     * @param {number} number - Hotspot number (1-based)
+     */
+    scrollToHotspotCard(number) {
+        const cards = this.elements.hotspotCards.querySelectorAll('.hotspot-card');
+        const card = cards[number - 1];
+        if (card) {
+            // Remove highlight from all cards
+            cards.forEach(c => c.classList.remove('highlight'));
+
+            // Scroll to card
+            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+            // Add highlight
+            card.classList.add('highlight');
+
+            // Remove highlight after animation
+            setTimeout(() => card.classList.remove('highlight'), 2000);
+        }
+    }
+
+    /**
      * Handle "New Search" button click
      */
     handleNewSearch() {
+        // Clean up results map
+        if (this.resultsMapInstance) {
+            this.resultsMapInstance.remove();
+            this.resultsMapInstance = null;
+        }
+
         // Hide results section
         this.elements.resultsSection.classList.add('hidden');
 

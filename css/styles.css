@@ -991,6 +991,64 @@ details.about-section[open] .about-chevron {
     gap: 12px;
 }
 
+/* Results Map */
+.results-map-container {
+    margin-bottom: 16px;
+    border-radius: var(--radius-large);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+}
+
+.results-map {
+    height: 300px;
+    width: 100%;
+    background: var(--background);
+}
+
+/* Custom numbered markers */
+.hotspot-marker {
+    background: #FF5722;
+    border: 2px solid white;
+    border-radius: 50%;
+    color: white;
+    font-weight: bold;
+    font-size: 12px;
+    text-align: center;
+    line-height: 24px;
+    width: 28px;
+    height: 28px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.origin-marker {
+    background: #2E7D32;
+    border: 3px solid white;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.origin-marker svg {
+    width: 18px;
+    height: 18px;
+    fill: white;
+}
+
+/* Highlight card when marker clicked */
+.hotspot-card.highlight {
+    box-shadow: 0 0 0 3px var(--primary-color), var(--shadow-hover);
+    animation: pulse 0.5s ease;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.01); }
+}
+
 /* Hotspot Cards */
 .hotspot-cards {
     display: flex;
@@ -1176,6 +1234,10 @@ details.about-section[open] .about-chevron {
     .results-header {
         flex-direction: column;
         align-items: stretch;
+    }
+
+    .results-map {
+        height: 250px;
     }
 
     .sort-toggle {
