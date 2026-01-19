@@ -897,7 +897,7 @@ class BirdingHotspotsApp {
         const straightDistanceStat = document.createElement('span');
         straightDistanceStat.className = 'stat distance';
         straightDistanceStat.appendChild(createSVGIcon('location', 16));
-        straightDistanceStat.appendChild(document.createTextNode(` ${distanceText} straight`));
+        straightDistanceStat.appendChild(document.createTextNode(` ${distanceText}`));
 
         stats.appendChild(speciesStat);
         stats.appendChild(straightDistanceStat);

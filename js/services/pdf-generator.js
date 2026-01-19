@@ -137,7 +137,7 @@ export async function generatePDFReport(data, onProgress = () => {}) {
         yPos += 5;
 
         // Straight-line distance
-        doc.text(`Distance: ${formatDistance(hotspot.distance)} straight`, margin, yPos);
+        doc.text(`Distance: ${formatDistance(hotspot.distance)}`, margin, yPos);
         yPos += 5;
 
         // Driving distance (if available)
