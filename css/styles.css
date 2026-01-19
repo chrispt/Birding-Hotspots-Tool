@@ -953,6 +953,39 @@ details.about-section[open] .about-chevron {
     margin: 4px 0 0 0;
 }
 
+/* Sort Toggle in Results */
+.sort-toggle {
+    display: flex;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+
+.sort-btn {
+    padding: 8px 16px;
+    border: none;
+    background: var(--card-bg);
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition);
+    font-family: inherit;
+}
+
+.sort-btn:not(:last-child) {
+    border-right: 1px solid var(--border-color);
+}
+
+.sort-btn:hover:not(.active) {
+    background: var(--background);
+}
+
+.sort-btn.active {
+    background: var(--primary-color);
+    color: white;
+}
+
 .results-actions {
     display: flex;
     gap: 12px;
@@ -1143,6 +1176,15 @@ details.about-section[open] .about-chevron {
     .results-header {
         flex-direction: column;
         align-items: stretch;
+    }
+
+    .sort-toggle {
+        width: 100%;
+    }
+
+    .sort-btn {
+        flex: 1;
+        text-align: center;
     }
 
     .results-actions {

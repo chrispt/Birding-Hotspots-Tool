@@ -76,7 +76,9 @@ class BirdingHotspotsApp {
             resultsMeta: document.getElementById('resultsMeta'),
             hotspotCards: document.getElementById('hotspotCards'),
             newSearchBtn: document.getElementById('newSearchBtn'),
-            exportPdfBtn: document.getElementById('exportPdfBtn')
+            exportPdfBtn: document.getElementById('exportPdfBtn'),
+            sortBySpecies: document.getElementById('sortBySpecies'),
+            sortByDistance: document.getElementById('sortByDistance')
         };
 
         // Debounce timer for address input
@@ -128,6 +130,10 @@ class BirdingHotspotsApp {
         // Results section buttons
         this.elements.newSearchBtn.addEventListener('click', () => this.handleNewSearch());
         this.elements.exportPdfBtn.addEventListener('click', () => this.handleExportPdf());
+
+        // Sort toggle buttons
+        this.elements.sortBySpecies.addEventListener('click', () => this.handleSortChange('species'));
+        this.elements.sortByDistance.addEventListener('click', () => this.handleSortChange('distance'));
 
         // Event delegation for species toggles
         this.elements.hotspotCards.addEventListener('click', (e) => {
@@ -819,10 +825,12 @@ class BirdingHotspotsApp {
     displayResults(data) {
         const { origin, hotspots, sortMethod, generatedDate } = data;
 
-        // Update meta information
-        const sortLabel = sortMethod === 'species' ? 'Most Species' : 'Closest Distance';
-        this.elements.resultsMeta.textContent =
-            `${hotspots.length} hotspots found | Sorted by: ${sortLabel} | ${generatedDate}`;
+        // Sync sort toggle buttons with current sort method
+        this.elements.sortBySpecies.classList.toggle('active', sortMethod === 'species');
+        this.elements.sortByDistance.classList.toggle('active', sortMethod === 'distance');
+
+        // Update meta information (sort is now shown in toggle, so removed from text)
+        this.elements.resultsMeta.textContent = `${hotspots.length} hotspots found | ${generatedDate}`;
 
         // Clear existing cards
         while (this.elements.hotspotCards.firstChild) {
@@ -1050,6 +1058,33 @@ class BirdingHotspotsApp {
 
         // Scroll to top of form
         document.querySelector('.header').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    /**
+     * Handle sort method change from toggle buttons
+     * @param {string} method - 'species' or 'distance'
+     */
+    handleSortChange(method) {
+        if (method === this.currentSortMethod || !this.currentResults) return;
+
+        // Update button states
+        this.elements.sortBySpecies.classList.toggle('active', method === 'species');
+        this.elements.sortByDistance.classList.toggle('active', method === 'distance');
+
+        // Re-sort the hotspots
+        const sortedHotspots = this.sortHotspots(
+            this.currentResults.hotspots,
+            method,
+            this.currentResults.origin
+        );
+
+        // Update stored results
+        this.currentResults.hotspots = sortedHotspots;
+        this.currentResults.sortMethod = method;
+        this.currentSortMethod = method;
+
+        // Re-display results
+        this.displayResults(this.currentResults);
     }
 
     /**
