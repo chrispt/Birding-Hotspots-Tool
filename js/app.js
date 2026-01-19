@@ -5,6 +5,8 @@
 import { CONFIG, ErrorMessages, ErrorTypes } from './utils/constants.js';
 import { validateCoordinates, validateApiKey, validateAddress, validateFavoriteName } from './utils/validators.js';
 import { calculateDistance, formatDistance } from './utils/formatters.js';
+import { createSVGIcon, ICONS } from './utils/icons.js';
+import { clearElement } from './utils/dom-helpers.js';
 import { storage } from './services/storage.js';
 import { geocodeAddress, getCurrentPosition } from './api/geocoding.js';
 import { reverseGeocode, batchReverseGeocode } from './api/reverse-geo.js';
@@ -206,9 +208,7 @@ class BirdingHotspotsApp {
 
         // Clear and rebuild SVG path safely
         const svg = this.elements.eyeIcon;
-        while (svg.firstChild) {
-            svg.removeChild(svg.firstChild);
-        }
+        clearElement(svg);
         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         path.setAttribute('fill', 'currentColor');
         path.setAttribute('d', eyePath);
@@ -286,19 +286,8 @@ class BirdingHotspotsApp {
     resetLocationButton() {
         const btn = this.elements.useCurrentLocation;
         // Clear existing content safely
-        while (btn.firstChild) {
-            btn.removeChild(btn.firstChild);
-        }
-        // Create SVG icon
-        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        svg.setAttribute('viewBox', '0 0 24 24');
-        svg.setAttribute('width', '18');
-        svg.setAttribute('height', '18');
-        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        path.setAttribute('fill', 'currentColor');
-        path.setAttribute('d', 'M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0013 3.06V1h-2v2.06A8.994 8.994 0 003.06 11H1v2h2.06A8.994 8.994 0 0011 20.94V23h2v-2.06A8.994 8.994 0 0020.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z');
-        svg.appendChild(path);
-        btn.appendChild(svg);
+        clearElement(btn);
+        btn.appendChild(createSVGIcon('myLocation', 18));
         btn.appendChild(document.createTextNode(' Use My Current Location'));
     }
 
@@ -500,9 +489,7 @@ class BirdingHotspotsApp {
         const container = this.elements.favoritesList;
 
         // Clear existing content safely
-        while (container.firstChild) {
-            container.removeChild(container.firstChild);
-        }
+        clearElement(container);
 
         if (favorites.length === 0) {
             const p = document.createElement('p');
@@ -682,22 +669,12 @@ class BirdingHotspotsApp {
                 throw new Error(ErrorMessages[ErrorTypes.NO_HOTSPOTS]);
             }
 
-            // Debug: Log raw hotspot data from API
-            console.log('Raw hotspots from API:', hotspots.length);
-            console.log('Looking for Ferrum College:', hotspots.find(h => h.locName?.toLowerCase().includes('ferrum')));
-
             // Sort by distance from origin before limiting (eBird API doesn't guarantee order)
             hotspots.sort((a, b) => {
                 const distA = calculateDistance(origin.lat, origin.lng, a.lat, a.lng);
                 const distB = calculateDistance(origin.lat, origin.lng, b.lat, b.lng);
                 return distA - distB;
             });
-
-            // Debug: Log sorted hotspots with distances
-            console.log('After distance sort, first 15:', hotspots.slice(0, 15).map(h => ({
-                name: h.locName,
-                dist: calculateDistance(origin.lat, origin.lng, h.lat, h.lng).toFixed(2) + ' km'
-            })));
 
             // Limit to user-selected count
             const hotspotsCount = parseInt(document.querySelector('[name="hotspotsCount"]:checked').value, 10);
@@ -839,9 +816,7 @@ class BirdingHotspotsApp {
         this.initResultsMap(origin, hotspots);
 
         // Clear existing cards
-        while (this.elements.hotspotCards.firstChild) {
-            this.elements.hotspotCards.removeChild(this.elements.hotspotCards.firstChild);
-        }
+        clearElement(this.elements.hotspotCards);
 
         // Generate hotspot cards
         hotspots.forEach((hotspot, index) => {
@@ -897,29 +872,13 @@ class BirdingHotspotsApp {
         // Species count stat
         const speciesStat = document.createElement('span');
         speciesStat.className = 'stat species-count';
-        const speciesIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        speciesIcon.setAttribute('viewBox', '0 0 24 24');
-        speciesIcon.setAttribute('width', '16');
-        speciesIcon.setAttribute('height', '16');
-        const speciesPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        speciesPath.setAttribute('fill', 'currentColor');
-        speciesPath.setAttribute('d', 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z');
-        speciesIcon.appendChild(speciesPath);
-        speciesStat.appendChild(speciesIcon);
+        speciesStat.appendChild(createSVGIcon('check', 16));
         speciesStat.appendChild(document.createTextNode(` ${hotspot.speciesCount} species`));
 
         // Distance stat
         const distanceStat = document.createElement('span');
         distanceStat.className = 'stat distance';
-        const distanceIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        distanceIcon.setAttribute('viewBox', '0 0 24 24');
-        distanceIcon.setAttribute('width', '16');
-        distanceIcon.setAttribute('height', '16');
-        const distancePath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        distancePath.setAttribute('fill', 'currentColor');
-        distancePath.setAttribute('d', 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z');
-        distanceIcon.appendChild(distancePath);
-        distanceStat.appendChild(distanceIcon);
+        distanceStat.appendChild(createSVGIcon('location', 16));
         distanceStat.appendChild(document.createTextNode(` ${distanceText}`));
 
         stats.appendChild(speciesStat);
@@ -944,34 +903,18 @@ class BirdingHotspotsApp {
         const directionsLink = document.createElement('a');
         directionsLink.href = directionsUrl;
         directionsLink.target = '_blank';
-        directionsLink.rel = 'noopener';
+        directionsLink.rel = 'noopener noreferrer';
         directionsLink.className = 'hotspot-link';
-        const directionsIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        directionsIcon.setAttribute('viewBox', '0 0 24 24');
-        directionsIcon.setAttribute('width', '16');
-        directionsIcon.setAttribute('height', '16');
-        const directionsPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        directionsPath.setAttribute('fill', 'currentColor');
-        directionsPath.setAttribute('d', 'M21.71 11.29l-9-9c-.39-.39-1.02-.39-1.41 0l-9 9c-.39.39-.39 1.02 0 1.41l9 9c.39.39 1.02.39 1.41 0l9-9c.39-.38.39-1.01 0-1.41zM14 14.5V12h-4v3H8v-4c0-.55.45-1 1-1h5V7.5l3.5 3.5-3.5 3.5z');
-        directionsIcon.appendChild(directionsPath);
-        directionsLink.appendChild(directionsIcon);
+        directionsLink.appendChild(createSVGIcon('directions', 16));
         directionsLink.appendChild(document.createTextNode(' Get Directions'));
 
         // eBird link
         const ebirdLink = document.createElement('a');
         ebirdLink.href = ebirdUrl;
         ebirdLink.target = '_blank';
-        ebirdLink.rel = 'noopener';
+        ebirdLink.rel = 'noopener noreferrer';
         ebirdLink.className = 'hotspot-link';
-        const ebirdIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        ebirdIcon.setAttribute('viewBox', '0 0 24 24');
-        ebirdIcon.setAttribute('width', '16');
-        ebirdIcon.setAttribute('height', '16');
-        const ebirdPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        ebirdPath.setAttribute('fill', 'currentColor');
-        ebirdPath.setAttribute('d', 'M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z');
-        ebirdIcon.appendChild(ebirdPath);
-        ebirdLink.appendChild(ebirdIcon);
+        ebirdLink.appendChild(createSVGIcon('external', 16));
         ebirdLink.appendChild(document.createTextNode(' View on eBird'));
 
         links.appendChild(directionsLink);
@@ -991,15 +934,7 @@ class BirdingHotspotsApp {
         const toggleText = document.createElement('span');
         toggleText.textContent = `View Species List (${hotspot.birds.length})`;
 
-        const chevron = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        chevron.setAttribute('class', 'chevron');
-        chevron.setAttribute('viewBox', '0 0 24 24');
-        chevron.setAttribute('width', '20');
-        chevron.setAttribute('height', '20');
-        const chevronPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        chevronPath.setAttribute('fill', 'currentColor');
-        chevronPath.setAttribute('d', 'M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z');
-        chevron.appendChild(chevronPath);
+        const chevron = createSVGIcon('chevron', 20, 'chevron');
 
         toggle.appendChild(toggleText);
         toggle.appendChild(chevron);
