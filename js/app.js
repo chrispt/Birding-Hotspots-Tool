@@ -69,11 +69,22 @@ class BirdingHotspotsApp {
             openInGoogleMaps: document.getElementById('openInGoogleMaps'),
 
             // Address error
-            addressError: document.getElementById('addressError')
+            addressError: document.getElementById('addressError'),
+
+            // Results section
+            resultsSection: document.getElementById('resultsSection'),
+            resultsMeta: document.getElementById('resultsMeta'),
+            hotspotCards: document.getElementById('hotspotCards'),
+            newSearchBtn: document.getElementById('newSearchBtn'),
+            exportPdfBtn: document.getElementById('exportPdfBtn')
         };
 
         // Debounce timer for address input
         this.addressDebounceTimer = null;
+
+        // Store results for PDF export
+        this.currentResults = null;
+        this.currentSortMethod = null;
 
         // Leaflet map instance
         this.previewMap = null;
@@ -113,6 +124,18 @@ class BirdingHotspotsApp {
 
         // Generate report
         this.elements.generateReport.addEventListener('click', () => this.handleGenerateReport());
+
+        // Results section buttons
+        this.elements.newSearchBtn.addEventListener('click', () => this.handleNewSearch());
+        this.elements.exportPdfBtn.addEventListener('click', () => this.handleExportPdf());
+
+        // Event delegation for species toggles
+        this.elements.hotspotCards.addEventListener('click', (e) => {
+            const toggle = e.target.closest('.species-toggle');
+            if (toggle) {
+                this.toggleSpeciesList(toggle);
+            }
+        });
 
         // Address input change - update map preview with debounce
         this.elements.address.addEventListener('input', () => this.handleAddressInputChange());
@@ -701,9 +724,8 @@ class BirdingHotspotsApp {
             const sortMethod = document.querySelector('[name="sortMethod"]:checked').value;
             const sortedHotspots = this.sortHotspots(enrichedHotspots, sortMethod, origin);
 
-            // Generate PDF
-            this.updateLoading('Generating PDF report...', 85);
-            const pdf = await generatePDFReport({
+            // Store results for later PDF export
+            this.currentResults = {
                 origin,
                 hotspots: sortedHotspots,
                 sortMethod,
@@ -712,12 +734,12 @@ class BirdingHotspotsApp {
                     month: 'long',
                     day: 'numeric'
                 })
-            }, (message, percent) => {
-                this.updateLoading(message, 85 + (percent * 0.15));
-            });
+            };
+            this.currentSortMethod = sortMethod;
 
-            // Download PDF
-            downloadPDF(pdf, sortMethod);
+            // Display results on screen
+            this.updateLoading('Preparing results display...', 90);
+            this.displayResults(this.currentResults);
 
             this.hideLoading();
 
@@ -787,6 +809,271 @@ class BirdingHotspotsApp {
             return [...hotspots].sort((a, b) => b.speciesCount - a.speciesCount);
         } else {
             return [...hotspots].sort((a, b) => a.distance - b.distance);
+        }
+    }
+
+    /**
+     * Display results on screen
+     * @param {Object} data - Results data object
+     */
+    displayResults(data) {
+        const { origin, hotspots, sortMethod, generatedDate } = data;
+
+        // Update meta information
+        const sortLabel = sortMethod === 'species' ? 'Most Species' : 'Closest Distance';
+        this.elements.resultsMeta.textContent =
+            `${hotspots.length} hotspots found | Sorted by: ${sortLabel} | ${generatedDate}`;
+
+        // Clear existing cards
+        while (this.elements.hotspotCards.firstChild) {
+            this.elements.hotspotCards.removeChild(this.elements.hotspotCards.firstChild);
+        }
+
+        // Generate hotspot cards
+        hotspots.forEach((hotspot, index) => {
+            const card = this.createHotspotCard(hotspot, index + 1, origin);
+            this.elements.hotspotCards.appendChild(card);
+        });
+
+        // Show results section
+        this.elements.resultsSection.classList.remove('hidden');
+
+        // Scroll to results
+        this.elements.resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    /**
+     * Create a hotspot card element
+     * @param {Object} hotspot - Hotspot data
+     * @param {number} number - Hotspot number (1-based)
+     * @param {Object} origin - Origin coordinates
+     * @returns {HTMLElement} Card element
+     */
+    createHotspotCard(hotspot, number, origin) {
+        const card = document.createElement('article');
+        card.className = 'hotspot-card';
+
+        const distanceText = formatDistance(hotspot.distance);
+        const directionsUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin.lat},${origin.lng}&destination=${hotspot.lat},${hotspot.lng}`;
+        const ebirdUrl = `https://ebird.org/hotspot/${hotspot.locId}`;
+
+        // Check if there are notable species
+        const hasNotable = hotspot.birds.some(b => b.isNotable);
+
+        // Build card using DOM methods
+
+        // Header
+        const header = document.createElement('div');
+        header.className = 'hotspot-header';
+
+        const numberDiv = document.createElement('div');
+        numberDiv.className = 'hotspot-number';
+        numberDiv.textContent = number;
+
+        const titleSection = document.createElement('div');
+        titleSection.className = 'hotspot-title-section';
+
+        const nameH3 = document.createElement('h3');
+        nameH3.className = 'hotspot-name';
+        nameH3.textContent = hotspot.name;
+
+        const stats = document.createElement('div');
+        stats.className = 'hotspot-stats';
+
+        // Species count stat
+        const speciesStat = document.createElement('span');
+        speciesStat.className = 'stat species-count';
+        const speciesIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        speciesIcon.setAttribute('viewBox', '0 0 24 24');
+        speciesIcon.setAttribute('width', '16');
+        speciesIcon.setAttribute('height', '16');
+        const speciesPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        speciesPath.setAttribute('fill', 'currentColor');
+        speciesPath.setAttribute('d', 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z');
+        speciesIcon.appendChild(speciesPath);
+        speciesStat.appendChild(speciesIcon);
+        speciesStat.appendChild(document.createTextNode(` ${hotspot.speciesCount} species`));
+
+        // Distance stat
+        const distanceStat = document.createElement('span');
+        distanceStat.className = 'stat distance';
+        const distanceIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        distanceIcon.setAttribute('viewBox', '0 0 24 24');
+        distanceIcon.setAttribute('width', '16');
+        distanceIcon.setAttribute('height', '16');
+        const distancePath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        distancePath.setAttribute('fill', 'currentColor');
+        distancePath.setAttribute('d', 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z');
+        distanceIcon.appendChild(distancePath);
+        distanceStat.appendChild(distanceIcon);
+        distanceStat.appendChild(document.createTextNode(` ${distanceText}`));
+
+        stats.appendChild(speciesStat);
+        stats.appendChild(distanceStat);
+        titleSection.appendChild(nameH3);
+        titleSection.appendChild(stats);
+        header.appendChild(numberDiv);
+        header.appendChild(titleSection);
+
+        // Details section
+        const details = document.createElement('div');
+        details.className = 'hotspot-details';
+
+        const address = document.createElement('p');
+        address.className = 'hotspot-address';
+        address.textContent = hotspot.address;
+
+        const links = document.createElement('div');
+        links.className = 'hotspot-links';
+
+        // Directions link
+        const directionsLink = document.createElement('a');
+        directionsLink.href = directionsUrl;
+        directionsLink.target = '_blank';
+        directionsLink.rel = 'noopener';
+        directionsLink.className = 'hotspot-link';
+        const directionsIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        directionsIcon.setAttribute('viewBox', '0 0 24 24');
+        directionsIcon.setAttribute('width', '16');
+        directionsIcon.setAttribute('height', '16');
+        const directionsPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        directionsPath.setAttribute('fill', 'currentColor');
+        directionsPath.setAttribute('d', 'M21.71 11.29l-9-9c-.39-.39-1.02-.39-1.41 0l-9 9c-.39.39-.39 1.02 0 1.41l9 9c.39.39 1.02.39 1.41 0l9-9c.39-.38.39-1.01 0-1.41zM14 14.5V12h-4v3H8v-4c0-.55.45-1 1-1h5V7.5l3.5 3.5-3.5 3.5z');
+        directionsIcon.appendChild(directionsPath);
+        directionsLink.appendChild(directionsIcon);
+        directionsLink.appendChild(document.createTextNode(' Get Directions'));
+
+        // eBird link
+        const ebirdLink = document.createElement('a');
+        ebirdLink.href = ebirdUrl;
+        ebirdLink.target = '_blank';
+        ebirdLink.rel = 'noopener';
+        ebirdLink.className = 'hotspot-link';
+        const ebirdIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        ebirdIcon.setAttribute('viewBox', '0 0 24 24');
+        ebirdIcon.setAttribute('width', '16');
+        ebirdIcon.setAttribute('height', '16');
+        const ebirdPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        ebirdPath.setAttribute('fill', 'currentColor');
+        ebirdPath.setAttribute('d', 'M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z');
+        ebirdIcon.appendChild(ebirdPath);
+        ebirdLink.appendChild(ebirdIcon);
+        ebirdLink.appendChild(document.createTextNode(' View on eBird'));
+
+        links.appendChild(directionsLink);
+        links.appendChild(ebirdLink);
+        details.appendChild(address);
+        details.appendChild(links);
+
+        // Species section
+        const speciesSection = document.createElement('div');
+        speciesSection.className = 'species-section';
+
+        const toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'species-toggle';
+        toggle.setAttribute('aria-expanded', 'false');
+
+        const toggleText = document.createElement('span');
+        toggleText.textContent = `View Species List (${hotspot.birds.length})`;
+
+        const chevron = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        chevron.setAttribute('class', 'chevron');
+        chevron.setAttribute('viewBox', '0 0 24 24');
+        chevron.setAttribute('width', '20');
+        chevron.setAttribute('height', '20');
+        const chevronPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        chevronPath.setAttribute('fill', 'currentColor');
+        chevronPath.setAttribute('d', 'M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z');
+        chevron.appendChild(chevronPath);
+
+        toggle.appendChild(toggleText);
+        toggle.appendChild(chevron);
+
+        const speciesList = document.createElement('div');
+        speciesList.className = 'species-list hidden';
+
+        const speciesGrid = document.createElement('ul');
+        speciesGrid.className = 'species-grid';
+
+        hotspot.birds.forEach(bird => {
+            const li = document.createElement('li');
+            li.className = bird.isNotable ? 'species-item notable' : 'species-item';
+            li.textContent = bird.isNotable ? `* ${bird.comName}` : bird.comName;
+            speciesGrid.appendChild(li);
+        });
+
+        speciesList.appendChild(speciesGrid);
+
+        if (hasNotable) {
+            const legend = document.createElement('p');
+            legend.className = 'notable-legend';
+            legend.textContent = '* Notable/rare species for this area';
+            speciesList.appendChild(legend);
+        }
+
+        speciesSection.appendChild(toggle);
+        speciesSection.appendChild(speciesList);
+
+        // Assemble card
+        card.appendChild(header);
+        card.appendChild(details);
+        card.appendChild(speciesSection);
+
+        return card;
+    }
+
+    /**
+     * Toggle species list visibility
+     * @param {HTMLElement} toggle - Toggle button element
+     */
+    toggleSpeciesList(toggle) {
+        const expanded = toggle.getAttribute('aria-expanded') === 'true';
+        toggle.setAttribute('aria-expanded', !expanded);
+
+        const speciesList = toggle.nextElementSibling;
+        if (speciesList) {
+            speciesList.classList.toggle('hidden');
+        }
+    }
+
+    /**
+     * Handle "New Search" button click
+     */
+    handleNewSearch() {
+        // Hide results section
+        this.elements.resultsSection.classList.add('hidden');
+
+        // Clear stored results
+        this.currentResults = null;
+        this.currentSortMethod = null;
+
+        // Scroll to top of form
+        document.querySelector('.header').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    /**
+     * Handle "Export to PDF" button click
+     */
+    async handleExportPdf() {
+        if (!this.currentResults) {
+            this.showError('No results to export. Please perform a search first.');
+            return;
+        }
+
+        this.showLoading('Generating PDF report...', 0);
+
+        try {
+            const pdf = await generatePDFReport(this.currentResults, (message, percent) => {
+                this.updateLoading(message, percent);
+            });
+
+            downloadPDF(pdf, this.currentSortMethod);
+            this.hideLoading();
+        } catch (error) {
+            console.error('PDF generation error:', error);
+            this.hideLoading();
+            this.showError('Failed to generate PDF. Please try again.');
         }
     }
 

@@ -910,3 +910,281 @@ details.about-section[open] .about-chevron {
         transition-duration: 0.01ms !important;
     }
 }
+
+/* ========== RESULTS SECTION ========== */
+
+.results-section {
+    margin-top: 24px;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Results Header - Sticky */
+.results-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--card-bg);
+    padding: 16px 20px;
+    border-radius: var(--radius-large);
+    box-shadow: var(--shadow);
+    margin-bottom: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.results-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin: 0;
+}
+
+.results-meta {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin: 4px 0 0 0;
+}
+
+.results-actions {
+    display: flex;
+    gap: 12px;
+}
+
+/* Hotspot Cards */
+.hotspot-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.hotspot-card {
+    background: var(--card-bg);
+    border-radius: var(--radius-large);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    transition: box-shadow var(--transition);
+}
+
+.hotspot-card:hover {
+    box-shadow: var(--shadow-hover);
+}
+
+/* Hotspot Header */
+.hotspot-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 20px;
+    background: linear-gradient(135deg, rgba(46, 125, 50, 0.05) 0%, rgba(139, 195, 74, 0.05) 100%);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.hotspot-number {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    background: var(--primary-color);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1rem;
+}
+
+.hotspot-title-section {
+    flex: 1;
+    min-width: 0;
+}
+
+.hotspot-name {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 8px 0;
+    word-wrap: break-word;
+}
+
+.hotspot-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.hotspot-stats .stat {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.hotspot-stats .stat svg {
+    color: var(--primary-color);
+}
+
+.species-count {
+    font-weight: 600;
+    color: var(--primary-color) !important;
+}
+
+/* Hotspot Details */
+.hotspot-details {
+    padding: 16px 20px;
+}
+
+.hotspot-address {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin: 0 0 12px 0;
+    line-height: 1.5;
+}
+
+.hotspot-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.hotspot-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.9rem;
+    color: var(--primary-color);
+    text-decoration: none;
+    transition: color var(--transition);
+}
+
+.hotspot-link:hover {
+    color: var(--primary-hover);
+    text-decoration: underline;
+}
+
+.hotspot-link svg {
+    flex-shrink: 0;
+}
+
+/* Species Section */
+.species-section {
+    border-top: 1px solid var(--border-color);
+}
+
+.species-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    background: var(--background);
+    border: none;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    transition: background-color var(--transition);
+    font-family: inherit;
+}
+
+.species-toggle:hover {
+    background: #E8F5E9;
+}
+
+.species-toggle .chevron {
+    transition: transform var(--transition);
+}
+
+.species-toggle[aria-expanded="true"] .chevron {
+    transform: rotate(180deg);
+}
+
+.species-list {
+    padding: 0 20px 20px;
+}
+
+.species-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 8px 16px;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.species-item {
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    padding: 4px 0;
+}
+
+.species-item.notable {
+    color: var(--notable-highlight);
+    font-weight: 500;
+}
+
+.notable-legend {
+    margin: 12px 0 0 0;
+    font-size: 0.8rem;
+    color: var(--notable-highlight);
+    font-style: italic;
+}
+
+/* Results Section Mobile Responsive */
+@media (max-width: 600px) {
+    .results-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .results-actions {
+        flex-direction: column;
+    }
+
+    .results-actions .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .hotspot-header {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .hotspot-number {
+        width: 32px;
+        height: 32px;
+        font-size: 0.9rem;
+    }
+
+    .species-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Print styles for results */
+@media print {
+    .results-header {
+        position: static;
+    }
+
+    .results-actions {
+        display: none !important;
+    }
+
+    .species-list {
+        display: block !important;
+    }
+
+    .species-toggle {
+        display: none !important;
+    }
+}
