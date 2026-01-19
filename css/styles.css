@@ -69,8 +69,8 @@ body {
     margin-bottom: 8px;
 }
 
-.bird-icon {
-    color: var(--primary-color);
+.logo-icon {
+    flex-shrink: 0;
 }
 
 .header h1 {
