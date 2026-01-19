@@ -865,14 +865,6 @@ class BirdingHotspotsApp {
         const directionsUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin.lat},${origin.lng}&destination=${hotspot.lat},${hotspot.lng}`;
         const ebirdUrl = `https://ebird.org/hotspot/${hotspot.locId}`;
 
-        // Build driving distance text if available
-        let drivingText = '';
-        if (hotspot.drivingDistance != null && hotspot.drivingDuration != null) {
-            const drivingDistanceText = formatDistance(hotspot.drivingDistance);
-            const drivingDurationText = formatDuration(hotspot.drivingDuration);
-            drivingText = ` (${drivingDistanceText} · ${drivingDurationText} drive)`;
-        }
-
         // Check if there are notable species
         const hasNotable = hotspot.birds.some(b => b.isNotable);
 
@@ -902,14 +894,26 @@ class BirdingHotspotsApp {
         speciesStat.appendChild(createSVGIcon('check', 16));
         speciesStat.appendChild(document.createTextNode(` ${hotspot.speciesCount} species`));
 
-        // Distance stat (straight-line + driving)
-        const distanceStat = document.createElement('span');
-        distanceStat.className = 'stat distance';
-        distanceStat.appendChild(createSVGIcon('location', 16));
-        distanceStat.appendChild(document.createTextNode(` ${distanceText}${drivingText}`));
+        // Straight-line distance stat
+        const straightDistanceStat = document.createElement('span');
+        straightDistanceStat.className = 'stat distance';
+        straightDistanceStat.appendChild(createSVGIcon('location', 16));
+        straightDistanceStat.appendChild(document.createTextNode(` ${distanceText} straight`));
 
         stats.appendChild(speciesStat);
-        stats.appendChild(distanceStat);
+        stats.appendChild(straightDistanceStat);
+
+        // Driving distance stat (if available)
+        if (hotspot.drivingDistance != null && hotspot.drivingDuration != null) {
+            const drivingDistanceText = formatDistance(hotspot.drivingDistance);
+            const drivingDurationText = formatDuration(hotspot.drivingDuration);
+
+            const drivingStat = document.createElement('span');
+            drivingStat.className = 'stat driving';
+            drivingStat.appendChild(createSVGIcon('car', 16));
+            drivingStat.appendChild(document.createTextNode(` ${drivingDistanceText} · ${drivingDurationText} drive`));
+            stats.appendChild(drivingStat);
+        }
         titleSection.appendChild(nameH3);
         titleSection.appendChild(stats);
         header.appendChild(numberDiv);

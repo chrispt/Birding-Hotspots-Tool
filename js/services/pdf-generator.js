@@ -136,13 +136,15 @@ export async function generatePDFReport(data, onProgress = () => {}) {
         doc.text(`Species (last 30 days): ${hotspot.speciesCount}`, margin, yPos);
         yPos += 5;
 
-        // Distance (straight-line and driving)
-        let distanceText = `Distance: ${formatDistance(hotspot.distance)}`;
-        if (hotspot.drivingDistance != null && hotspot.drivingDuration != null) {
-            distanceText += ` (${formatDistance(hotspot.drivingDistance)} · ${formatDuration(hotspot.drivingDuration)} drive)`;
-        }
-        doc.text(distanceText, margin, yPos);
+        // Straight-line distance
+        doc.text(`Distance: ${formatDistance(hotspot.distance)} straight`, margin, yPos);
         yPos += 5;
+
+        // Driving distance (if available)
+        if (hotspot.drivingDistance != null && hotspot.drivingDuration != null) {
+            doc.text(`Driving: ${formatDistance(hotspot.drivingDistance)} · ${formatDuration(hotspot.drivingDuration)}`, margin, yPos);
+            yPos += 5;
+        }
 
         // Address
         const addressLines = doc.splitTextToSize(`Address: ${hotspot.address}`, contentWidth - qrSize - 10);
