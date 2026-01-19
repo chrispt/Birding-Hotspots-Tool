@@ -97,7 +97,11 @@ export function formatNumber(num) {
  * @returns {string} Google Maps URL
  */
 export function getGoogleMapsDirectionsUrl(originLat, originLng, destLat, destLng) {
-    return `https://www.google.com/maps/dir/?api=1&origin=${originLat},${originLng}&destination=${destLat},${destLng}`;
+    const url = new URL('https://www.google.com/maps/dir/');
+    url.searchParams.set('api', '1');
+    url.searchParams.set('origin', `${originLat},${originLng}`);
+    url.searchParams.set('destination', `${destLat},${destLng}`);
+    return url.toString();
 }
 
 /**
@@ -106,7 +110,22 @@ export function getGoogleMapsDirectionsUrl(originLat, originLng, destLat, destLn
  * @returns {string} eBird hotspot URL
  */
 export function getEbirdHotspotUrl(locId) {
-    return `https://ebird.org/hotspot/${locId}`;
+    // Sanitize locId to prevent path injection (eBird IDs are alphanumeric with 'L' prefix)
+    const sanitizedId = String(locId).replace(/[^a-zA-Z0-9]/g, '');
+    return `https://ebird.org/hotspot/${encodeURIComponent(sanitizedId)}`;
+}
+
+/**
+ * Generate a Google Maps search URL for a location
+ * @param {number} lat - Latitude
+ * @param {number} lng - Longitude
+ * @returns {string} Google Maps URL
+ */
+export function getGoogleMapsSearchUrl(lat, lng) {
+    const url = new URL('https://www.google.com/maps/search/');
+    url.searchParams.set('api', '1');
+    url.searchParams.set('query', `${lat},${lng}`);
+    return url.toString();
 }
 
 /**

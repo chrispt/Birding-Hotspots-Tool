@@ -17,12 +17,13 @@ export class EBirdAPI {
     }
 
     /**
-     * Make an authenticated request to the eBird API
+     * Make an authenticated request to the eBird API with exponential backoff
      * @param {string} endpoint - API endpoint
      * @param {Object} params - Query parameters
+     * @param {number} retries - Number of retry attempts for rate limiting
      * @returns {Promise<any>} API response data
      */
-    async fetchWithAuth(endpoint, params = {}) {
+    async fetchWithAuth(endpoint, params = {}, retries = 3) {
         const url = new URL(`${this.baseUrl}${endpoint}`);
 
         // Add query parameters
@@ -32,30 +33,47 @@ export class EBirdAPI {
             }
         });
 
-        try {
-            const response = await fetch(url, {
-                headers: {
-                    'x-ebirdapitoken': this.apiKey
-                }
-            });
+        let lastError;
+        for (let attempt = 0; attempt < retries; attempt++) {
+            try {
+                const response = await fetch(url, {
+                    headers: {
+                        'x-ebirdapitoken': this.apiKey
+                    }
+                });
 
-            if (!response.ok) {
-                if (response.status === 403) {
-                    throw new Error(ErrorMessages[ErrorTypes.INVALID_API_KEY]);
+                if (!response.ok) {
+                    if (response.status === 403) {
+                        throw new Error(ErrorMessages[ErrorTypes.INVALID_API_KEY]);
+                    }
+                    if (response.status === 429) {
+                        // Rate limited - apply exponential backoff and retry
+                        if (attempt < retries - 1) {
+                            const delay = Math.pow(2, attempt) * 1000; // 1s, 2s, 4s
+                            await new Promise(resolve => setTimeout(resolve, delay));
+                            continue;
+                        }
+                        throw new Error(ErrorMessages[ErrorTypes.RATE_LIMITED]);
+                    }
+                    throw new Error(`eBird API error: ${response.status} ${response.statusText}`);
                 }
-                if (response.status === 429) {
-                    throw new Error(ErrorMessages[ErrorTypes.RATE_LIMITED]);
-                }
-                throw new Error(`eBird API error: ${response.status} ${response.statusText}`);
-            }
 
-            return response.json();
-        } catch (error) {
-            if (error.message.includes('fetch') || error.message.includes('network')) {
-                throw new Error(ErrorMessages[ErrorTypes.NETWORK_ERROR]);
+                return response.json();
+            } catch (error) {
+                lastError = error;
+                if (error.message.includes('fetch') || error.message.includes('network')) {
+                    // Network error - retry with backoff
+                    if (attempt < retries - 1) {
+                        const delay = Math.pow(2, attempt) * 1000;
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        continue;
+                    }
+                    throw new Error(ErrorMessages[ErrorTypes.NETWORK_ERROR]);
+                }
+                throw error;
             }
-            throw error;
         }
+        throw lastError;
     }
 
     /**

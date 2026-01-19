@@ -4,7 +4,7 @@
 
 import { CONFIG, ErrorMessages, ErrorTypes } from './utils/constants.js';
 import { validateCoordinates, validateApiKey, validateAddress, validateFavoriteName } from './utils/validators.js';
-import { calculateDistance, formatDistance, formatDuration } from './utils/formatters.js';
+import { calculateDistance, formatDistance, formatDuration, getGoogleMapsSearchUrl } from './utils/formatters.js';
 import { createSVGIcon, ICONS } from './utils/icons.js';
 import { clearElement } from './utils/dom-helpers.js';
 import { storage } from './services/storage.js';
@@ -362,9 +362,8 @@ class BirdingHotspotsApp {
         // Show the map preview section first
         this.elements.mapPreviewSection.classList.remove('hidden');
 
-        // Update "Open in Google Maps" link
-        const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
-        this.elements.openInGoogleMaps.href = mapsUrl;
+        // Update "Open in Google Maps" link (using secure URL construction)
+        this.elements.openInGoogleMaps.href = getGoogleMapsSearchUrl(lat, lng);
 
         // Initialize or update Leaflet map
         if (!this.previewMap) {

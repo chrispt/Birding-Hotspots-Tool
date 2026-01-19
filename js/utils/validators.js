@@ -72,6 +72,7 @@ export function validateApiKey(apiKey) {
 
 /**
  * Validate and sanitize address input
+ * Uses allowlist approach for better security
  * @param {string} address - The address to validate
  * @returns {Object} Validation result
  */
@@ -99,21 +100,27 @@ export function validateAddress(address) {
         };
     }
 
-    // Check for obvious injection attempts (XSS, script injection)
-    if (/<script|javascript:|on\w+\s*=/i.test(trimmed)) {
+    // Must contain at least one letter (not just numbers/symbols)
+    if (!/[a-zA-Z]/.test(trimmed)) {
         return {
             valid: false,
-            error: 'Invalid characters in address'
+            error: 'Please enter a valid address'
         };
     }
 
-    // Sanitize: remove potentially dangerous characters while keeping valid address chars
-    // Allow letters, numbers, spaces, commas, periods, hyphens, apostrophes, # (apt numbers)
-    const sanitized = trimmed.replace(/[<>"`]/g, '');
+    // Allowlist approach: only permit safe characters for addresses
+    // Letters, numbers, spaces, commas, periods, hyphens, apostrophes, # (apt numbers), slashes, &
+    const allowedPattern = /^[a-zA-Z0-9\s,.'#\-&/()]+$/;
+    if (!allowedPattern.test(trimmed)) {
+        return {
+            valid: false,
+            error: 'Address contains invalid characters'
+        };
+    }
 
     return {
         valid: true,
-        address: sanitized
+        address: trimmed
     };
 }
 
