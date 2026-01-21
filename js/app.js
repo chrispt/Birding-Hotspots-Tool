@@ -93,10 +93,16 @@ class BirdingHotspotsApp {
             rareBirdAlert: document.getElementById('rareBirdAlert'),
             weatherSummary: document.getElementById('weatherSummary'),
             migrationAlert: document.getElementById('migrationAlert'),
+            // Search type selection (Step 1)
+            locationSearchBtn: document.getElementById('locationSearchBtn'),
+            routeSearchBtn: document.getElementById('routeSearchBtn'),
+            // Search sections (Step 2)
+            locationSearchSection: document.getElementById('locationSearchSection'),
+            routeSearchSection: document.getElementById('routeSearchSection'),
+            // Sub-toggle for location search
+            hotspotSubBtn: document.getElementById('hotspotSubBtn'),
+            speciesSubBtn: document.getElementById('speciesSubBtn'),
             // Species search elements
-            hotspotModeBtn: document.getElementById('hotspotModeBtn'),
-            speciesModeBtn: document.getElementById('speciesModeBtn'),
-            routeModeBtn: document.getElementById('routeModeBtn'),
             speciesSearchPanel: document.getElementById('speciesSearchPanel'),
             speciesDropdown: document.getElementById('speciesDropdown'),
             selectedSpecies: document.getElementById('selectedSpecies'),
@@ -112,6 +118,8 @@ class BirdingHotspotsApp {
             routeMaxDetour: document.getElementById('routeMaxDetour'),
             routeMaxDetourValue: document.getElementById('routeMaxDetourValue'),
             sortOptionsSection: document.getElementById('sortOptionsSection'),
+            searchRangeSection: document.getElementById('searchRangeSection'),
+            hotspotsCountSection: document.getElementById('hotspotsCountSection'),
             // Itinerary elements
             buildItineraryBtn: document.getElementById('buildItineraryBtn'),
             itineraryPanel: document.getElementById('itineraryPanel'),
@@ -137,8 +145,11 @@ class BirdingHotspotsApp {
         // Species search
         this.speciesSearch = null; // Initialized when API key is available
         this.selectedSpeciesData = null;
-        this.searchMode = 'hotspot'; // 'hotspot' or 'species'
         this.speciesSearchDebounceTimer = null;
+
+        // Search type state (two-step flow)
+        this.searchType = 'location'; // 'location' or 'route'
+        this.searchSubMode = 'hotspot'; // 'hotspot' or 'species' (only for location type)
 
         // Debounce timer for address input
         this.addressDebounceTimer = null;
@@ -246,10 +257,13 @@ class BirdingHotspotsApp {
             }
         });
 
-        // Search mode toggle
-        this.elements.hotspotModeBtn.addEventListener('click', () => this.setSearchMode('hotspot'));
-        this.elements.speciesModeBtn.addEventListener('click', () => this.setSearchMode('species'));
-        this.elements.routeModeBtn.addEventListener('click', () => this.setSearchMode('route'));
+        // Search type selection (Step 1)
+        this.elements.locationSearchBtn.addEventListener('click', () => this.setSearchType('location'));
+        this.elements.routeSearchBtn.addEventListener('click', () => this.setSearchType('route'));
+
+        // Search sub-mode toggle (hotspot vs species)
+        this.elements.hotspotSubBtn.addEventListener('click', () => this.setSearchSubMode('hotspot'));
+        this.elements.speciesSubBtn.addEventListener('click', () => this.setSearchSubMode('species'));
 
         // Route planning address validation
         this.elements.routeStartAddress.addEventListener('input', () => this.handleRouteStartInputChange());
@@ -773,15 +787,15 @@ class BirdingHotspotsApp {
             // Initialize eBird API
             this.ebirdApi = new EBirdAPI(apiKeyValidation.apiKey);
 
-            // Delegate to species search if in species mode
-            if (this.searchMode === 'species') {
-                await this.handleSpeciesSearch();
+            // Delegate to route planning if in route mode
+            if (this.searchType === 'route') {
+                await this.handleRouteSearch();
                 return;
             }
 
-            // Delegate to route planning if in route mode
-            if (this.searchMode === 'route') {
-                await this.handleRouteSearch();
+            // Delegate to species search if in species sub-mode
+            if (this.searchSubMode === 'species') {
+                await this.handleSpeciesSearch();
                 return;
             }
 
@@ -1427,45 +1441,77 @@ class BirdingHotspotsApp {
     }
 
     /**
-     * Set search mode (hotspot, species, or route)
-     * @param {string} mode - 'hotspot', 'species', or 'route'
+     * Set search type (location or route) - Step 1
+     * @param {string} type - 'location' or 'route'
      */
-    setSearchMode(mode) {
-        this.searchMode = mode;
+    setSearchType(type) {
+        this.searchType = type;
 
-        // Update button states
-        this.elements.hotspotModeBtn.classList.toggle('active', mode === 'hotspot');
-        this.elements.speciesModeBtn.classList.toggle('active', mode === 'species');
-        this.elements.routeModeBtn.classList.toggle('active', mode === 'route');
-        this.elements.hotspotModeBtn.setAttribute('aria-selected', mode === 'hotspot');
-        this.elements.speciesModeBtn.setAttribute('aria-selected', mode === 'species');
-        this.elements.routeModeBtn.setAttribute('aria-selected', mode === 'route');
+        // Update Step 1 card states
+        this.elements.locationSearchBtn.classList.toggle('active', type === 'location');
+        this.elements.routeSearchBtn.classList.toggle('active', type === 'route');
 
-        // Toggle panels
-        this.elements.speciesSearchPanel.classList.toggle('hidden', mode !== 'species');
-        this.elements.routePlanningPanel.classList.toggle('hidden', mode !== 'route');
-        this.elements.sortOptionsSection.classList.toggle('hidden', mode === 'species' || mode === 'route');
+        // Toggle Step 2 sections
+        this.elements.locationSearchSection.classList.toggle('hidden', type !== 'location');
+        this.elements.routeSearchSection.classList.toggle('hidden', type !== 'route');
 
-        // Update generate button text based on mode
-        const searchIcon = '<svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>';
-        const routeIcon = '<svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M21.71 11.29l-9-9c-.39-.39-1.02-.39-1.41 0l-9 9c-.39.39-.39 1.02 0 1.41l9 9c.39.39 1.02.39 1.41 0l9-9c.39-.38.39-1.01 0-1.41zM14 14.5V12h-4v3H8v-4c0-.55.45-1 1-1h5V7.5l3.5 3.5-3.5 3.5z"/></svg>';
+        // Toggle location-specific sections (only visible for location search, not route)
+        const showLocationOptions = type === 'location' && this.searchSubMode === 'hotspot';
+        this.elements.sortOptionsSection.classList.toggle('hidden', !showLocationOptions);
 
-        if (mode === 'species') {
-            this.elements.generateReport.innerHTML = `${searchIcon} Find This Species`;
-        } else if (mode === 'route') {
-            this.elements.generateReport.innerHTML = `${routeIcon} Plan Route`;
-        } else {
-            this.elements.generateReport.innerHTML = `${searchIcon} Find Hotspots`;
+        // Search range and hotspots count are for location search only
+        this.elements.searchRangeSection.classList.toggle('hidden', type !== 'location');
+        this.elements.hotspotsCountSection.classList.toggle('hidden', type !== 'location' || this.searchSubMode === 'species');
+
+        // Update generate button
+        this.updateGenerateButton();
+
+        // Focus first input when entering route mode
+        if (type === 'route') {
+            this.elements.routeStartAddress.focus();
         }
+    }
+
+    /**
+     * Set search sub-mode (hotspot or species) - for location search type
+     * @param {string} mode - 'hotspot' or 'species'
+     */
+    setSearchSubMode(mode) {
+        this.searchSubMode = mode;
+
+        // Update sub-toggle buttons
+        this.elements.hotspotSubBtn.classList.toggle('active', mode === 'hotspot');
+        this.elements.speciesSubBtn.classList.toggle('active', mode === 'species');
+
+        // Toggle species panel
+        this.elements.speciesSearchPanel.classList.toggle('hidden', mode !== 'species');
+
+        // Toggle sort options and hotspots count (only for hotspot mode)
+        this.elements.sortOptionsSection.classList.toggle('hidden', mode === 'species');
+        this.elements.hotspotsCountSection.classList.toggle('hidden', mode === 'species');
+
+        // Update generate button
+        this.updateGenerateButton();
 
         // Initialize species search if switching to species mode
         if (mode === 'species' && !this.speciesSearch) {
             this.initializeSpeciesSearch();
         }
+    }
 
-        // Focus first input when entering route mode
-        if (mode === 'route') {
-            this.elements.routeStartAddress.focus();
+    /**
+     * Update the generate button text based on current search type and sub-mode
+     */
+    updateGenerateButton() {
+        const searchIcon = '<svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>';
+        const routeIcon = '<svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M21.71 11.29l-9-9c-.39-.39-1.02-.39-1.41 0l-9 9c-.39.39-.39 1.02 0 1.41l9 9c.39.39 1.02.39 1.41 0l9-9c.39-.38.39-1.01 0-1.41zM14 14.5V12h-4v3H8v-4c0-.55.45-1 1-1h5V7.5l3.5 3.5-3.5 3.5z"/></svg>';
+
+        if (this.searchType === 'route') {
+            this.elements.generateReport.innerHTML = `${routeIcon} Plan Route`;
+        } else if (this.searchSubMode === 'species') {
+            this.elements.generateReport.innerHTML = `${searchIcon} Find This Species`;
+        } else {
+            this.elements.generateReport.innerHTML = `${searchIcon} Find Hotspots`;
         }
     }
 
@@ -1476,7 +1522,7 @@ class BirdingHotspotsApp {
         const apiKey = this.elements.apiKey.value.trim();
         if (!apiKey) {
             this.showError('Please enter your eBird API key first');
-            this.setSearchMode('hotspot');
+            this.setSearchSubMode('hotspot');
             return;
         }
 
@@ -1833,8 +1879,9 @@ class BirdingHotspotsApp {
             this.updateLoading('Loading hotspot details...', 40);
 
             // Filter hotspots to those reasonably close to the route line
-            // Simple approach: keep hotspots that are within reasonable distance from either endpoint
-            const maxDetour = searchRadius * 0.7; // Max detour from direct route
+            // Get max detour from slider (in miles), convert to km for calculations
+            const maxDetourMiles = parseInt(this.elements.routeMaxDetour.value);
+            const maxDetour = maxDetourMiles * 1.60934;
             hotspots = hotspots.filter(h => {
                 const distFromStart = calculateDistance(startCoords.lat, startCoords.lng, h.lat, h.lng);
                 const distFromEnd = calculateDistance(endCoords.lat, endCoords.lng, h.lat, h.lng);
