@@ -2355,19 +2355,6 @@ class BirdingHotspotsApp {
             stopLabel = `Stop ${stop.stopNumber - 1}`;
         }
 
-        // Calculate time info
-        const arrivalTime = stop.arrivalTime ? formatItineraryTime(stop.arrivalTime) : '';
-        const departureTime = stop.departureTime ? formatItineraryTime(stop.departureTime) : '';
-
-        let timeInfo = '';
-        if (stop.type === 'start') {
-            timeInfo = departureTime ? `Depart ${departureTime}` : '';
-        } else if (stop.type === 'end') {
-            timeInfo = arrivalTime ? `Arrive ${arrivalTime}` : '';
-        } else {
-            timeInfo = arrivalTime && departureTime ? `${arrivalTime} - ${departureTime}` : '';
-        }
-
         // Build card using safe DOM methods
         const stopMarker = document.createElement('div');
         stopMarker.className = `stop-marker ${stop.type}`;
@@ -2383,13 +2370,6 @@ class BirdingHotspotsApp {
         labelSpan.className = 'stop-label';
         labelSpan.textContent = stopLabel;
         stopHeader.appendChild(labelSpan);
-
-        if (timeInfo) {
-            const timeSpan = document.createElement('span');
-            timeSpan.className = 'stop-time';
-            timeSpan.textContent = timeInfo;
-            stopHeader.appendChild(timeSpan);
-        }
 
         const nameH4 = document.createElement('h4');
         nameH4.className = 'stop-name';
@@ -3591,12 +3571,6 @@ class BirdingHotspotsApp {
             const visitSpan = document.createElement('span');
             visitSpan.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/></svg> ${formatItineraryDuration(stop.suggestedVisitTime)} birding`;
             metaDiv.appendChild(visitSpan);
-        }
-
-        if (stop.departureTime && stop.type !== 'end') {
-            const departSpan = document.createElement('span');
-            departSpan.innerHTML = `Depart ${formatItineraryTime(stop.departureTime)}`;
-            metaDiv.appendChild(departSpan);
         }
 
         content.appendChild(metaDiv);
