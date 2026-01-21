@@ -1179,6 +1179,28 @@ body {
     .favorite-item:active {
         background: var(--hover-bg);
     }
+
+    /* Minimum 44px touch targets (WCAG 2.5.5) */
+    .btn,
+    .radio-card,
+    .favorite-item,
+    .species-option,
+    .route-hotspot-card,
+    .popup-toggle-btn {
+        min-height: 44px;
+    }
+
+    .radio-card {
+        padding: 14px 16px;
+    }
+
+    .species-option {
+        padding: 14px 16px;
+    }
+
+    .favorite-item {
+        padding: 14px 12px;
+    }
 }
 
 /* Touch highlight color */

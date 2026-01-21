@@ -171,6 +171,7 @@ class BirdingHotspotsApp {
         this.speciesSearch = null; // Initialized when API key is available
         this.selectedSpeciesData = null;
         this.speciesSearchDebounceTimer = null;
+        this.speciesDropdownHighlightIndex = -1; // Track highlighted item for keyboard nav
 
         // Search type state (two-step flow)
         this.searchType = 'location'; // 'location' or 'route'
@@ -321,6 +322,7 @@ class BirdingHotspotsApp {
         // Species search input
         this.elements.speciesSearchInput.addEventListener('input', () => this.handleSpeciesSearchInput());
         this.elements.speciesSearchInput.addEventListener('focus', () => this.handleSpeciesSearchFocus());
+        this.elements.speciesSearchInput.addEventListener('keydown', (e) => this.handleSpeciesDropdownKeyboard(e));
 
         // Click outside to close species dropdown
         document.addEventListener('click', (e) => {
@@ -633,7 +635,7 @@ class BirdingHotspotsApp {
             this.addressValidated = false;
             this.validatedCoords = null;
             this.showValidationIndicator(this.elements.addressValidationIcon, this.elements.address, 'error');
-            this.showAddressError('Could not find this address. Please check and try again.');
+            this.showAddressError('Could not find this address. Please check the spelling or try a more specific address.');
             this.hideMapPreview();
         }
     }
@@ -670,16 +672,19 @@ class BirdingHotspotsApp {
         iconElement.classList.remove('hidden', 'loading', 'success', 'error');
         inputElement.classList.remove('success', 'error');
 
-        // Set icon content based on state
+        // Clear existing content safely
+        iconElement.textContent = '';
+
+        // Set icon content based on state using safe DOM methods
         if (state === 'loading') {
-            iconElement.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 4V2A10 10 0 0 0 2 12h2a8 8 0 0 1 8-8z"/></svg>';
+            iconElement.appendChild(createSVGIcon('loading', 20));
             iconElement.classList.add('loading');
         } else if (state === 'success') {
-            iconElement.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>';
+            iconElement.appendChild(createSVGIcon('checkmark', 20));
             iconElement.classList.add('success');
             inputElement.classList.add('success');
         } else if (state === 'error') {
-            iconElement.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>';
+            iconElement.appendChild(createSVGIcon('x', 20));
             iconElement.classList.add('error');
             inputElement.classList.add('error');
         }
@@ -1014,7 +1019,7 @@ class BirdingHotspotsApp {
                         this.validatedCoords = { lat: result.lat, lng: result.lng };
                         this.clearAddressError();
                     } catch (error) {
-                        this.showAddressError('Could not find this address. Please check and try again.');
+                        this.showAddressError('Could not find this address. Please check the spelling or try a more specific address.');
                         this.isProcessing = false;
                         return;
                     }
@@ -1700,15 +1705,18 @@ class BirdingHotspotsApp {
      * Update the generate button text based on current search type and sub-mode
      */
     updateGenerateButton() {
-        const searchIcon = '<svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>';
-        const routeIcon = '<svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M21.71 11.29l-9-9c-.39-.39-1.02-.39-1.41 0l-9 9c-.39.39-.39 1.02 0 1.41l9 9c.39.39 1.02.39 1.41 0l9-9c.39-.38.39-1.01 0-1.41zM14 14.5V12h-4v3H8v-4c0-.55.45-1 1-1h5V7.5l3.5 3.5-3.5 3.5z"/></svg>';
+        // Clear button content safely
+        this.elements.generateReport.textContent = '';
 
         if (this.searchType === 'route') {
-            this.elements.generateReport.innerHTML = `${routeIcon} Plan Route`;
+            this.elements.generateReport.appendChild(createSVGIcon('directions', 24));
+            this.elements.generateReport.appendChild(document.createTextNode(' Plan Route'));
         } else if (this.searchSubMode === 'species') {
-            this.elements.generateReport.innerHTML = `${searchIcon} Find This Species`;
+            this.elements.generateReport.appendChild(createSVGIcon('search', 24));
+            this.elements.generateReport.appendChild(document.createTextNode(' Find This Species'));
         } else {
-            this.elements.generateReport.innerHTML = `${searchIcon} Find Hotspots`;
+            this.elements.generateReport.appendChild(createSVGIcon('search', 24));
+            this.elements.generateReport.appendChild(document.createTextNode(' Find Hotspots'));
         }
     }
 
@@ -1841,6 +1849,72 @@ class BirdingHotspotsApp {
      */
     hideSpeciesDropdown() {
         this.elements.speciesDropdown.classList.add('hidden');
+        this.speciesDropdownHighlightIndex = -1;
+    }
+
+    /**
+     * Handle keyboard navigation for species dropdown
+     * @param {KeyboardEvent} e - Keyboard event
+     */
+    handleSpeciesDropdownKeyboard(e) {
+        const dropdown = this.elements.speciesDropdown;
+        if (dropdown.classList.contains('hidden')) return;
+
+        const options = dropdown.querySelectorAll('.species-option');
+        if (options.length === 0) return;
+
+        switch (e.key) {
+            case 'ArrowDown':
+                e.preventDefault();
+                this.speciesDropdownHighlightIndex = Math.min(
+                    this.speciesDropdownHighlightIndex + 1,
+                    options.length - 1
+                );
+                this.updateSpeciesDropdownHighlight(options);
+                break;
+
+            case 'ArrowUp':
+                e.preventDefault();
+                this.speciesDropdownHighlightIndex = Math.max(
+                    this.speciesDropdownHighlightIndex - 1,
+                    0
+                );
+                this.updateSpeciesDropdownHighlight(options);
+                break;
+
+            case 'Enter':
+                e.preventDefault();
+                if (this.speciesDropdownHighlightIndex >= 0 && this.speciesDropdownHighlightIndex < options.length) {
+                    const option = options[this.speciesDropdownHighlightIndex];
+                    const species = {
+                        speciesCode: option.dataset.code,
+                        commonName: option.dataset.name,
+                        scientificName: option.dataset.scientific
+                    };
+                    this.selectSpecies(species);
+                }
+                break;
+
+            case 'Escape':
+                e.preventDefault();
+                this.hideSpeciesDropdown();
+                break;
+        }
+    }
+
+    /**
+     * Update visual highlight for species dropdown options
+     * @param {NodeList} options - Dropdown option elements
+     */
+    updateSpeciesDropdownHighlight(options) {
+        options.forEach((opt, i) => {
+            if (i === this.speciesDropdownHighlightIndex) {
+                opt.classList.add('highlighted');
+                opt.scrollIntoView({ block: 'nearest' });
+            } else {
+                opt.classList.remove('highlighted');
+            }
+        });
     }
 
     /**
@@ -1913,7 +1987,7 @@ class BirdingHotspotsApp {
                         this.validatedCoords = { lat: result.lat, lng: result.lng };
                         this.clearAddressError();
                     } catch (error) {
-                        this.showAddressError('Could not find this address. Please check and try again.');
+                        this.showAddressError('Could not find this address. Please check the spelling or try a more specific address.');
                         return null;
                     }
                 }
@@ -2200,17 +2274,32 @@ class BirdingHotspotsApp {
                 // Store index for click handler
                 marker.hotspotIndex = index;
 
-                // Create popup with add/remove button
+                // Create popup with add/remove button using safe DOM methods
                 const popupContent = document.createElement('div');
                 popupContent.className = 'hotspot-popup';
-                popupContent.innerHTML = `
-                    <strong>${h.name}</strong><br>
-                    ${h.speciesCount} species<br>
-                    <button class="popup-toggle-btn" data-index="${index}">
-                        <span class="add-text">Add to itinerary</span>
-                        <span class="remove-text">Remove from itinerary</span>
-                    </button>
-                `;
+
+                const nameStrong = document.createElement('strong');
+                nameStrong.textContent = h.name;
+                popupContent.appendChild(nameStrong);
+                popupContent.appendChild(document.createElement('br'));
+                popupContent.appendChild(document.createTextNode(`${h.speciesCount} species`));
+                popupContent.appendChild(document.createElement('br'));
+
+                const toggleBtn = document.createElement('button');
+                toggleBtn.className = 'popup-toggle-btn';
+                toggleBtn.dataset.index = index;
+
+                const addSpan = document.createElement('span');
+                addSpan.className = 'add-text';
+                addSpan.textContent = 'Add to itinerary';
+
+                const removeSpan = document.createElement('span');
+                removeSpan.className = 'remove-text';
+                removeSpan.textContent = 'Remove from itinerary';
+
+                toggleBtn.appendChild(addSpan);
+                toggleBtn.appendChild(removeSpan);
+                popupContent.appendChild(toggleBtn);
 
                 marker.bindPopup(popupContent);
 
@@ -2266,7 +2355,11 @@ class BirdingHotspotsApp {
 
         const checkbox = document.createElement('div');
         checkbox.className = 'route-hotspot-checkbox';
-        checkbox.innerHTML = `<input type="checkbox" id="routeHotspot${index}" aria-label="Select ${hotspot.name}">`;
+        const checkboxInput = document.createElement('input');
+        checkboxInput.type = 'checkbox';
+        checkboxInput.id = `routeHotspot${index}`;
+        checkboxInput.setAttribute('aria-label', `Select ${hotspot.name}`);
+        checkbox.appendChild(checkboxInput);
 
         const info = document.createElement('div');
         info.className = 'route-hotspot-info';
@@ -2284,7 +2377,8 @@ class BirdingHotspotsApp {
 
         const distance = document.createElement('span');
         distance.className = 'route-hotspot-distance';
-        distance.innerHTML = `<svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/></svg> ${formatDistance(hotspot.distance)} from route`;
+        distance.appendChild(createSVGIcon('location', 16));
+        distance.appendChild(document.createTextNode(` ${formatDistance(hotspot.distance)} from route`));
 
         details.appendChild(species);
         details.appendChild(distance);
