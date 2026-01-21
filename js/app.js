@@ -105,6 +105,9 @@ class BirdingHotspotsApp {
             // Search sections (Step 2)
             locationSearchSection: document.getElementById('locationSearchSection'),
             routeSearchSection: document.getElementById('routeSearchSection'),
+            // Reset buttons
+            resetLocationSearch: document.getElementById('resetLocationSearch'),
+            resetRouteSearch: document.getElementById('resetRouteSearch'),
             // Sub-toggle for location search
             hotspotSubBtn: document.getElementById('hotspotSubBtn'),
             speciesSubBtn: document.getElementById('speciesSubBtn'),
@@ -291,6 +294,10 @@ class BirdingHotspotsApp {
         this.elements.locationSearchBtn.addEventListener('click', () => this.setSearchType('location'));
         this.elements.routeSearchBtn.addEventListener('click', () => this.setSearchType('route'));
 
+        // Reset buttons
+        this.elements.resetLocationSearch.addEventListener('click', () => this.resetLocationSearch());
+        this.elements.resetRouteSearch.addEventListener('click', () => this.resetRouteSearch());
+
         // Search sub-mode toggle (hotspot vs species)
         this.elements.hotspotSubBtn.addEventListener('click', () => this.setSearchSubMode('hotspot'));
         this.elements.speciesSubBtn.addEventListener('click', () => this.setSearchSubMode('species'));
@@ -473,6 +480,107 @@ class BirdingHotspotsApp {
         clearElement(btn);
         btn.appendChild(createSVGIcon('myLocation', 18));
         btn.appendChild(document.createTextNode(' Use My Current Location'));
+    }
+
+    /**
+     * Reset the location search section to its initial state
+     */
+    resetLocationSearch() {
+        // Clear address input
+        this.elements.address.value = '';
+        this.addressValidated = false;
+        this.validatedCoords = null;
+        this.clearAddressError();
+        this.hideValidationIndicator(this.elements.addressValidationIcon, this.elements.address);
+
+        // Clear GPS inputs
+        this.elements.latitude.value = '';
+        this.elements.longitude.value = '';
+
+        // Reset to address input mode
+        const addressRadio = document.querySelector('[name="inputMode"][value="address"]');
+        if (addressRadio) {
+            addressRadio.checked = true;
+            this.elements.addressInput.classList.remove('hidden');
+            this.elements.gpsInput.classList.add('hidden');
+        }
+
+        // Hide map preview
+        this.hideMapPreview();
+
+        // Reset sub-mode to hotspot
+        this.setSearchSubMode('hotspot');
+
+        // Clear species search
+        this.elements.speciesSearchInput.value = '';
+        this.selectedSpeciesData = null;
+        this.elements.selectedSpecies.classList.add('hidden');
+        this.hideSpeciesDropdown();
+
+        // Hide results section
+        this.elements.resultsSection.classList.add('hidden');
+
+        // Clear hotspot cards
+        clearElement(this.elements.hotspotCards);
+
+        // Focus the address input
+        this.elements.address.focus();
+    }
+
+    /**
+     * Reset the route search section to its initial state
+     */
+    resetRouteSearch() {
+        // Clear start address
+        this.elements.routeStartAddress.value = '';
+        this.routeStartValidated = false;
+        this.validatedRouteStartCoords = null;
+        this.hideValidationIndicator(this.elements.routeStartValidationIcon, this.elements.routeStartAddress);
+        this.elements.routeStartAddress.classList.remove('error');
+        this.elements.routeStartError.classList.add('hidden');
+        this.elements.routeStartError.textContent = '';
+
+        // Clear end address
+        this.elements.routeEndAddress.value = '';
+        this.routeEndValidated = false;
+        this.validatedRouteEndCoords = null;
+        this.hideValidationIndicator(this.elements.routeEndValidationIcon, this.elements.routeEndAddress);
+        this.elements.routeEndAddress.classList.remove('error');
+        this.elements.routeEndError.classList.add('hidden');
+        this.elements.routeEndError.textContent = '';
+
+        // Reset detour slider to default
+        this.elements.routeMaxDetour.value = 5;
+        this.elements.routeMaxDetourValue.textContent = '5';
+
+        // Hide route preview section
+        this.elements.routePreviewSection.classList.add('hidden');
+
+        // Clean up route preview map
+        if (this.routePreviewMapInstance) {
+            if (this.routePreviewLine) {
+                this.routePreviewMapInstance.removeLayer(this.routePreviewLine);
+                this.routePreviewLine = null;
+            }
+            this.routePreviewMarkers.forEach(m => this.routePreviewMapInstance.removeLayer(m));
+            this.routePreviewMarkers = [];
+        }
+
+        // Hide route hotspots section
+        this.elements.routeHotspotsSection.classList.add('hidden');
+        clearElement(this.elements.routeHotspotsList);
+        this.routeHotspotMarkers = [];
+
+        // Reset route data
+        this.routeStartAddress = null;
+        this.routeEndAddressText = null;
+        this.currentRouteHotspots = [];
+
+        // Hide results section
+        this.elements.resultsSection.classList.add('hidden');
+
+        // Focus the start address input
+        this.elements.routeStartAddress.focus();
     }
 
     /**

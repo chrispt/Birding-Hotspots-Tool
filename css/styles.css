@@ -123,6 +123,49 @@ body {
     margin-left: 4px;
 }
 
+/* Section Header with Reset Button */
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.section-header .section-title {
+    margin-bottom: 16px;
+    flex: 1;
+}
+
+.btn-reset {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 10px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    background: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all var(--transition);
+    white-space: nowrap;
+}
+
+.btn-reset:hover {
+    color: var(--text-primary);
+    border-color: var(--text-secondary);
+    background: var(--hover-bg);
+}
+
+.btn-reset:active {
+    transform: scale(0.95);
+}
+
+.btn-reset svg {
+    flex-shrink: 0;
+}
+
 /* Input Groups */
 .input-group {
     margin-bottom: 12px;
