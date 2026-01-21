@@ -3526,23 +3526,56 @@ class BirdingHotspotsApp {
                     return (distFromStart + distFromEnd) <= (routeDistance + maxDetour * 2);
                 }).slice(0, 15); // Limit for performance
 
-                // Add hotspot preview markers (orange circles)
+                // Initialize selected preview hotspots set if not exists
+                if (!this.selectedPreviewHotspots) {
+                    this.selectedPreviewHotspots = new Set();
+                }
+
+                // Add hotspot preview markers (orange circles) with click popup
                 nearRouteHotspots.forEach(h => {
+                    const isSelected = this.selectedPreviewHotspots.has(h.locId);
                     const marker = L.circleMarker([h.lat, h.lng], {
                         radius: 8,
-                        fillColor: '#FF5722',
+                        fillColor: isSelected ? '#4CAF50' : '#FF5722',
                         color: '#fff',
                         weight: 2,
                         fillOpacity: 0.9,
                         interactive: true
                     }).addTo(this.routePreviewMapInstance);
 
-                    // Bind tooltip for hover (shows name and species count)
-                    const speciesText = h.numSpeciesAllTime ? `${h.numSpeciesAllTime} species` : 'Species data loading...';
-                    marker.bindTooltip(`<strong>${h.locName}</strong><br>${speciesText}`, {
-                        direction: 'top',
-                        offset: [0, -8],
-                        className: 'hotspot-preview-tooltip'
+                    // Store hotspot data on the marker for reference
+                    marker.hotspotData = h;
+
+                    // Create popup with hotspot info and add/remove button
+                    const speciesText = h.numSpeciesAllTime ? `${h.numSpeciesAllTime} species (all time)` : 'Species data unavailable';
+                    const buttonText = isSelected ? 'Remove from Itinerary' : 'Add to Itinerary';
+                    const buttonClass = isSelected ? 'popup-btn-remove' : 'popup-btn-add';
+
+                    const popupContent = `
+                        <div class="hotspot-preview-popup">
+                            <strong class="popup-hotspot-name">${h.locName}</strong>
+                            <div class="popup-species-count">${speciesText}</div>
+                            <button class="popup-itinerary-btn ${buttonClass}" data-loc-id="${h.locId}">
+                                ${buttonText}
+                            </button>
+                        </div>
+                    `;
+
+                    marker.bindPopup(popupContent, {
+                        className: 'hotspot-preview-popup-container',
+                        closeButton: true,
+                        maxWidth: 250
+                    });
+
+                    // Handle popup open to attach button click handler
+                    marker.on('popupopen', (e) => {
+                        const popup = e.popup;
+                        const btn = popup.getElement().querySelector('.popup-itinerary-btn');
+                        if (btn) {
+                            btn.addEventListener('click', () => {
+                                this.togglePreviewHotspotSelection(h, marker, popup);
+                            });
+                        }
                     });
 
                     this.routePreviewMarkers.push(marker);
@@ -3550,6 +3583,9 @@ class BirdingHotspotsApp {
 
                 // Store for potential reuse
                 this.previewHotspots = nearRouteHotspots;
+
+                // Update selected count display
+                this.updatePreviewSelectionCount();
             } catch (e) {
                 console.warn('Could not fetch preview hotspots:', e);
             }
@@ -3580,6 +3616,88 @@ class BirdingHotspotsApp {
             this.routePreviewMapInstance = null;
             this.routePreviewLine = null;
             this.routePreviewMarkers = [];
+        }
+    }
+
+    /**
+     * Toggle a hotspot's selection state from the preview map popup
+     * @param {Object} hotspot - Hotspot data
+     * @param {L.CircleMarker} marker - The Leaflet marker
+     * @param {L.Popup} popup - The popup to update
+     */
+    togglePreviewHotspotSelection(hotspot, marker, popup) {
+        const locId = hotspot.locId;
+        const isCurrentlySelected = this.selectedPreviewHotspots.has(locId);
+
+        if (isCurrentlySelected) {
+            // Remove from selection
+            this.selectedPreviewHotspots.delete(locId);
+            marker.setStyle({ fillColor: '#FF5722' }); // Orange for unselected
+        } else {
+            // Add to selection
+            this.selectedPreviewHotspots.add(locId);
+            marker.setStyle({ fillColor: '#4CAF50' }); // Green for selected
+        }
+
+        // Update popup content
+        const speciesText = hotspot.numSpeciesAllTime ? `${hotspot.numSpeciesAllTime} species (all time)` : 'Species data unavailable';
+        const newIsSelected = this.selectedPreviewHotspots.has(locId);
+        const buttonText = newIsSelected ? 'Remove from Itinerary' : 'Add to Itinerary';
+        const buttonClass = newIsSelected ? 'popup-btn-remove' : 'popup-btn-add';
+
+        const newContent = `
+            <div class="hotspot-preview-popup">
+                <strong class="popup-hotspot-name">${hotspot.locName}</strong>
+                <div class="popup-species-count">${speciesText}</div>
+                <button class="popup-itinerary-btn ${buttonClass}" data-loc-id="${locId}">
+                    ${buttonText}
+                </button>
+            </div>
+        `;
+
+        popup.setContent(newContent);
+
+        // Re-attach click handler to new button
+        setTimeout(() => {
+            const btn = popup.getElement().querySelector('.popup-itinerary-btn');
+            if (btn) {
+                btn.addEventListener('click', () => {
+                    this.togglePreviewHotspotSelection(hotspot, marker, popup);
+                });
+            }
+        }, 0);
+
+        // Update selection count
+        this.updatePreviewSelectionCount();
+    }
+
+    /**
+     * Update the display showing how many hotspots are selected from preview
+     */
+    updatePreviewSelectionCount() {
+        const count = this.selectedPreviewHotspots ? this.selectedPreviewHotspots.size : 0;
+
+        // Update or create the selection count display in the route preview section
+        let countDisplay = document.getElementById('previewSelectionCount');
+        if (!countDisplay) {
+            countDisplay = document.createElement('div');
+            countDisplay.id = 'previewSelectionCount';
+            countDisplay.className = 'preview-selection-count';
+            // Insert after the route stats
+            const routeStats = this.elements.routePreviewSection.querySelector('.route-stats');
+            if (routeStats) {
+                routeStats.after(countDisplay);
+            }
+        }
+
+        if (count > 0) {
+            countDisplay.innerHTML = `
+                <span class="selection-badge">${count}</span> hotspot${count !== 1 ? 's' : ''} selected for itinerary
+            `;
+            countDisplay.classList.remove('hidden');
+        } else {
+            countDisplay.innerHTML = 'Click on orange markers to add hotspots to your itinerary';
+            countDisplay.classList.remove('hidden');
         }
     }
 
