@@ -4,7 +4,7 @@
 
 import { CONFIG, ErrorMessages, ErrorTypes } from './utils/constants.js';
 import { validateCoordinates, validateApiKey, validateAddress, validateFavoriteName } from './utils/validators.js';
-import { calculateDistance, formatDistance, formatDuration, getGoogleMapsSearchUrl, getGoogleMapsDirectionsUrl } from './utils/formatters.js';
+import { calculateDistance, formatDistance, formatDuration, getGoogleMapsSearchUrl, getGoogleMapsDirectionsUrl, getGoogleMapsRouteUrl } from './utils/formatters.js';
 import { createSVGIcon, ICONS } from './utils/icons.js';
 import { clearElement } from './utils/dom-helpers.js';
 import { storage } from './services/storage.js';
@@ -2051,6 +2051,38 @@ class BirdingHotspotsApp {
             this.elements.routeHotspotsList.appendChild(card);
         });
 
+        // Add hotspot markers to the preview map (if it exists)
+        if (this.routePreviewMapInstance) {
+            // Clear any existing preview hotspot markers (keep start/end and route line)
+            this.routePreviewMarkers.forEach((marker, i) => {
+                // Keep first two markers (start and end)
+                if (i >= 2) {
+                    this.routePreviewMapInstance.removeLayer(marker);
+                }
+            });
+            this.routePreviewMarkers = this.routePreviewMarkers.slice(0, 2);
+
+            // Add markers for found hotspots with species count
+            hotspots.forEach(h => {
+                const marker = L.circleMarker([h.lat, h.lng], {
+                    radius: 8,
+                    fillColor: '#FF5722',
+                    color: '#fff',
+                    weight: 2,
+                    fillOpacity: 0.9
+                }).bindPopup(`<strong>${h.name}</strong><br>${h.speciesCount} species`)
+                  .addTo(this.routePreviewMapInstance);
+                this.routePreviewMarkers.push(marker);
+            });
+
+            // Re-fit bounds to include all markers
+            if (this.routePreviewLine) {
+                const bounds = this.routePreviewLine.getBounds();
+                hotspots.forEach(h => bounds.extend([h.lat, h.lng]));
+                this.routePreviewMapInstance.fitBounds(bounds, { padding: [20, 20] });
+            }
+        }
+
         // Show the section
         this.elements.routeHotspotsSection.classList.remove('hidden');
 
@@ -2300,6 +2332,17 @@ class BirdingHotspotsApp {
         // Add export buttons using safe DOM methods
         const exportSection = document.createElement('div');
         exportSection.className = 'route-export-section';
+
+        // Open in Google Maps button
+        const googleMapsUrl = getGoogleMapsRouteUrl(itinerary.stops);
+        const mapsLink = document.createElement('a');
+        mapsLink.href = googleMapsUrl;
+        mapsLink.target = '_blank';
+        mapsLink.rel = 'noopener noreferrer';
+        mapsLink.className = 'btn btn-primary';
+        mapsLink.appendChild(createSVGIcon('external', 20));
+        mapsLink.appendChild(document.createTextNode(' Open in Google Maps'));
+        exportSection.appendChild(mapsLink);
 
         const pdfBtn = document.createElement('button');
         pdfBtn.type = 'button';

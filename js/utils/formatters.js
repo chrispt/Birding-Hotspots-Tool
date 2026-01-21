@@ -105,6 +105,37 @@ export function getGoogleMapsDirectionsUrl(originLat, originLng, destLat, destLn
 }
 
 /**
+ * Generate a Google Maps directions URL with waypoints
+ * @param {Array} stops - Array of stop objects with lat, lng properties
+ * @returns {string} Google Maps URL with waypoints
+ */
+export function getGoogleMapsRouteUrl(stops) {
+    if (!stops || stops.length < 2) return '';
+
+    const url = new URL('https://www.google.com/maps/dir/');
+    url.searchParams.set('api', '1');
+
+    // First stop is origin
+    const origin = stops[0];
+    url.searchParams.set('origin', `${origin.lat},${origin.lng}`);
+
+    // Last stop is destination
+    const destination = stops[stops.length - 1];
+    url.searchParams.set('destination', `${destination.lat},${destination.lng}`);
+
+    // Middle stops are waypoints (max ~10 waypoints work reliably)
+    if (stops.length > 2) {
+        const waypoints = stops.slice(1, -1)
+            .map(s => `${s.lat},${s.lng}`)
+            .join('|');
+        url.searchParams.set('waypoints', waypoints);
+    }
+
+    url.searchParams.set('travelmode', 'driving');
+    return url.toString();
+}
+
+/**
  * Generate an eBird hotspot URL
  * @param {string} locId - eBird location ID
  * @returns {string} eBird hotspot URL

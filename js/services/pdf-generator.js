@@ -374,9 +374,13 @@ export async function generateRoutePDFReport(data, onProgress = () => {}) {
     // Route info
     const startLabel = start.address || `${start.lat.toFixed(4)}, ${start.lng.toFixed(4)}`;
     const endLabel = end.address || `${end.lat.toFixed(4)}, ${end.lng.toFixed(4)}`;
-    const routeText = doc.splitTextToSize(`Route: ${startLabel} → ${endLabel}`, contentWidth);
-    doc.text(routeText, margin, yPos);
-    yPos += routeText.length * 4 + 1;
+    const routeText = doc.splitTextToSize(`Route: ${startLabel} to ${endLabel}`, contentWidth);
+    // Print each line separately to avoid character spacing issues
+    routeText.forEach(line => {
+        doc.text(line, margin, yPos);
+        yPos += 4;
+    });
+    yPos += 1;
 
     // Summary stats
     const hotspotStops = itinerary.stops.filter(s => s.type === 'hotspot');
@@ -470,8 +474,12 @@ export async function generateRoutePDFReport(data, onProgress = () => {}) {
         // Address
         if (stop.address) {
             const addressLines = doc.splitTextToSize(`Address: ${stop.address}`, contentWidth - qrSize - 10);
-            doc.text(addressLines, margin, yPos);
-            yPos += addressLines.length * 4 + 2;
+            // Print each line separately to avoid character spacing issues
+            addressLines.forEach(line => {
+                doc.text(line, margin, yPos);
+                yPos += 4;
+            });
+            yPos += 2;
         }
 
         // Links
