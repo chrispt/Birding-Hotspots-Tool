@@ -551,6 +551,56 @@ body {
     box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.1);
 }
 
+/* Success state for input border */
+.text-input.success {
+    border-color: var(--primary-color);
+}
+
+.text-input.success:focus {
+    box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.1);
+}
+
+/* Wrapper for input with validation indicator */
+.input-with-validation {
+    position: relative;
+}
+
+.input-with-validation .text-input {
+    padding-right: 40px;
+}
+
+/* Input validation indicator (success/error/loading icon) */
+.input-validation-indicator {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.input-validation-indicator.success {
+    color: var(--primary-color);
+}
+
+.input-validation-indicator.error {
+    color: var(--error);
+}
+
+.input-validation-indicator.loading {
+    color: var(--text-secondary);
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: translateY(-50%) rotate(0deg); }
+    to { transform: translateY(-50%) rotate(360deg); }
+}
+
 /* Map Preview Section */
 .map-preview-section {
     margin-top: 16px;
@@ -617,6 +667,70 @@ body {
     }
 
     .map-preview-header .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* Route Preview Section */
+.route-preview-section {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+}
+
+.route-preview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.route-preview-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.route-stats {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 12px;
+}
+
+.route-stat {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+}
+
+.route-stat-value {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.route-stat-label {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.route-preview-container {
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--background);
+    min-height: 200px;
+}
+
+@media (max-width: 480px) {
+    .route-preview-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .route-preview-header .btn {
         width: 100%;
         justify-content: center;
     }

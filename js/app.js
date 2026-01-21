@@ -4,7 +4,7 @@
 
 import { CONFIG, ErrorMessages, ErrorTypes } from './utils/constants.js';
 import { validateCoordinates, validateApiKey, validateAddress, validateFavoriteName } from './utils/validators.js';
-import { calculateDistance, formatDistance, formatDuration, getGoogleMapsSearchUrl } from './utils/formatters.js';
+import { calculateDistance, formatDistance, formatDuration, getGoogleMapsSearchUrl, getGoogleMapsDirectionsUrl } from './utils/formatters.js';
 import { createSVGIcon, ICONS } from './utils/icons.js';
 import { clearElement } from './utils/dom-helpers.js';
 import { storage } from './services/storage.js';
@@ -12,7 +12,7 @@ import { geocodeAddress, getCurrentPosition } from './api/geocoding.js';
 import { reverseGeocode, batchReverseGeocode } from './api/reverse-geo.js';
 import { EBirdAPI, processObservations } from './api/ebird.js';
 import { generatePDFReport, downloadPDF } from './services/pdf-generator.js';
-import { getDrivingRoutes } from './api/routing.js';
+import { getDrivingRoutes, getRouteThrough } from './api/routing.js';
 import { getWeatherForLocations, getOverallBirdingConditions, getBirdingConditionScore } from './api/weather.js';
 import { SpeciesSearch } from './services/species-search.js';
 import { getSeasonalInsights, getOptimalBirdingTimes, getCurrentSeason } from './services/seasonal-insights.js';
@@ -80,6 +80,12 @@ class BirdingHotspotsApp {
             // Address error
             addressError: document.getElementById('addressError'),
 
+            // Validation indicators
+            addressValidationIcon: document.getElementById('addressValidationIcon'),
+            routeStartValidationIcon: document.getElementById('routeStartValidationIcon'),
+            routeEndValidationIcon: document.getElementById('routeEndValidationIcon'),
+            endAddressValidationIcon: document.getElementById('endAddressValidationIcon'),
+
             // Results section
             resultsSection: document.getElementById('resultsSection'),
             resultsMeta: document.getElementById('resultsMeta'),
@@ -117,6 +123,12 @@ class BirdingHotspotsApp {
             useCurrentLocationEnd: document.getElementById('useCurrentLocationEnd'),
             routeMaxDetour: document.getElementById('routeMaxDetour'),
             routeMaxDetourValue: document.getElementById('routeMaxDetourValue'),
+            // Route preview elements
+            routePreviewSection: document.getElementById('routePreviewSection'),
+            routePreviewMap: document.getElementById('routePreviewMap'),
+            routeDistanceValue: document.getElementById('routeDistanceValue'),
+            routeDurationValue: document.getElementById('routeDurationValue'),
+            openRouteInGoogleMaps: document.getElementById('openRouteInGoogleMaps'),
             sortOptionsSection: document.getElementById('sortOptionsSection'),
             searchRangeSection: document.getElementById('searchRangeSection'),
             hotspotsCountSection: document.getElementById('hotspotsCountSection'),
@@ -180,6 +192,11 @@ class BirdingHotspotsApp {
         this.validatedRouteStartCoords = null;
         this.routeEndValidated = false;
         this.validatedRouteEndCoords = null;
+
+        // Route preview map
+        this.routePreviewMapInstance = null;
+        this.routePreviewLine = null;
+        this.routePreviewMarkers = [];
 
         // Track if search was cancelled
         this.searchCancelled = false;
@@ -453,6 +470,7 @@ class BirdingHotspotsApp {
         this.addressValidated = false;
         this.validatedCoords = null;
         this.clearAddressError();
+        this.hideValidationIndicator(this.elements.addressValidationIcon, this.elements.address);
     }
 
     /**
@@ -465,26 +483,25 @@ class BirdingHotspotsApp {
             this.hideMapPreview();
             this.addressValidated = false;
             this.validatedCoords = null;
+            this.hideValidationIndicator(this.elements.addressValidationIcon, this.elements.address);
             return;
         }
 
-        // Show "verifying" feedback
-        this.elements.addressError.textContent = 'Verifying address...';
-        this.elements.addressError.classList.remove('hidden');
-        this.elements.addressError.style.color = 'var(--text-secondary)';
-        this.elements.address.classList.remove('error');
+        // Show loading indicator
+        this.showValidationIndicator(this.elements.addressValidationIcon, this.elements.address, 'loading');
+        this.clearAddressError();
 
         try {
             const result = await geocodeAddress(address);
             this.addressValidated = true;
             this.validatedCoords = { lat: result.lat, lng: result.lng };
-            this.clearAddressError();
+            this.showValidationIndicator(this.elements.addressValidationIcon, this.elements.address, 'success');
             this.showMapPreview(result.lat, result.lng);
         } catch (error) {
             // Show error on blur if geocoding fails
             this.addressValidated = false;
             this.validatedCoords = null;
-            this.elements.addressError.style.color = ''; // Reset to default (error color)
+            this.showValidationIndicator(this.elements.addressValidationIcon, this.elements.address, 'error');
             this.showAddressError('Could not find this address. Please check and try again.');
             this.hideMapPreview();
         }
@@ -507,6 +524,46 @@ class BirdingHotspotsApp {
         this.elements.addressError.classList.add('hidden');
         this.elements.addressError.style.color = '';
         this.elements.address.classList.remove('error');
+    }
+
+    /**
+     * Show validation indicator with specified state
+     * @param {HTMLElement} iconElement - The indicator span element
+     * @param {HTMLElement} inputElement - The input element
+     * @param {'loading'|'success'|'error'} state - The validation state
+     */
+    showValidationIndicator(iconElement, inputElement, state) {
+        if (!iconElement) return;
+
+        // Clear previous state
+        iconElement.classList.remove('hidden', 'loading', 'success', 'error');
+        inputElement.classList.remove('success', 'error');
+
+        // Set icon content based on state
+        if (state === 'loading') {
+            iconElement.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 4V2A10 10 0 0 0 2 12h2a8 8 0 0 1 8-8z"/></svg>';
+            iconElement.classList.add('loading');
+        } else if (state === 'success') {
+            iconElement.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>';
+            iconElement.classList.add('success');
+            inputElement.classList.add('success');
+        } else if (state === 'error') {
+            iconElement.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>';
+            iconElement.classList.add('error');
+            inputElement.classList.add('error');
+        }
+    }
+
+    /**
+     * Hide validation indicator
+     * @param {HTMLElement} iconElement - The indicator span element
+     * @param {HTMLElement} inputElement - The input element
+     */
+    hideValidationIndicator(iconElement, inputElement) {
+        if (!iconElement) return;
+        iconElement.classList.add('hidden');
+        iconElement.classList.remove('loading', 'success', 'error');
+        inputElement.classList.remove('success', 'error');
     }
 
     /**
@@ -2763,6 +2820,7 @@ class BirdingHotspotsApp {
         this.endAddressValidated = false;
         this.validatedEndCoords = null;
         this.clearEndAddressError();
+        this.hideValidationIndicator(this.elements.endAddressValidationIcon, this.elements.endAddress);
     }
 
     /**
@@ -2774,24 +2832,23 @@ class BirdingHotspotsApp {
         if (address.length < 3) {
             this.endAddressValidated = false;
             this.validatedEndCoords = null;
+            this.hideValidationIndicator(this.elements.endAddressValidationIcon, this.elements.endAddress);
             return;
         }
 
-        // Show verifying feedback
-        this.elements.endAddressError.textContent = 'Verifying address...';
-        this.elements.endAddressError.classList.remove('hidden');
-        this.elements.endAddressError.style.color = 'var(--text-secondary)';
-        this.elements.endAddress.classList.remove('error');
+        // Show loading indicator
+        this.showValidationIndicator(this.elements.endAddressValidationIcon, this.elements.endAddress, 'loading');
+        this.clearEndAddressError();
 
         try {
             const result = await geocodeAddress(address);
             this.endAddressValidated = true;
             this.validatedEndCoords = { lat: result.lat, lng: result.lng };
-            this.clearEndAddressError();
+            this.showValidationIndicator(this.elements.endAddressValidationIcon, this.elements.endAddress, 'success');
         } catch (error) {
             this.endAddressValidated = false;
             this.validatedEndCoords = null;
-            this.elements.endAddressError.style.color = '';
+            this.showValidationIndicator(this.elements.endAddressValidationIcon, this.elements.endAddress, 'error');
             this.showEndAddressError('Could not find this address. Please check and try again.');
         }
     }
@@ -2822,6 +2879,8 @@ class BirdingHotspotsApp {
         this.routeStartValidated = false;
         this.validatedRouteStartCoords = null;
         this.clearRouteStartError();
+        this.hideRoutePreview();
+        this.hideValidationIndicator(this.elements.routeStartValidationIcon, this.elements.routeStartAddress);
     }
 
     /**
@@ -2833,24 +2892,25 @@ class BirdingHotspotsApp {
         if (address.length < 3) {
             this.routeStartValidated = false;
             this.validatedRouteStartCoords = null;
+            this.hideValidationIndicator(this.elements.routeStartValidationIcon, this.elements.routeStartAddress);
             return;
         }
 
-        // Show verifying feedback
-        this.elements.routeStartError.textContent = 'Verifying address...';
-        this.elements.routeStartError.classList.remove('hidden');
-        this.elements.routeStartError.style.color = 'var(--text-secondary)';
-        this.elements.routeStartAddress.classList.remove('error');
+        // Show loading indicator
+        this.showValidationIndicator(this.elements.routeStartValidationIcon, this.elements.routeStartAddress, 'loading');
+        this.clearRouteStartError();
 
         try {
             const result = await geocodeAddress(address);
             this.routeStartValidated = true;
             this.validatedRouteStartCoords = { lat: result.lat, lng: result.lng };
-            this.clearRouteStartError();
+            this.showValidationIndicator(this.elements.routeStartValidationIcon, this.elements.routeStartAddress, 'success');
+            // Try to show route preview if both addresses are validated
+            this.tryShowRoutePreview();
         } catch (error) {
             this.routeStartValidated = false;
             this.validatedRouteStartCoords = null;
-            this.elements.routeStartError.style.color = '';
+            this.showValidationIndicator(this.elements.routeStartValidationIcon, this.elements.routeStartAddress, 'error');
             this.showRouteStartError('Could not find this address. Please check and try again.');
         }
     }
@@ -2881,6 +2941,8 @@ class BirdingHotspotsApp {
         this.routeEndValidated = false;
         this.validatedRouteEndCoords = null;
         this.clearRouteEndError();
+        this.hideRoutePreview();
+        this.hideValidationIndicator(this.elements.routeEndValidationIcon, this.elements.routeEndAddress);
     }
 
     /**
@@ -2892,24 +2954,25 @@ class BirdingHotspotsApp {
         if (address.length < 3) {
             this.routeEndValidated = false;
             this.validatedRouteEndCoords = null;
+            this.hideValidationIndicator(this.elements.routeEndValidationIcon, this.elements.routeEndAddress);
             return;
         }
 
-        // Show verifying feedback
-        this.elements.routeEndError.textContent = 'Verifying address...';
-        this.elements.routeEndError.classList.remove('hidden');
-        this.elements.routeEndError.style.color = 'var(--text-secondary)';
-        this.elements.routeEndAddress.classList.remove('error');
+        // Show loading indicator
+        this.showValidationIndicator(this.elements.routeEndValidationIcon, this.elements.routeEndAddress, 'loading');
+        this.clearRouteEndError();
 
         try {
             const result = await geocodeAddress(address);
             this.routeEndValidated = true;
             this.validatedRouteEndCoords = { lat: result.lat, lng: result.lng };
-            this.clearRouteEndError();
+            this.showValidationIndicator(this.elements.routeEndValidationIcon, this.elements.routeEndAddress, 'success');
+            // Try to show route preview if both addresses are validated
+            this.tryShowRoutePreview();
         } catch (error) {
             this.routeEndValidated = false;
             this.validatedRouteEndCoords = null;
-            this.elements.routeEndError.style.color = '';
+            this.showValidationIndicator(this.elements.routeEndValidationIcon, this.elements.routeEndAddress, 'error');
             this.showRouteEndError('Could not find this address. Please check and try again.');
         }
     }
@@ -2931,6 +2994,104 @@ class BirdingHotspotsApp {
         this.elements.routeEndError.classList.add('hidden');
         this.elements.routeEndError.style.color = '';
         this.elements.routeEndAddress.classList.remove('error');
+    }
+
+    /**
+     * Try to show route preview if both addresses are validated
+     */
+    tryShowRoutePreview() {
+        if (this.routeStartValidated && this.routeEndValidated) {
+            this.showRoutePreview();
+        }
+    }
+
+    /**
+     * Show route preview map with route line and stats
+     */
+    async showRoutePreview() {
+        // Only show if both addresses are validated
+        if (!this.routeStartValidated || !this.routeEndValidated) {
+            return;
+        }
+
+        const start = this.validatedRouteStartCoords;
+        const end = this.validatedRouteEndCoords;
+
+        // Get route from OSRM
+        const route = await getRouteThrough([
+            { lat: start.lat, lng: start.lng },
+            { lat: end.lat, lng: end.lng }
+        ]);
+
+        if (!route) {
+            return; // Silently fail if routing unavailable
+        }
+
+        // Show section
+        this.elements.routePreviewSection.classList.remove('hidden');
+
+        // Update stats
+        const distanceMiles = (route.totalDistance * 0.621371).toFixed(1);
+        this.elements.routeDistanceValue.textContent = distanceMiles;
+        this.elements.routeDurationValue.textContent = formatDuration(route.totalDuration);
+
+        // Update Google Maps link
+        this.elements.openRouteInGoogleMaps.href = getGoogleMapsDirectionsUrl(
+            start.lat, start.lng, end.lat, end.lng
+        );
+
+        // Initialize or update map
+        if (!this.routePreviewMapInstance) {
+            this.routePreviewMapInstance = L.map(this.elements.routePreviewMap);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap'
+            }).addTo(this.routePreviewMapInstance);
+        }
+
+        // Clear previous route line and markers
+        if (this.routePreviewLine) {
+            this.routePreviewMapInstance.removeLayer(this.routePreviewLine);
+        }
+        this.routePreviewMarkers.forEach(m => this.routePreviewMapInstance.removeLayer(m));
+        this.routePreviewMarkers = [];
+
+        // Add route line (GeoJSON)
+        this.routePreviewLine = L.geoJSON(route.geometry, {
+            style: { color: '#2E7D32', weight: 4, opacity: 0.8 }
+        }).addTo(this.routePreviewMapInstance);
+
+        // Add start marker (green)
+        const startMarker = L.circleMarker([start.lat, start.lng], {
+            radius: 8, fillColor: '#22c55e', color: '#fff', weight: 2, fillOpacity: 1
+        }).addTo(this.routePreviewMapInstance);
+        this.routePreviewMarkers.push(startMarker);
+
+        // Add end marker (red)
+        const endMarker = L.circleMarker([end.lat, end.lng], {
+            radius: 8, fillColor: '#ef4444', color: '#fff', weight: 2, fillOpacity: 1
+        }).addTo(this.routePreviewMapInstance);
+        this.routePreviewMarkers.push(endMarker);
+
+        // Fit map to route bounds
+        const bounds = this.routePreviewLine.getBounds();
+        this.routePreviewMapInstance.fitBounds(bounds, { padding: [20, 20] });
+
+        // Force resize
+        setTimeout(() => this.routePreviewMapInstance?.invalidateSize(), 100);
+    }
+
+    /**
+     * Hide route preview and clean up map resources
+     */
+    hideRoutePreview() {
+        this.elements.routePreviewSection.classList.add('hidden');
+        // Clean up map resources
+        if (this.routePreviewMapInstance) {
+            this.routePreviewMapInstance.remove();
+            this.routePreviewMapInstance = null;
+            this.routePreviewLine = null;
+            this.routePreviewMarkers = [];
+        }
     }
 
     /**
@@ -2965,19 +3126,27 @@ class BirdingHotspotsApp {
             // Fill input with address or coordinates
             input.value = address || `${position.lat.toFixed(6)}, ${position.lng.toFixed(6)}`;
 
-            // Store validated coordinates
+            // Store validated coordinates and show success indicator
             if (target === 'start') {
                 this.routeStartValidated = true;
                 this.validatedRouteStartCoords = { lat: position.lat, lng: position.lng };
                 this.clearRouteStartError();
+                this.showValidationIndicator(this.elements.routeStartValidationIcon, this.elements.routeStartAddress, 'success');
             } else {
                 this.routeEndValidated = true;
                 this.validatedRouteEndCoords = { lat: position.lat, lng: position.lng };
                 this.clearRouteEndError();
+                this.showValidationIndicator(this.elements.routeEndValidationIcon, this.elements.routeEndAddress, 'success');
             }
+
+            // Try to show route preview if both addresses are validated
+            this.tryShowRoutePreview();
 
         } catch (error) {
             const showError = target === 'start' ? this.showRouteStartError.bind(this) : this.showRouteEndError.bind(this);
+            const iconElement = target === 'start' ? this.elements.routeStartValidationIcon : this.elements.routeEndValidationIcon;
+            const inputElement = target === 'start' ? this.elements.routeStartAddress : this.elements.routeEndAddress;
+            this.showValidationIndicator(iconElement, inputElement, 'error');
             showError(error.message || 'Could not get your location');
         } finally {
             button.disabled = false;
