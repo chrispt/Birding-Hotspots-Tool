@@ -852,6 +852,43 @@ body {
     cursor: not-allowed;
 }
 
+/* Map popup toggle button */
+.popup-toggle-btn {
+    margin-top: 8px;
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    background: var(--primary-color);
+    color: white;
+    transition: background 0.2s;
+}
+
+.popup-toggle-btn:hover {
+    background: var(--primary-hover);
+}
+
+.popup-toggle-btn .add-text {
+    display: none;
+}
+
+.popup-toggle-btn .remove-text {
+    display: inline;
+}
+
+.popup-toggle-btn:not(.selected) {
+    background: #9E9E9E;
+}
+
+.popup-toggle-btn:not(.selected) .add-text {
+    display: inline;
+}
+
+.popup-toggle-btn:not(.selected) .remove-text {
+    display: none;
+}
+
 @media (max-width: 480px) {
     .route-hotspots-footer {
         flex-direction: column;

@@ -2062,17 +2062,55 @@ class BirdingHotspotsApp {
             });
             this.routePreviewMarkers = this.routePreviewMarkers.slice(0, 2);
 
+            // Store hotspot markers separately for selection sync
+            this.routeHotspotMarkers = [];
+
             // Add markers for found hotspots with species count
-            hotspots.forEach(h => {
+            hotspots.forEach((h, index) => {
                 const marker = L.circleMarker([h.lat, h.lng], {
-                    radius: 8,
-                    fillColor: '#FF5722',
+                    radius: 10,
+                    fillColor: '#2E7D32', // Green = selected (all start selected)
                     color: '#fff',
                     weight: 2,
                     fillOpacity: 0.9
-                }).bindPopup(`<strong>${h.name}</strong><br>${h.speciesCount} species`)
-                  .addTo(this.routePreviewMapInstance);
+                }).addTo(this.routePreviewMapInstance);
+
+                // Store index for click handler
+                marker.hotspotIndex = index;
+
+                // Create popup with add/remove button
+                const popupContent = document.createElement('div');
+                popupContent.className = 'hotspot-popup';
+                popupContent.innerHTML = `
+                    <strong>${h.name}</strong><br>
+                    ${h.speciesCount} species<br>
+                    <button class="popup-toggle-btn selected" data-index="${index}">
+                        <span class="add-text">Add to itinerary</span>
+                        <span class="remove-text">Remove from itinerary</span>
+                    </button>
+                `;
+
+                marker.bindPopup(popupContent);
+
+                // Click on marker toggles selection
+                marker.on('click', () => {
+                    this.toggleRouteHotspotFromMap(index);
+                });
+
                 this.routePreviewMarkers.push(marker);
+                this.routeHotspotMarkers.push(marker);
+            });
+
+            // Handle popup button clicks
+            this.routePreviewMapInstance.on('popupopen', (e) => {
+                const btn = e.popup.getElement().querySelector('.popup-toggle-btn');
+                if (btn) {
+                    btn.addEventListener('click', (evt) => {
+                        const idx = parseInt(evt.currentTarget.dataset.index);
+                        this.toggleRouteHotspotFromMap(idx);
+                        e.popup.close();
+                    });
+                }
             });
 
             // Re-fit bounds to include all markers
@@ -2158,12 +2196,54 @@ class BirdingHotspotsApp {
      */
     toggleRouteHotspotSelection(card) {
         const input = card.querySelector('input');
+        const index = parseInt(card.dataset.index);
         if (input.checked) {
             card.classList.add('selected');
         } else {
             card.classList.remove('selected');
         }
+        // Sync with map marker
+        this.updateMapMarkerStyle(index, input.checked);
         this.updateRouteHotspotsCount();
+    }
+
+    /**
+     * Toggle hotspot selection from map click
+     * @param {number} index - Hotspot index
+     */
+    toggleRouteHotspotFromMap(index) {
+        // Find the card and toggle it
+        const card = this.elements.routeHotspotsList.querySelector(`.route-hotspot-card[data-index="${index}"]`);
+        if (card) {
+            const input = card.querySelector('input');
+            input.checked = !input.checked;
+            if (input.checked) {
+                card.classList.add('selected');
+            } else {
+                card.classList.remove('selected');
+            }
+            // Update map marker style
+            this.updateMapMarkerStyle(index, input.checked);
+            this.updateRouteHotspotsCount();
+
+            // Scroll card into view
+            card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    }
+
+    /**
+     * Update map marker style based on selection state
+     * @param {number} index - Hotspot index
+     * @param {boolean} selected - Whether selected
+     */
+    updateMapMarkerStyle(index, selected) {
+        if (this.routeHotspotMarkers && this.routeHotspotMarkers[index]) {
+            const marker = this.routeHotspotMarkers[index];
+            marker.setStyle({
+                fillColor: selected ? '#2E7D32' : '#9E9E9E', // Green if selected, gray if not
+                fillOpacity: selected ? 0.9 : 0.6
+            });
+        }
     }
 
     /**
@@ -2180,9 +2260,10 @@ class BirdingHotspotsApp {
      */
     selectAllRouteHotspots() {
         const cards = this.elements.routeHotspotsList.querySelectorAll('.route-hotspot-card');
-        cards.forEach(card => {
+        cards.forEach((card, i) => {
             card.classList.add('selected');
             card.querySelector('input').checked = true;
+            this.updateMapMarkerStyle(i, true);
         });
         this.updateRouteHotspotsCount();
     }
@@ -2192,9 +2273,10 @@ class BirdingHotspotsApp {
      */
     deselectAllRouteHotspots() {
         const cards = this.elements.routeHotspotsList.querySelectorAll('.route-hotspot-card');
-        cards.forEach(card => {
+        cards.forEach((card, i) => {
             card.classList.remove('selected');
             card.querySelector('input').checked = false;
+            this.updateMapMarkerStyle(i, false);
         });
         this.updateRouteHotspotsCount();
     }
@@ -2474,6 +2556,7 @@ class BirdingHotspotsApp {
             this.resultsMapInstance = null;
         }
         this.resultsMarkers = [];
+        this.itineraryRouteLine = null;
 
         // Create map centered on first stop
         const firstStop = itinerary.stops[0];
@@ -2483,27 +2566,37 @@ class BirdingHotspotsApp {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(this.resultsMapInstance);
 
+        // Build bounds from all stops
+        const bounds = L.latLngBounds(itinerary.stops.map(s => [s.lat, s.lng]));
+
         // Add route line if geometry available
-        if (itinerary.geometry && itinerary.geometry.coordinates) {
+        if (itinerary.geometry && itinerary.geometry.coordinates && itinerary.geometry.coordinates.length > 0) {
             const routeCoords = itinerary.geometry.coordinates.map(c => [c[1], c[0]]);
             this.itineraryRouteLine = L.polyline(routeCoords, {
-                color: '#2563eb',
-                weight: 4,
+                color: '#2E7D32',
+                weight: 5,
                 opacity: 0.8
             }).addTo(this.resultsMapInstance);
+
+            // Extend bounds to include the entire route line
+            bounds.extend(this.itineraryRouteLine.getBounds());
         }
 
         // Add markers for each stop
-        itinerary.stops.forEach((stop, index) => {
+        let hotspotNum = 1;
+        itinerary.stops.forEach(stop => {
             const isHotspot = stop.type === 'hotspot';
             const markerColor = stop.type === 'start' ? '#22c55e' :
-                stop.type === 'end' ? '#ef4444' : '#2563eb';
+                stop.type === 'end' ? '#ef4444' : '#FF5722';
+
+            const label = stop.type === 'start' ? 'S' :
+                stop.type === 'end' ? 'E' : hotspotNum++;
 
             const icon = L.divIcon({
                 className: 'route-marker',
-                html: `<div style="background-color: ${markerColor}; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 12px;">${isHotspot ? index : ''}</div>`,
-                iconSize: [24, 24],
-                iconAnchor: [12, 12]
+                html: `<div style="background-color: ${markerColor}; width: 28px; height: 28px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 12px;">${label}</div>`,
+                iconSize: [28, 28],
+                iconAnchor: [14, 14]
             });
 
             const marker = L.marker([stop.lat, stop.lng], { icon })
@@ -2513,16 +2606,16 @@ class BirdingHotspotsApp {
             this.resultsMarkers.push(marker);
         });
 
-        // Fit bounds to show all stops
-        const bounds = L.latLngBounds(itinerary.stops.map(s => [s.lat, s.lng]));
-        this.resultsMapInstance.fitBounds(bounds, { padding: [30, 30] });
+        // Fit bounds to show everything with padding
+        this.resultsMapInstance.fitBounds(bounds, { padding: [40, 40] });
 
-        // Force recalculate size
+        // Force recalculate size and re-fit bounds after delay
         setTimeout(() => {
             if (this.resultsMapInstance) {
                 this.resultsMapInstance.invalidateSize();
+                this.resultsMapInstance.fitBounds(bounds, { padding: [40, 40] });
             }
-        }, 100);
+        }, 200);
     }
 
     /**
