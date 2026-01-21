@@ -108,6 +108,7 @@ class BirdingHotspotsApp {
             endLocationSelect: document.getElementById('endLocationSelect'),
             endLocationInputs: document.getElementById('endLocationInputs'),
             endAddress: document.getElementById('endAddress'),
+            endAddressError: document.getElementById('endAddressError'),
             maxStops: document.getElementById('maxStops'),
             maxStopsValue: document.getElementById('maxStopsValue'),
             generateItinerary: document.getElementById('generateItinerary'),
@@ -147,6 +148,10 @@ class BirdingHotspotsApp {
         // Track if address has been validated
         this.addressValidated = false;
         this.validatedCoords = null;
+
+        // Track if end address has been validated (for itinerary)
+        this.endAddressValidated = false;
+        this.validatedEndCoords = null;
 
         // Track if search was cancelled
         this.searchCancelled = false;
@@ -256,6 +261,8 @@ class BirdingHotspotsApp {
         this.elements.buildItineraryBtn.addEventListener('click', () => this.toggleItineraryPanel());
         this.elements.closeItineraryPanel.addEventListener('click', () => this.hideItineraryPanel());
         this.elements.endLocationSelect.addEventListener('change', () => this.handleEndLocationChange());
+        this.elements.endAddress.addEventListener('input', () => this.handleEndAddressInputChange());
+        this.elements.endAddress.addEventListener('blur', () => this.handleEndAddressBlur());
         this.elements.maxStops.addEventListener('input', () => {
             this.elements.maxStopsValue.textContent = this.elements.maxStops.value;
         });
@@ -2178,7 +2185,70 @@ class BirdingHotspotsApp {
             this.elements.endLocationInputs.classList.remove('hidden');
         } else {
             this.elements.endLocationInputs.classList.add('hidden');
+            // Clear validation state when switching back to round trip
+            this.endAddressValidated = false;
+            this.validatedEndCoords = null;
+            this.clearEndAddressError();
         }
+    }
+
+    /**
+     * Handle end address input change - clear validation state
+     */
+    handleEndAddressInputChange() {
+        this.endAddressValidated = false;
+        this.validatedEndCoords = null;
+        this.clearEndAddressError();
+    }
+
+    /**
+     * Handle end address blur - validate and geocode
+     */
+    async handleEndAddressBlur() {
+        const address = this.elements.endAddress.value.trim();
+
+        if (address.length < 3) {
+            this.endAddressValidated = false;
+            this.validatedEndCoords = null;
+            return;
+        }
+
+        // Show verifying feedback
+        this.elements.endAddressError.textContent = 'Verifying address...';
+        this.elements.endAddressError.classList.remove('hidden');
+        this.elements.endAddressError.style.color = 'var(--text-secondary)';
+        this.elements.endAddress.classList.remove('error');
+
+        try {
+            const result = await geocodeAddress(address);
+            this.endAddressValidated = true;
+            this.validatedEndCoords = { lat: result.lat, lng: result.lng };
+            this.clearEndAddressError();
+        } catch (error) {
+            this.endAddressValidated = false;
+            this.validatedEndCoords = null;
+            this.elements.endAddressError.style.color = '';
+            this.showEndAddressError('Could not find this address. Please check and try again.');
+        }
+    }
+
+    /**
+     * Show inline end address error
+     */
+    showEndAddressError(message) {
+        this.elements.endAddressError.textContent = message;
+        this.elements.endAddressError.classList.remove('hidden');
+        this.elements.endAddress.classList.add('error');
+    }
+
+    /**
+     * Clear inline end address error
+     */
+    clearEndAddressError() {
+        this.elements.endAddressError.textContent = '';
+        this.elements.endAddressError.classList.add('hidden');
+        this.elements.endAddressError.style.color = '';
+        this.elements.endAddress.classList.remove('error');
     }
 
     /**
@@ -2210,12 +2280,18 @@ class BirdingHotspotsApp {
                 this.showError('Please enter an end address.');
                 return;
             }
-            try {
-                const endCoords = await geocodeAddress(endAddr);
-                end = { lat: endCoords.lat, lng: endCoords.lng, address: endAddr };
-            } catch (e) {
-                this.showError('Could not find end address. Please check and try again.');
-                return;
+
+            // Use pre-validated coords if available, otherwise geocode
+            if (this.endAddressValidated && this.validatedEndCoords) {
+                end = { lat: this.validatedEndCoords.lat, lng: this.validatedEndCoords.lng, address: endAddr };
+            } else {
+                try {
+                    const endCoords = await geocodeAddress(endAddr);
+                    end = { lat: endCoords.lat, lng: endCoords.lng, address: endAddr };
+                } catch (e) {
+                    this.showError('Could not find end address. Please check and try again.');
+                    return;
+                }
             }
         }
 
