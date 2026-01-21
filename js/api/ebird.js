@@ -170,6 +170,57 @@ export class EBirdAPI {
             throw error;
         }
     }
+
+    /**
+     * Get eBird taxonomy (species list)
+     * @param {string} locale - Language code (default 'en')
+     * @returns {Promise<Array>} Array of species objects
+     */
+    async getTaxonomy(locale = 'en') {
+        const data = await this.fetchWithAuth('/ref/taxonomy/ebird', {
+            fmt: 'json',
+            locale
+        });
+        return data || [];
+    }
+
+    /**
+     * Get recent observations of a specific species near a location
+     * @param {string} speciesCode - eBird species code (e.g., 'blujay')
+     * @param {number} lat - Latitude
+     * @param {number} lng - Longitude
+     * @param {number} dist - Search radius in km (max 50)
+     * @param {number} back - Days back to search (max 30)
+     * @returns {Promise<Array>} Array of observation objects
+     */
+    async getRecentSpeciesObservations(speciesCode, lat, lng, dist = 50, back = 30) {
+        const data = await this.fetchWithAuth(`/data/obs/geo/recent/${speciesCode}`, {
+            lat: lat.toFixed(2),
+            lng: lng.toFixed(2),
+            dist: Math.min(dist, 50),
+            back: Math.min(Math.max(back, 1), 30)
+        });
+        return data || [];
+    }
+
+    /**
+     * Get nearest observations of a specific species
+     * @param {string} speciesCode - eBird species code
+     * @param {number} lat - Latitude
+     * @param {number} lng - Longitude
+     * @param {number} back - Days back to search (max 30)
+     * @param {number} maxResults - Maximum results to return
+     * @returns {Promise<Array>} Array of observation objects
+     */
+    async getNearestSpeciesObservations(speciesCode, lat, lng, back = 30, maxResults = 20) {
+        const data = await this.fetchWithAuth(`/data/nearest/geo/recent/${speciesCode}`, {
+            lat: lat.toFixed(2),
+            lng: lng.toFixed(2),
+            back: Math.min(Math.max(back, 1), 30),
+            maxResults
+        });
+        return data || [];
+    }
 }
 
 /**

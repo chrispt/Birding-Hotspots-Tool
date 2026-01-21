@@ -166,5 +166,29 @@ export const storage = {
         } catch (e) {
             return false;
         }
+    },
+
+    /**
+     * Get temperature unit preference
+     * @returns {string} 'F' for Fahrenheit, 'C' for Celsius
+     */
+    getTemperatureUnit() {
+        try {
+            return localStorage.getItem('birding_temp_unit') || 'F';
+        } catch (e) {
+            return 'F';
+        }
+    },
+
+    /**
+     * Set temperature unit preference
+     * @param {string} unit - 'F' or 'C'
+     */
+    setTemperatureUnit(unit) {
+        try {
+            localStorage.setItem('birding_temp_unit', unit === 'C' ? 'C' : 'F');
+        } catch (e) {
+            console.warn('Could not save temperature unit:', e);
+        }
     }
 };

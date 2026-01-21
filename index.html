@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Find nearby birding hotspots and generate PDF reports with species lists">
     <!-- Security headers -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com https://cdnjs.cloudflare.com https://vercel.live; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' https: data:; connect-src 'self' https://api.ebird.org https://us1.locationiq.com https://*.tile.openstreetmap.org https://router.project-osrm.org https://unpkg.com https://cdnjs.cloudflare.com; font-src 'self';">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com https://cdnjs.cloudflare.com https://vercel.live; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' https: data:; connect-src 'self' https://api.ebird.org https://us1.locationiq.com https://*.tile.openstreetmap.org https://router.project-osrm.org https://api.open-meteo.com https://unpkg.com https://cdnjs.cloudflare.com; font-src 'self';">
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <title>Birding Hotspots Finder</title>
@@ -82,7 +82,7 @@
                 <!-- Address Input -->
                 <div id="addressInput" class="input-group">
                     <label for="address" class="input-label">Enter Address</label>
-                    <input type="text" id="address" class="text-input" placeholder="123 Main St, City, State">
+                    <input type="text" id="address" class="text-input" placeholder="123 Main St, City, State" aria-label="Enter your address">
                     <div id="addressError" class="input-error hidden"></div>
                 </div>
 
@@ -91,11 +91,11 @@
                     <div class="gps-fields">
                         <div class="gps-field">
                             <label for="latitude" class="input-label">Latitude</label>
-                            <input type="text" id="latitude" class="text-input" placeholder="40.7128" inputmode="decimal" autocomplete="off">
+                            <input type="text" id="latitude" class="text-input" placeholder="40.7128" inputmode="decimal" autocomplete="off" aria-label="Latitude coordinate">
                         </div>
                         <div class="gps-field">
                             <label for="longitude" class="input-label">Longitude</label>
-                            <input type="text" id="longitude" class="text-input" placeholder="-74.0060" inputmode="decimal" autocomplete="off">
+                            <input type="text" id="longitude" class="text-input" placeholder="-74.0060" inputmode="decimal" autocomplete="off" aria-label="Longitude coordinate">
                         </div>
                     </div>
                 </div>
@@ -136,7 +136,7 @@
                     </a>
                 </h2>
                 <div class="input-group">
-                    <input type="password" id="apiKey" class="text-input" placeholder="Enter your eBird API key">
+                    <input type="password" id="apiKey" class="text-input" placeholder="Enter your eBird API key" aria-label="eBird API key">
                     <button type="button" id="toggleApiKey" class="btn-icon" title="Show/hide API key">
                         <svg id="eyeIcon" viewBox="0 0 24 24" width="20" height="20">
                             <path fill="currentColor" d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
@@ -150,8 +150,41 @@
                 </label>
             </section>
 
-            <!-- Sort Options Section -->
+            <!-- Search Mode Toggle -->
             <section class="card">
+                <div class="search-mode-toggle" role="tablist" aria-label="Search mode">
+                    <button type="button" class="search-mode-btn active" id="hotspotModeBtn" role="tab" aria-selected="true">
+                        Find Hotspots
+                    </button>
+                    <button type="button" class="search-mode-btn" id="speciesModeBtn" role="tab" aria-selected="false">
+                        Find a Species
+                    </button>
+                </div>
+
+                <!-- Species Search Panel (hidden by default) -->
+                <div id="speciesSearchPanel" class="hidden">
+                    <h2 class="section-title">
+                        <svg viewBox="0 0 24 24" width="20" height="20" style="fill: var(--primary-color); margin-right: 4px;">
+                            <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                        </svg>
+                        Search for a Bird Species
+                    </h2>
+                    <div class="species-search-container">
+                        <span class="species-search-icon">
+                            <svg viewBox="0 0 24 24" width="18" height="18">
+                                <path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                            </svg>
+                        </span>
+                        <input type="text" id="speciesSearchInput" class="species-search-input" placeholder="Start typing a bird name..." autocomplete="off" aria-label="Search for a bird species">
+                        <div id="speciesDropdown" class="species-dropdown hidden"></div>
+                    </div>
+                    <div id="selectedSpecies" class="selected-species hidden"></div>
+                    <p class="help-text">Search by common or scientific name</p>
+                </div>
+            </section>
+
+            <!-- Sort Options Section (for hotspot mode) -->
+            <section id="sortOptionsSection" class="card">
                 <h2 class="section-title">Sort Hotspots By</h2>
                 <div class="sort-options">
                     <label class="radio-label radio-card">
@@ -255,6 +288,7 @@
                     <div class="results-summary">
                         <h2 class="results-title">Search Results</h2>
                         <p id="resultsMeta" class="results-meta"></p>
+                        <div id="weatherSummary" class="weather-summary hidden"></div>
                     </div>
                     <div class="sort-toggle" role="group" aria-label="Sort results">
                         <button type="button" id="sortBySpecies" class="sort-btn active">
@@ -280,8 +314,110 @@
                             </svg>
                             Export to PDF
                         </button>
+                        <button type="button" id="buildItineraryBtn" class="btn btn-accent">
+                            <svg viewBox="0 0 24 24" width="18" height="18">
+                                <path fill="currentColor" d="M21.71 11.29l-9-9c-.39-.39-1.02-.39-1.41 0l-9 9c-.39.39-.39 1.02 0 1.41l9 9c.39.39 1.02.39 1.41 0l9-9c.39-.38.39-1.01 0-1.41zM14 14.5V12h-4v3H8v-4c0-.55.45-1 1-1h5V7.5l3.5 3.5-3.5 3.5z"/>
+                            </svg>
+                            Build Itinerary
+                        </button>
                     </div>
                 </div>
+
+                <!-- Itinerary Panel (hidden by default) -->
+                <div id="itineraryPanel" class="itinerary-panel hidden">
+                    <div class="itinerary-header">
+                        <h3>Build Your Birding Itinerary</h3>
+                        <button type="button" id="closeItineraryPanel" class="btn-icon" title="Close">
+                            <svg viewBox="0 0 24 24" width="20" height="20">
+                                <path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div class="itinerary-options">
+                        <div class="itinerary-option">
+                            <label for="endLocationSelect" class="input-label">End Location</label>
+                            <select id="endLocationSelect" class="select-input">
+                                <option value="same">Return to start (round trip)</option>
+                                <option value="different">Different end location</option>
+                            </select>
+                        </div>
+
+                        <div id="endLocationInputs" class="itinerary-option hidden">
+                            <label for="endAddress" class="input-label">End Address</label>
+                            <input type="text" id="endAddress" class="text-input" placeholder="Enter end address" aria-label="End location address">
+                        </div>
+
+                        <div class="itinerary-option">
+                            <label class="input-label">Optimization Priority</label>
+                            <div class="radio-group">
+                                <label class="radio-label">
+                                    <input type="radio" name="itineraryPriority" value="balanced" checked>
+                                    <span class="radio-custom"></span>
+                                    Balanced
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="itineraryPriority" value="species">
+                                    <span class="radio-custom"></span>
+                                    Most Species
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="itineraryPriority" value="distance">
+                                    <span class="radio-custom"></span>
+                                    Shortest Route
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="itinerary-option">
+                            <label for="maxStops" class="input-label">Maximum Stops: <span id="maxStopsValue">5</span></label>
+                            <input type="range" id="maxStops" class="range-input" min="3" max="10" value="5" aria-label="Maximum number of stops">
+                        </div>
+
+                        <button type="button" id="generateItinerary" class="btn btn-accent btn-large">
+                            <svg viewBox="0 0 24 24" width="20" height="20">
+                                <path fill="currentColor" d="M21.71 11.29l-9-9c-.39-.39-1.02-.39-1.41 0l-9 9c-.39.39-.39 1.02 0 1.41l9 9c.39.39 1.02.39 1.41 0l9-9c.39-.38.39-1.01 0-1.41zM14 14.5V12h-4v3H8v-4c0-.55.45-1 1-1h5V7.5l3.5 3.5-3.5 3.5z"/>
+                            </svg>
+                            Generate Optimized Route
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Itinerary Results (hidden by default) -->
+                <div id="itineraryResults" class="itinerary-results hidden">
+                    <div class="itinerary-summary" id="itinerarySummary">
+                        <!-- Dynamically populated -->
+                    </div>
+                    <div class="itinerary-export-buttons">
+                        <button type="button" id="exportItineraryPdf" class="btn btn-primary">
+                            <svg viewBox="0 0 24 24" width="16" height="16">
+                                <path fill="currentColor" d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
+                            </svg>
+                            Export PDF
+                        </button>
+                        <button type="button" id="exportItineraryGpx" class="btn btn-secondary">
+                            <svg viewBox="0 0 24 24" width="16" height="16">
+                                <path fill="currentColor" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                            </svg>
+                            Export GPX
+                        </button>
+                        <button type="button" id="backToResults" class="btn btn-secondary">
+                            <svg viewBox="0 0 24 24" width="16" height="16">
+                                <path fill="currentColor" d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+                            </svg>
+                            Back to Results
+                        </button>
+                    </div>
+                    <div id="itineraryStops" class="itinerary-stops">
+                        <!-- Dynamically populated -->
+                    </div>
+                </div>
+
+                <!-- Rare Bird Alert Container (dynamically populated) -->
+                <div id="rareBirdAlert" class="hidden"></div>
+
+                <!-- Migration Alert Container (dynamically populated) -->
+                <div id="migrationAlert" class="hidden"></div>
 
                 <!-- Results Map -->
                 <div class="results-map-container">

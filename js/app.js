@@ -13,6 +13,11 @@ import { reverseGeocode, batchReverseGeocode } from './api/reverse-geo.js';
 import { EBirdAPI, processObservations } from './api/ebird.js';
 import { generatePDFReport, downloadPDF } from './services/pdf-generator.js';
 import { getDrivingRoutes } from './api/routing.js';
+import { getWeatherForLocations, getOverallBirdingConditions, getBirdingConditionScore } from './api/weather.js';
+import { SpeciesSearch } from './services/species-search.js';
+import { getSeasonalInsights, getOptimalBirdingTimes, getCurrentSeason } from './services/seasonal-insights.js';
+import { buildItinerary, formatItineraryDuration, formatItineraryTime } from './services/itinerary-builder.js';
+import { generateGPX, downloadGPX } from './services/gpx-generator.js';
 
 /**
  * Main application class
@@ -84,8 +89,44 @@ class BirdingHotspotsApp {
             sortBySpecies: document.getElementById('sortBySpecies'),
             sortByDistance: document.getElementById('sortByDistance'),
             sortByDriving: document.getElementById('sortByDriving'),
-            resultsMap: document.getElementById('resultsMap')
+            resultsMap: document.getElementById('resultsMap'),
+            rareBirdAlert: document.getElementById('rareBirdAlert'),
+            weatherSummary: document.getElementById('weatherSummary'),
+            migrationAlert: document.getElementById('migrationAlert'),
+            // Species search elements
+            hotspotModeBtn: document.getElementById('hotspotModeBtn'),
+            speciesModeBtn: document.getElementById('speciesModeBtn'),
+            speciesSearchPanel: document.getElementById('speciesSearchPanel'),
+            speciesSearchInput: document.getElementById('speciesSearchInput'),
+            speciesDropdown: document.getElementById('speciesDropdown'),
+            selectedSpecies: document.getElementById('selectedSpecies'),
+            sortOptionsSection: document.getElementById('sortOptionsSection'),
+            // Itinerary elements
+            buildItineraryBtn: document.getElementById('buildItineraryBtn'),
+            itineraryPanel: document.getElementById('itineraryPanel'),
+            closeItineraryPanel: document.getElementById('closeItineraryPanel'),
+            endLocationSelect: document.getElementById('endLocationSelect'),
+            endLocationInputs: document.getElementById('endLocationInputs'),
+            endAddress: document.getElementById('endAddress'),
+            maxStops: document.getElementById('maxStops'),
+            maxStopsValue: document.getElementById('maxStopsValue'),
+            generateItinerary: document.getElementById('generateItinerary'),
+            itineraryResults: document.getElementById('itineraryResults'),
+            itinerarySummary: document.getElementById('itinerarySummary'),
+            itineraryStops: document.getElementById('itineraryStops'),
+            exportItineraryPdf: document.getElementById('exportItineraryPdf'),
+            exportItineraryGpx: document.getElementById('exportItineraryGpx'),
+            backToResults: document.getElementById('backToResults')
         };
+
+        // Temperature unit preference (true = Fahrenheit, false = Celsius)
+        this.useFahrenheit = storage.getTemperatureUnit() !== 'C';
+
+        // Species search
+        this.speciesSearch = null; // Initialized when API key is available
+        this.selectedSpeciesData = null;
+        this.searchMode = 'hotspot'; // 'hotspot' or 'species'
+        this.speciesSearchDebounceTimer = null;
 
         // Debounce timer for address input
         this.addressDebounceTimer = null;
@@ -93,6 +134,9 @@ class BirdingHotspotsApp {
         // Store results for PDF export
         this.currentResults = null;
         this.currentSortMethod = null;
+
+        // Store notable observations for rare bird alerts
+        this.notableObservations = [];
 
         // Leaflet map instances
         this.previewMap = null;
@@ -106,6 +150,10 @@ class BirdingHotspotsApp {
 
         // Track if search was cancelled
         this.searchCancelled = false;
+
+        // Itinerary state
+        this.currentItinerary = null;
+        this.itineraryRouteLine = null;
 
         this.initializeEventListeners();
         this.loadSavedData();
@@ -169,11 +217,52 @@ class BirdingHotspotsApp {
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 this.hideSaveFavoriteModal();
+                this.hideSpeciesDropdown();
             }
             if (e.key === 'Enter' && !this.elements.saveFavoriteModal.classList.contains('hidden')) {
                 this.handleSaveFavorite();
             }
         });
+
+        // Search mode toggle
+        this.elements.hotspotModeBtn.addEventListener('click', () => this.setSearchMode('hotspot'));
+        this.elements.speciesModeBtn.addEventListener('click', () => this.setSearchMode('species'));
+
+        // Species search input
+        this.elements.speciesSearchInput.addEventListener('input', () => this.handleSpeciesSearchInput());
+        this.elements.speciesSearchInput.addEventListener('focus', () => this.handleSpeciesSearchFocus());
+
+        // Click outside to close species dropdown
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.species-search-container')) {
+                this.hideSpeciesDropdown();
+            }
+        });
+
+        // Event delegation for species dropdown items (avoids memory leak from individual listeners)
+        this.elements.speciesDropdown.addEventListener('click', (e) => {
+            const option = e.target.closest('.species-option');
+            if (option) {
+                const species = {
+                    speciesCode: option.dataset.code,
+                    commonName: option.dataset.name,
+                    scientificName: option.dataset.scientific
+                };
+                this.selectSpecies(species);
+            }
+        });
+
+        // Itinerary builder events
+        this.elements.buildItineraryBtn.addEventListener('click', () => this.toggleItineraryPanel());
+        this.elements.closeItineraryPanel.addEventListener('click', () => this.hideItineraryPanel());
+        this.elements.endLocationSelect.addEventListener('change', () => this.handleEndLocationChange());
+        this.elements.maxStops.addEventListener('input', () => {
+            this.elements.maxStopsValue.textContent = this.elements.maxStops.value;
+        });
+        this.elements.generateItinerary.addEventListener('click', () => this.handleGenerateItinerary());
+        this.elements.exportItineraryPdf.addEventListener('click', () => this.handleExportItineraryPdf());
+        this.elements.exportItineraryGpx.addEventListener('click', () => this.handleExportItineraryGpx());
+        this.elements.backToResults.addEventListener('click', () => this.handleBackToResults());
     }
 
     /**
@@ -413,10 +502,16 @@ class BirdingHotspotsApp {
     }
 
     /**
-     * Hide the map preview
+     * Hide the map preview and clean up resources
      */
     hideMapPreview() {
         this.elements.mapPreviewSection.classList.add('hidden');
+        // Destroy map instance to free memory
+        if (this.previewMap) {
+            this.previewMap.remove();
+            this.previewMap = null;
+            this.previewMarker = null;
+        }
     }
 
     /**
@@ -457,6 +552,7 @@ class BirdingHotspotsApp {
 
             this.renderFavorites();
             this.hideSaveFavoriteModal();
+            this.showSuccessToast('Location saved!');
         } catch (error) {
             this.showError(error.message);
         }
@@ -633,6 +729,20 @@ class BirdingHotspotsApp {
                 throw new Error(apiKeyValidation.error);
             }
 
+            // Save API key if remember is checked
+            if (this.elements.rememberKey.checked) {
+                storage.setApiKey(apiKeyValidation.apiKey);
+            }
+
+            // Initialize eBird API
+            this.ebirdApi = new EBirdAPI(apiKeyValidation.apiKey);
+
+            // Delegate to species search if in species mode
+            if (this.searchMode === 'species') {
+                await this.handleSpeciesSearch();
+                return;
+            }
+
             // Validate address if in address mode
             const inputMode = document.querySelector('[name="inputMode"]:checked').value;
             if (inputMode === 'address') {
@@ -658,20 +768,12 @@ class BirdingHotspotsApp {
                 }
             }
 
-            // Save API key if remember is checked
-            if (this.elements.rememberKey.checked) {
-                storage.setApiKey(apiKeyValidation.apiKey);
-            }
-
             this.showLoading('Validating inputs...', 0);
 
             // Get coordinates
             this.updateLoading('Getting location...', 5);
             const origin = await this.getCoordinates();
             this.currentLocation = origin;
-
-            // Initialize eBird API
-            this.ebirdApi = new EBirdAPI(apiKeyValidation.apiKey);
 
             // Test API key
             this.updateLoading('Verifying API key...', 10);
@@ -709,6 +811,7 @@ class BirdingHotspotsApp {
             // Fetch notable species in the area
             this.updateLoading('Fetching notable species...', 25);
             let notableSpecies = new Set();
+            this.notableObservations = [];
             try {
                 const notable = await this.ebirdApi.getNotableObservationsNearby(
                     origin.lat,
@@ -716,6 +819,8 @@ class BirdingHotspotsApp {
                     searchRange,
                     CONFIG.DEFAULT_DAYS_BACK
                 );
+                // Store full notable observations for rare bird alerts
+                this.notableObservations = notable;
                 notableSpecies = new Set(notable.map(o => o.speciesCode));
             } catch (e) {
                 console.warn('Could not fetch notable species:', e);
@@ -802,10 +907,22 @@ class BirdingHotspotsApp {
         });
 
         // Fetch driving distances
-        this.updateLoading('Calculating driving distances...', 72);
+        this.updateLoading('Calculating driving distances...', 70);
         const drivingRoutes = await getDrivingRoutes(origin.lat, origin.lng, locations);
 
-        this.updateLoading('Building hotspot details...', 80);
+        // Fetch weather data
+        this.updateLoading('Fetching weather data...', 80);
+        let weatherData = [];
+        try {
+            weatherData = await getWeatherForLocations(locations, (current, total) => {
+                const progress = 80 + (current / total) * 10; // 80% to 90%
+                this.updateLoading(`Fetching weather ${current}/${total}...`, progress);
+            });
+        } catch (e) {
+            console.warn('Could not fetch weather data:', e);
+        }
+
+        this.updateLoading('Building hotspot details...', 92);
 
         // Process results (fast, no waiting)
         return hotspots.map((hotspot, i) => {
@@ -814,6 +931,7 @@ class BirdingHotspotsApp {
             const distance = calculateDistance(origin.lat, origin.lng, hotspot.lat, hotspot.lng);
             const birds = processObservations(observations, notableSpecies);
             const drivingRoute = drivingRoutes[i];
+            const weather = weatherData[i] || null;
 
             return {
                 locId: hotspot.locId,
@@ -825,7 +943,8 @@ class BirdingHotspotsApp {
                 distance,
                 drivingDistance: drivingRoute?.distance ?? null,
                 drivingDuration: drivingRoute?.duration ?? null,
-                birds
+                birds,
+                weather
             };
         });
     }
@@ -864,23 +983,833 @@ class BirdingHotspotsApp {
         // Update meta information (sort is now shown in toggle, so removed from text)
         this.elements.resultsMeta.textContent = `${hotspots.length} hotspots found | ${generatedDate}`;
 
+        // Render rare bird alert banner if there are notable observations
+        this.renderRareBirdAlert();
+
+        // Render migration alert banner
+        this.renderMigrationAlert();
+
+        // Render weather summary
+        this.renderWeatherSummary(hotspots);
+
         // Initialize results map
         this.initResultsMap(origin, hotspots);
 
         // Clear existing cards
         clearElement(this.elements.hotspotCards);
 
-        // Generate hotspot cards
-        hotspots.forEach((hotspot, index) => {
-            const card = this.createHotspotCard(hotspot, index + 1, origin);
-            this.elements.hotspotCards.appendChild(card);
-        });
+        // Handle empty results
+        if (hotspots.length === 0) {
+            this.renderEmptyState();
+        } else {
+            // Generate hotspot cards
+            hotspots.forEach((hotspot, index) => {
+                const card = this.createHotspotCard(hotspot, index + 1, origin);
+                this.elements.hotspotCards.appendChild(card);
+            });
+        }
 
         // Show results section
         this.elements.resultsSection.classList.remove('hidden');
 
         // Scroll to results
         this.elements.resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    /**
+     * Render empty state when no results are found
+     */
+    renderEmptyState() {
+        const emptyDiv = document.createElement('div');
+        emptyDiv.className = 'empty-state';
+
+        const iconSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        iconSvg.setAttribute('viewBox', '0 0 24 24');
+        iconSvg.setAttribute('width', '64');
+        iconSvg.setAttribute('height', '64');
+        iconSvg.setAttribute('class', 'empty-state-icon');
+        const iconPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        iconPath.setAttribute('fill', 'currentColor');
+        iconPath.setAttribute('d', 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z');
+        iconSvg.appendChild(iconPath);
+
+        const heading = document.createElement('h3');
+        heading.textContent = 'No hotspots found';
+
+        const message = document.createElement('p');
+        message.textContent = 'Try expanding your search range or searching in a different area.';
+
+        emptyDiv.appendChild(iconSvg);
+        emptyDiv.appendChild(heading);
+        emptyDiv.appendChild(message);
+        this.elements.hotspotCards.appendChild(emptyDiv);
+    }
+
+    /**
+     * Format a date as relative time (e.g., "2 days ago")
+     * @param {string} dateStr - Date string from eBird API
+     * @returns {string} Relative time string
+     */
+    formatRelativeDate(dateStr) {
+        const date = new Date(dateStr);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+        if (diffDays === 0) return 'today';
+        if (diffDays === 1) return 'yesterday';
+        if (diffDays < 7) return `${diffDays} days ago`;
+        if (diffDays < 14) return '1 week ago';
+        if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+        return `${Math.floor(diffDays / 30)} month(s) ago`;
+    }
+
+    /**
+     * Render the rare bird alert banner
+     */
+    renderRareBirdAlert() {
+        const container = this.elements.rareBirdAlert;
+        clearElement(container);
+
+        if (!this.notableObservations || this.notableObservations.length === 0) {
+            container.classList.add('hidden');
+            return;
+        }
+
+        // Sort by most recent
+        const sorted = [...this.notableObservations]
+            .sort((a, b) => new Date(b.obsDt) - new Date(a.obsDt));
+
+        // Show first 5 in preview, rest hidden
+        const previewCount = 5;
+        const previewItems = sorted.slice(0, previewCount);
+        const hasMore = sorted.length > previewCount;
+
+        // Create alert element
+        const alert = document.createElement('div');
+        alert.className = 'rare-bird-alert';
+
+        // Header
+        const header = document.createElement('div');
+        header.className = 'rare-alert-header';
+
+        const iconSpan = document.createElement('span');
+        iconSpan.className = 'rare-alert-icon';
+        iconSpan.appendChild(createSVGIcon('alert', 24));
+
+        const title = document.createElement('h3');
+        title.className = 'rare-alert-title';
+        title.textContent = 'RARE BIRD ALERT';
+
+        const count = document.createElement('span');
+        count.className = 'rare-alert-count';
+        count.textContent = `${sorted.length} notable ${sorted.length === 1 ? 'species' : 'sightings'} nearby`;
+
+        header.appendChild(iconSpan);
+        header.appendChild(title);
+        header.appendChild(count);
+
+        // List
+        const list = document.createElement('ul');
+        list.className = 'rare-alert-list';
+
+        previewItems.forEach(obs => {
+            const li = document.createElement('li');
+            li.className = 'rare-alert-item';
+
+            const strong = document.createElement('strong');
+            strong.textContent = obs.comName;
+
+            const location = document.createElement('span');
+            location.className = 'rare-alert-location';
+            location.textContent = ` at ${obs.locName}`;
+
+            const date = document.createElement('span');
+            date.className = 'rare-alert-date';
+            date.textContent = `(${this.formatRelativeDate(obs.obsDt)})`;
+
+            li.appendChild(strong);
+            li.appendChild(location);
+            li.appendChild(date);
+            list.appendChild(li);
+        });
+
+        alert.appendChild(header);
+        alert.appendChild(list);
+
+        // "View all" toggle if there are more
+        if (hasMore) {
+            const hiddenList = document.createElement('ul');
+            hiddenList.className = 'rare-alert-list hidden';
+            hiddenList.id = 'rareAlertMoreList';
+
+            sorted.slice(previewCount).forEach(obs => {
+                const li = document.createElement('li');
+                li.className = 'rare-alert-item';
+
+                const strong = document.createElement('strong');
+                strong.textContent = obs.comName;
+
+                const location = document.createElement('span');
+                location.className = 'rare-alert-location';
+                location.textContent = ` at ${obs.locName}`;
+
+                const date = document.createElement('span');
+                date.className = 'rare-alert-date';
+                date.textContent = `(${this.formatRelativeDate(obs.obsDt)})`;
+
+                li.appendChild(strong);
+                li.appendChild(location);
+                li.appendChild(date);
+                hiddenList.appendChild(li);
+            });
+
+            const toggle = document.createElement('button');
+            toggle.type = 'button';
+            toggle.className = 'rare-alert-toggle';
+            toggle.setAttribute('aria-expanded', 'false');
+
+            const toggleText = document.createElement('span');
+            toggleText.textContent = `View all ${sorted.length} sightings`;
+
+            const chevron = createSVGIcon('chevron', 16, 'chevron');
+
+            toggle.appendChild(toggleText);
+            toggle.appendChild(chevron);
+
+            toggle.addEventListener('click', () => {
+                const expanded = toggle.getAttribute('aria-expanded') === 'true';
+                toggle.setAttribute('aria-expanded', !expanded);
+                hiddenList.classList.toggle('hidden');
+                toggleText.textContent = expanded
+                    ? `View all ${sorted.length} sightings`
+                    : 'Show fewer';
+            });
+
+            alert.appendChild(hiddenList);
+            alert.appendChild(toggle);
+        }
+
+        container.appendChild(alert);
+        container.classList.remove('hidden');
+    }
+
+    /**
+     * Render weather summary in results header
+     * @param {Array} hotspots - Array of hotspot data with weather
+     */
+    renderWeatherSummary(hotspots) {
+        const container = this.elements.weatherSummary;
+        clearElement(container);
+
+        // Get weather data from hotspots
+        const weatherData = hotspots.map(h => h.weather).filter(w => w !== null);
+
+        if (weatherData.length === 0) {
+            container.classList.add('hidden');
+            return;
+        }
+
+        const conditions = getOverallBirdingConditions(weatherData);
+
+        container.className = `weather-summary ${conditions.rating}`;
+
+        const iconSpan = document.createElement('span');
+        iconSpan.className = 'weather-summary-icon';
+        // Choose icon based on rating
+        const iconName = conditions.rating === 'excellent' || conditions.rating === 'good' ? 'sun' : 'cloud';
+        iconSpan.appendChild(createSVGIcon(iconName, 20));
+
+        const textSpan = document.createElement('span');
+        textSpan.className = 'weather-summary-text';
+        textSpan.textContent = conditions.message;
+
+        container.appendChild(iconSpan);
+        container.appendChild(textSpan);
+        container.classList.remove('hidden');
+    }
+
+    /**
+     * Render migration alert banner
+     */
+    renderMigrationAlert() {
+        const container = this.elements.migrationAlert;
+        clearElement(container);
+
+        const insights = getSeasonalInsights();
+        const alerts = insights.migrationAlerts;
+
+        // Only show if there are active migrations
+        if (!alerts || alerts.length === 0) {
+            container.classList.add('hidden');
+            return;
+        }
+
+        // Get top alert (most relevant - peak alerts first)
+        const topAlert = alerts[0];
+
+        const banner = document.createElement('div');
+        banner.className = `migration-alert-banner${topAlert.isPeak ? ' peak' : ''}`;
+
+        const iconSpan = document.createElement('span');
+        iconSpan.className = 'migration-alert-icon';
+        iconSpan.appendChild(createSVGIcon('trending', 24));
+
+        const content = document.createElement('div');
+        content.className = 'migration-alert-content';
+
+        const title = document.createElement('div');
+        title.className = 'migration-alert-title';
+        title.textContent = topAlert.message;
+
+        const subtitle = document.createElement('div');
+        subtitle.className = 'migration-alert-subtitle';
+        subtitle.textContent = insights.bestTimeRecommendation;
+
+        content.appendChild(title);
+        content.appendChild(subtitle);
+
+        banner.appendChild(iconSpan);
+        banner.appendChild(content);
+
+        // If there are more alerts, show a count
+        if (alerts.length > 1) {
+            const moreAlerts = document.createElement('span');
+            moreAlerts.className = 'migration-alert-more';
+            moreAlerts.textContent = `+${alerts.length - 1} more`;
+            moreAlerts.style.fontSize = '0.75rem';
+            moreAlerts.style.opacity = '0.8';
+            content.appendChild(moreAlerts);
+        }
+
+        container.appendChild(banner);
+        container.classList.remove('hidden');
+    }
+
+    /**
+     * Create a weather badge element for a hotspot card
+     * @param {Object} weather - Weather data object
+     * @returns {HTMLElement|null} Weather badge element or null if no weather data
+     */
+    createWeatherBadge(weather) {
+        if (!weather) return null;
+
+        const badge = document.createElement('div');
+        badge.className = `weather-badge ${weather.condition}`;
+
+        // Main weather display
+        const main = document.createElement('div');
+        main.className = 'weather-main';
+
+        // Weather icon
+        const iconDiv = document.createElement('div');
+        iconDiv.className = 'weather-icon';
+        iconDiv.appendChild(createSVGIcon(weather.icon, 36));
+
+        // Temperature and condition
+        const tempInfo = document.createElement('div');
+
+        const tempSpan = document.createElement('span');
+        tempSpan.className = 'weather-temp';
+        tempSpan.textContent = this.useFahrenheit
+            ? `${weather.temperatureF}°F`
+            : `${weather.temperatureC}°C`;
+
+        // Add click to toggle temperature unit
+        tempSpan.style.cursor = 'pointer';
+        tempSpan.title = 'Click to toggle °F/°C';
+        tempSpan.addEventListener('click', () => {
+            this.useFahrenheit = !this.useFahrenheit;
+            storage.setTemperatureUnit(this.useFahrenheit ? 'F' : 'C');
+            // Update all temperature displays
+            this.updateTemperatureDisplays();
+        });
+
+        const conditionSpan = document.createElement('div');
+        conditionSpan.className = 'weather-condition';
+        conditionSpan.textContent = weather.description;
+
+        tempInfo.appendChild(tempSpan);
+        tempInfo.appendChild(conditionSpan);
+        main.appendChild(iconDiv);
+        main.appendChild(tempInfo);
+
+        // Weather details
+        const details = document.createElement('div');
+        details.className = 'weather-details';
+
+        // Wind
+        const windDetail = document.createElement('span');
+        windDetail.className = 'weather-detail';
+        windDetail.appendChild(createSVGIcon('wind', 14));
+        windDetail.appendChild(document.createTextNode(` ${weather.windSpeedMph} mph ${weather.windDirection}`));
+
+        // Humidity
+        const humidityDetail = document.createElement('span');
+        humidityDetail.className = 'weather-detail';
+        humidityDetail.appendChild(document.createTextNode(`💧 ${weather.humidity}%`));
+
+        // Precipitation probability
+        if (weather.precipitationProbability > 0) {
+            const precipDetail = document.createElement('span');
+            precipDetail.className = 'weather-detail';
+            precipDetail.appendChild(createSVGIcon('rain', 14));
+            precipDetail.appendChild(document.createTextNode(` ${weather.precipitationProbability}%`));
+            details.appendChild(precipDetail);
+        }
+
+        details.appendChild(windDetail);
+        details.appendChild(humidityDetail);
+
+        // Birding condition badge
+        const birdingCondition = getBirdingConditionScore(weather);
+        const conditionBadge = document.createElement('span');
+        conditionBadge.className = `birding-condition ${birdingCondition.rating}`;
+        conditionBadge.textContent = birdingCondition.rating;
+        details.appendChild(conditionBadge);
+
+        badge.appendChild(main);
+        badge.appendChild(details);
+
+        return badge;
+    }
+
+    /**
+     * Update all temperature displays when unit preference changes
+     */
+    updateTemperatureDisplays() {
+        // Re-render the current results with new temperature unit
+        if (this.currentResults) {
+            this.displayResults(this.currentResults);
+        }
+    }
+
+    /**
+     * Set search mode (hotspot or species)
+     * @param {string} mode - 'hotspot' or 'species'
+     */
+    setSearchMode(mode) {
+        this.searchMode = mode;
+
+        // Update button states
+        this.elements.hotspotModeBtn.classList.toggle('active', mode === 'hotspot');
+        this.elements.speciesModeBtn.classList.toggle('active', mode === 'species');
+        this.elements.hotspotModeBtn.setAttribute('aria-selected', mode === 'hotspot');
+        this.elements.speciesModeBtn.setAttribute('aria-selected', mode === 'species');
+
+        // Toggle panels
+        this.elements.speciesSearchPanel.classList.toggle('hidden', mode === 'hotspot');
+        this.elements.sortOptionsSection.classList.toggle('hidden', mode === 'species');
+
+        // Update generate button text
+        this.elements.generateReport.innerHTML = mode === 'species'
+            ? '<svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg> Find This Species'
+            : '<svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg> Find Hotspots';
+
+        // Initialize species search if switching to species mode
+        if (mode === 'species' && !this.speciesSearch) {
+            this.initializeSpeciesSearch();
+        }
+    }
+
+    /**
+     * Initialize the species search service
+     */
+    async initializeSpeciesSearch() {
+        const apiKey = this.elements.apiKey.value.trim();
+        if (!apiKey) {
+            this.showError('Please enter your eBird API key first');
+            this.setSearchMode('hotspot');
+            return;
+        }
+
+        this.speciesSearch = new SpeciesSearch(new EBirdAPI(apiKey));
+
+        // Load taxonomy in background
+        this.elements.speciesSearchInput.placeholder = 'Loading species data...';
+        this.elements.speciesSearchInput.disabled = true;
+
+        try {
+            await this.speciesSearch.loadTaxonomy();
+            this.elements.speciesSearchInput.placeholder = 'Start typing a bird name...';
+            this.elements.speciesSearchInput.disabled = false;
+            this.elements.speciesSearchInput.focus();
+        } catch (e) {
+            console.error('Failed to load taxonomy:', e);
+            this.elements.speciesSearchInput.placeholder = 'Failed to load species data';
+        }
+    }
+
+    /**
+     * Handle species search input change
+     */
+    handleSpeciesSearchInput() {
+        clearTimeout(this.speciesSearchDebounceTimer);
+
+        const query = this.elements.speciesSearchInput.value.trim();
+
+        if (query.length < 2) {
+            this.hideSpeciesDropdown();
+            return;
+        }
+
+        // Debounce search
+        this.speciesSearchDebounceTimer = setTimeout(() => {
+            this.performSpeciesSearch(query);
+        }, 200);
+    }
+
+    /**
+     * Handle species search input focus
+     */
+    handleSpeciesSearchFocus() {
+        const query = this.elements.speciesSearchInput.value.trim();
+        if (query.length >= 2 && this.speciesSearch?.isReady()) {
+            this.performSpeciesSearch(query);
+        }
+    }
+
+    /**
+     * Perform species search and show dropdown
+     * @param {string} query - Search query
+     */
+    performSpeciesSearch(query) {
+        if (!this.speciesSearch?.isReady()) {
+            this.showSpeciesDropdownMessage('Loading species data...');
+            return;
+        }
+
+        const results = this.speciesSearch.searchSpecies(query, 10);
+
+        if (results.length === 0) {
+            this.showSpeciesDropdownMessage('No species found');
+            return;
+        }
+
+        this.renderSpeciesDropdown(results);
+    }
+
+    /**
+     * Render species dropdown with results
+     * @param {Array} results - Search results
+     */
+    renderSpeciesDropdown(results) {
+        const dropdown = this.elements.speciesDropdown;
+        clearElement(dropdown);
+
+        results.forEach(species => {
+            const option = document.createElement('div');
+            option.className = 'species-option';
+            option.dataset.code = species.speciesCode;
+            option.dataset.name = species.commonName;
+            option.dataset.scientific = species.scientificName;
+
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'species-option-name';
+            nameSpan.textContent = species.commonName;
+
+            const scientificSpan = document.createElement('span');
+            scientificSpan.className = 'species-option-scientific';
+            scientificSpan.textContent = species.scientificName;
+
+            option.appendChild(nameSpan);
+            option.appendChild(scientificSpan);
+
+            // Event listener handled via delegation in initializeEventListeners()
+            dropdown.appendChild(option);
+        });
+
+        dropdown.classList.remove('hidden');
+    }
+
+    /**
+     * Show a message in the species dropdown using safe DOM manipulation
+     * @param {string} message - Message to show
+     */
+    showSpeciesDropdownMessage(message) {
+        const dropdown = this.elements.speciesDropdown;
+        clearElement(dropdown);
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'species-dropdown-empty';
+        messageDiv.textContent = message;
+        dropdown.appendChild(messageDiv);
+        dropdown.classList.remove('hidden');
+    }
+
+    /**
+     * Hide species dropdown
+     */
+    hideSpeciesDropdown() {
+        this.elements.speciesDropdown.classList.add('hidden');
+    }
+
+    /**
+     * Select a species from the dropdown using safe DOM manipulation
+     * @param {Object} species - Selected species data
+     */
+    selectSpecies(species) {
+        this.selectedSpeciesData = species;
+        this.elements.speciesSearchInput.value = '';
+        this.hideSpeciesDropdown();
+
+        // Show selected species using safe DOM construction
+        const selectedDiv = this.elements.selectedSpecies;
+        clearElement(selectedDiv);
+
+        const infoDiv = document.createElement('div');
+        infoDiv.className = 'selected-species-info';
+
+        const nameDiv = document.createElement('div');
+        nameDiv.className = 'selected-species-name';
+        nameDiv.textContent = species.commonName;
+
+        const scientificDiv = document.createElement('div');
+        scientificDiv.className = 'selected-species-scientific';
+        scientificDiv.textContent = species.scientificName;
+
+        infoDiv.appendChild(nameDiv);
+        infoDiv.appendChild(scientificDiv);
+
+        const clearBtn = document.createElement('button');
+        clearBtn.type = 'button';
+        clearBtn.className = 'selected-species-clear';
+        clearBtn.title = 'Clear selection';
+        clearBtn.appendChild(createSVGIcon('close', 20));
+        clearBtn.addEventListener('click', () => this.clearSelectedSpecies());
+
+        selectedDiv.appendChild(infoDiv);
+        selectedDiv.appendChild(clearBtn);
+        selectedDiv.classList.remove('hidden');
+    }
+
+    /**
+     * Clear selected species
+     */
+    clearSelectedSpecies() {
+        this.selectedSpeciesData = null;
+        this.elements.selectedSpecies.classList.add('hidden');
+        this.elements.speciesSearchInput.focus();
+    }
+
+    /**
+     * Get search origin coordinates (shared by hotspot and species search)
+     * @returns {Promise<Object|null>} Origin object with lat, lng, address or null if failed
+     */
+    async getSearchOrigin() {
+        try {
+            const inputMode = document.querySelector('[name="inputMode"]:checked').value;
+            if (inputMode === 'address') {
+                const address = this.elements.address.value.trim();
+                if (address.length < 3) {
+                    this.showAddressError('Please enter an address.');
+                    return null;
+                }
+
+                // If address hasn't been validated yet, try to validate it now
+                if (!this.addressValidated) {
+                    try {
+                        const result = await geocodeAddress(address);
+                        this.addressValidated = true;
+                        this.validatedCoords = { lat: result.lat, lng: result.lng };
+                        this.clearAddressError();
+                    } catch (error) {
+                        this.showAddressError('Could not find this address. Please check and try again.');
+                        return null;
+                    }
+                }
+            }
+
+            const origin = await this.getCoordinates();
+            this.currentLocation = origin;
+            return origin;
+        } catch (error) {
+            this.showError(error.message);
+            return null;
+        }
+    }
+
+    /**
+     * Handle species search (called from handleGenerateReport)
+     */
+    async handleSpeciesSearch() {
+        if (!this.selectedSpeciesData) {
+            this.showError('Please select a bird species to search for');
+            this.isProcessing = false;
+            return;
+        }
+
+        // Get location
+        const origin = await this.getSearchOrigin();
+        if (!origin) {
+            this.isProcessing = false;
+            return;
+        }
+
+        // Get search range
+        const searchRange = parseInt(document.querySelector('[name="searchRange"]:checked').value, 10);
+
+        this.showLoading('Searching for species...', 0);
+        this.updateLoading('Searching for ' + this.selectedSpeciesData.commonName + '...', 10);
+
+        try {
+            const sightings = await this.speciesSearch.findSpeciesHotspots(
+                this.selectedSpeciesData.speciesCode,
+                origin.lat,
+                origin.lng,
+                searchRange,
+                CONFIG.DEFAULT_DAYS_BACK
+            );
+
+            this.updateLoading('Processing results...', 80);
+
+            // Calculate distances
+            sightings.forEach(s => {
+                s.distance = calculateDistance(origin.lat, origin.lng, s.lat, s.lng);
+            });
+
+            this.hideLoading();
+
+            // Display species search results
+            this.displaySpeciesResults(this.selectedSpeciesData, sightings, origin);
+
+        } catch (e) {
+            this.hideLoading();
+            this.showError(`Failed to search for species: ${e.message}`);
+        } finally {
+            this.isProcessing = false;
+        }
+    }
+
+    /**
+     * Display species search results
+     * @param {Object} species - Selected species data
+     * @param {Array} sightings - Array of sighting locations
+     * @param {Object} origin - Search origin
+     */
+    displaySpeciesResults(species, sightings, origin) {
+        // Clear previous results
+        this.elements.rareBirdAlert.classList.add('hidden');
+        this.elements.weatherSummary.classList.add('hidden');
+        clearElement(this.elements.hotspotCards);
+
+        // Update results header
+        this.elements.resultsMeta.textContent = `${sightings.length} locations with recent sightings`;
+
+        // Hide sort buttons for species search
+        this.elements.sortBySpecies.parentElement.classList.add('hidden');
+
+        // Create species results header
+        const resultsHeader = document.createElement('div');
+        resultsHeader.className = 'species-results-header';
+        resultsHeader.innerHTML = `
+            <div class="species-results-icon">
+                <svg viewBox="0 0 24 24" width="28" height="28">
+                    <path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                </svg>
+            </div>
+            <div class="species-results-title">
+                <h3>${species.commonName} Sightings</h3>
+                <p>${sightings.length > 0 ? 'Recent sightings near your location' : 'No recent sightings found in this area'}</p>
+            </div>
+        `;
+
+        this.elements.hotspotCards.appendChild(resultsHeader);
+
+        if (sightings.length === 0) {
+            const noResults = document.createElement('div');
+            noResults.className = 'species-no-results';
+            noResults.innerHTML = `
+                <div class="species-no-results-icon">
+                    <svg viewBox="0 0 24 24" width="64" height="64">
+                        <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                    </svg>
+                </div>
+                <h3>No recent sightings</h3>
+                <p>Try expanding your search range or searching for a different species.</p>
+            `;
+            this.elements.hotspotCards.appendChild(noResults);
+        } else {
+            // Create sighting cards
+            sightings.forEach((sighting, index) => {
+                const card = this.createSpeciesSightingCard(sighting, index + 1, origin);
+                this.elements.hotspotCards.appendChild(card);
+            });
+        }
+
+        // Initialize map with sighting locations
+        this.initResultsMap(origin, sightings.map(s => ({
+            lat: s.lat,
+            lng: s.lng,
+            name: s.name,
+            speciesCount: s.observationCount
+        })));
+
+        // Show results section
+        this.elements.resultsSection.classList.remove('hidden');
+        this.elements.resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    /**
+     * Create a species sighting card
+     * @param {Object} sighting - Sighting data
+     * @param {number} rank - Ranking number
+     * @param {Object} origin - Search origin
+     * @returns {HTMLElement}
+     */
+    createSpeciesSightingCard(sighting, rank, origin) {
+        const card = document.createElement('div');
+        card.className = 'species-sighting-card';
+
+        const distanceText = formatDistance(sighting.distance);
+        const directionsUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin.lat},${origin.lng}&destination=${sighting.lat},${sighting.lng}`;
+        const ebirdUrl = sighting.locId.startsWith('L')
+            ? `https://ebird.org/hotspot/${sighting.locId}`
+            : `https://www.google.com/maps/search/?api=1&query=${sighting.lat},${sighting.lng}`;
+
+        card.innerHTML = `
+            <div class="species-sighting-header">
+                <div class="sighting-rank">${rank}</div>
+                <div class="sighting-info">
+                    <h4 class="sighting-location">${sighting.name}</h4>
+                    <div class="sighting-meta">
+                        <span>
+                            <svg viewBox="0 0 24 24" width="14" height="14">
+                                <path fill="currentColor" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                            </svg>
+                            ${distanceText}
+                        </span>
+                        <span>
+                            <svg viewBox="0 0 24 24" width="14" height="14">
+                                <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                            </svg>
+                            ${sighting.observationCount} sighting${sighting.observationCount !== 1 ? 's' : ''}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="sighting-details">
+                <div class="sighting-date">
+                    Last seen: <strong>${this.formatRelativeDate(sighting.lastSeen)}</strong>
+                </div>
+                ${sighting.highestCount > 1 ? `<div class="sighting-count">Highest count: ${sighting.highestCount} individuals</div>` : ''}
+            </div>
+            <div class="sighting-links">
+                <a href="${directionsUrl}" target="_blank" rel="noopener noreferrer" class="sighting-link">
+                    <svg viewBox="0 0 24 24" width="14" height="14">
+                        <path fill="currentColor" d="M21.71 11.29l-9-9c-.39-.39-1.02-.39-1.41 0l-9 9c-.39.39-.39 1.02 0 1.41l9 9c.39.39 1.02.39 1.41 0l9-9c.39-.38.39-1.01 0-1.41zM14 14.5V12h-4v3H8v-4c0-.55.45-1 1-1h5V7.5l3.5 3.5-3.5 3.5z"/>
+                    </svg>
+                    Get Directions
+                </a>
+                <a href="${ebirdUrl}" target="_blank" rel="noopener noreferrer" class="sighting-link">
+                    <svg viewBox="0 0 24 24" width="14" height="14">
+                        <path fill="currentColor" d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/>
+                    </svg>
+                    ${sighting.isHotspot ? 'View on eBird' : 'View Location'}
+                </a>
+            </div>
+        `;
+
+        return card;
     }
 
     /**
@@ -951,6 +1880,15 @@ class BirdingHotspotsApp {
         titleSection.appendChild(stats);
         header.appendChild(numberDiv);
         header.appendChild(titleSection);
+
+        // Add rare badge if hotspot has notable species
+        if (hasNotable) {
+            const rareBadge = document.createElement('span');
+            rareBadge.className = 'rare-badge';
+            rareBadge.appendChild(createSVGIcon('fire', 14));
+            rareBadge.appendChild(document.createTextNode(' RARE'));
+            header.appendChild(rareBadge);
+        }
 
         // Details section
         const details = document.createElement('div');
@@ -1028,12 +1966,545 @@ class BirdingHotspotsApp {
         speciesSection.appendChild(toggle);
         speciesSection.appendChild(speciesList);
 
+        // Notable species highlight section (if any)
+        let notableHighlight = null;
+        if (hasNotable) {
+            const notableSpecies = hotspot.birds.filter(b => b.isNotable);
+            notableHighlight = document.createElement('div');
+            notableHighlight.className = 'notable-highlight';
+
+            const highlightTitle = document.createElement('h4');
+            highlightTitle.className = 'notable-highlight-title';
+            highlightTitle.appendChild(createSVGIcon('alert', 16));
+            highlightTitle.appendChild(document.createTextNode(' Notable Sightings'));
+            notableHighlight.appendChild(highlightTitle);
+
+            notableSpecies.forEach(bird => {
+                const birdDiv = document.createElement('div');
+                birdDiv.className = 'notable-bird';
+
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'notable-bird-name';
+                nameSpan.textContent = bird.comName;
+
+                const dateSpan = document.createElement('span');
+                dateSpan.className = 'notable-bird-date';
+                dateSpan.textContent = `Last seen: ${this.formatRelativeDate(bird.lastSeen)}`;
+
+                birdDiv.appendChild(nameSpan);
+                birdDiv.appendChild(dateSpan);
+                notableHighlight.appendChild(birdDiv);
+            });
+        }
+
+        // Create weather badge if weather data is available
+        const weatherBadge = this.createWeatherBadge(hotspot.weather);
+
+        // Create seasonal insights section
+        const seasonalInsights = this.createSeasonalInsightsSection();
+
         // Assemble card
         card.appendChild(header);
+        if (notableHighlight) {
+            card.appendChild(notableHighlight);
+        }
+        if (weatherBadge) {
+            card.appendChild(weatherBadge);
+        }
         card.appendChild(details);
         card.appendChild(speciesSection);
+        if (seasonalInsights) {
+            card.appendChild(seasonalInsights);
+        }
 
         return card;
+    }
+
+    /**
+     * Create seasonal insights section for a hotspot card
+     * @returns {HTMLElement} Seasonal insights section element
+     */
+    createSeasonalInsightsSection() {
+        const insights = getSeasonalInsights();
+        const optimalTimes = insights.optimalTimes;
+
+        const section = document.createElement('div');
+        section.className = 'seasonal-insights-section';
+
+        // Toggle button
+        const toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'seasonal-insights-toggle';
+        toggle.setAttribute('aria-expanded', 'false');
+
+        const toggleText = document.createElement('span');
+        toggleText.appendChild(createSVGIcon('schedule', 16));
+        toggleText.appendChild(document.createTextNode(` ${insights.season} Birding Tips`));
+
+        const chevron = createSVGIcon('chevron', 16, 'chevron');
+
+        toggle.appendChild(toggleText);
+        toggle.appendChild(chevron);
+
+        // Content
+        const content = document.createElement('div');
+        content.className = 'seasonal-insights-content hidden';
+
+        // Best time of day chart
+        const chartTitle = document.createElement('div');
+        chartTitle.style.cssText = 'font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 8px;';
+        chartTitle.textContent = 'Best birding times today:';
+
+        const timeChart = document.createElement('div');
+        timeChart.className = 'time-of-day-chart';
+
+        const timeSlots = [
+            { key: 'morning', label: 'Early AM', ...optimalTimes.morning },
+            { key: 'midday', label: 'Midday', ...optimalTimes.midday },
+            { key: 'evening', label: 'Evening', ...optimalTimes.evening }
+        ];
+
+        timeSlots.forEach(slot => {
+            const bar = document.createElement('div');
+            bar.className = 'time-bar';
+
+            const fill = document.createElement('div');
+            fill.className = `time-bar-fill ${slot.activity}`;
+            // Height based on activity level
+            const height = slot.activity === 'high' ? 100 : slot.activity === 'medium' ? 60 : 30;
+            fill.style.height = `${height}%`;
+
+            const label = document.createElement('div');
+            label.className = 'time-bar-label';
+            label.textContent = slot.label;
+
+            bar.appendChild(fill);
+            bar.appendChild(label);
+            timeChart.appendChild(bar);
+        });
+
+        // Monthly activity sparkline
+        const sparklineTitle = document.createElement('div');
+        sparklineTitle.style.cssText = 'font-size: 0.8rem; color: var(--text-secondary); margin: 12px 0 4px;';
+        sparklineTitle.textContent = 'Annual birding activity:';
+
+        const sparkline = document.createElement('div');
+        sparkline.className = 'activity-sparkline';
+
+        const currentMonth = new Date().getMonth(); // 0-indexed
+
+        insights.monthlyActivity.forEach((level, index) => {
+            const bar = document.createElement('div');
+            bar.className = 'sparkline-bar';
+            if (index === currentMonth) bar.classList.add('current');
+            else if (level >= 8) bar.classList.add('high');
+            bar.style.height = `${level * 10}%`;
+            bar.title = new Date(2024, index).toLocaleString('default', { month: 'short' });
+            sparkline.appendChild(bar);
+        });
+
+        const sparklineLabel = document.createElement('div');
+        sparklineLabel.className = 'sparkline-label';
+        sparklineLabel.innerHTML = '<span>Jan</span><span>Dec</span>';
+
+        // Activity recommendation
+        const recommendation = document.createElement('div');
+        recommendation.className = 'best-time-recommendation';
+        recommendation.appendChild(createSVGIcon('sun', 16));
+        recommendation.appendChild(document.createTextNode(insights.bestTimeRecommendation));
+
+        content.appendChild(chartTitle);
+        content.appendChild(timeChart);
+        content.appendChild(sparklineTitle);
+        content.appendChild(sparkline);
+        content.appendChild(sparklineLabel);
+        content.appendChild(recommendation);
+
+        section.appendChild(toggle);
+        section.appendChild(content);
+
+        // Add toggle event listener
+        toggle.addEventListener('click', () => {
+            const expanded = toggle.getAttribute('aria-expanded') === 'true';
+            toggle.setAttribute('aria-expanded', !expanded);
+            content.classList.toggle('hidden');
+        });
+
+        return section;
+    }
+
+    // =========================================
+    // ITINERARY BUILDER METHODS
+    // =========================================
+
+    /**
+     * Toggle the itinerary builder panel visibility
+     */
+    toggleItineraryPanel() {
+        const isHidden = this.elements.itineraryPanel.classList.contains('hidden');
+        if (isHidden) {
+            this.showItineraryPanel();
+        } else {
+            this.hideItineraryPanel();
+        }
+    }
+
+    /**
+     * Show the itinerary builder panel
+     */
+    showItineraryPanel() {
+        this.elements.itineraryPanel.classList.remove('hidden');
+        this.elements.itineraryResults.classList.add('hidden');
+        this.elements.itineraryPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // Focus the first interactive element for accessibility
+        this.elements.endLocationSelect.focus();
+    }
+
+    /**
+     * Hide the itinerary builder panel
+     */
+    hideItineraryPanel() {
+        this.elements.itineraryPanel.classList.add('hidden');
+        // Return focus to the trigger button for accessibility
+        this.elements.buildItineraryBtn.focus();
+    }
+
+    /**
+     * Handle end location select change
+     */
+    handleEndLocationChange() {
+        const value = this.elements.endLocationSelect.value;
+        if (value === 'different') {
+            this.elements.endLocationInputs.classList.remove('hidden');
+        } else {
+            this.elements.endLocationInputs.classList.add('hidden');
+        }
+    }
+
+    /**
+     * Generate the optimized itinerary
+     */
+    async handleGenerateItinerary() {
+        if (!this.currentResults || !this.currentResults.hotspots || this.currentResults.hotspots.length === 0) {
+            this.showError('No hotspots available. Please run a search first.');
+            return;
+        }
+
+        const maxStops = parseInt(this.elements.maxStops.value, 10);
+        const priority = document.querySelector('[name="itineraryPriority"]:checked').value;
+        const endLocationChoice = this.elements.endLocationSelect.value;
+
+        // Determine start and end locations
+        const start = {
+            lat: this.currentLocation.lat,
+            lng: this.currentLocation.lng,
+            address: this.currentLocation.address || 'Start Location'
+        };
+
+        let end;
+        if (endLocationChoice === 'same') {
+            end = { ...start };
+        } else {
+            const endAddr = this.elements.endAddress.value.trim();
+            if (!endAddr) {
+                this.showError('Please enter an end address.');
+                return;
+            }
+            try {
+                const endCoords = await geocodeAddress(endAddr);
+                end = { lat: endCoords.lat, lng: endCoords.lng, address: endAddr };
+            } catch (e) {
+                this.showError('Could not find end address. Please check and try again.');
+                return;
+            }
+        }
+
+        this.showLoading('Building itinerary...', 0);
+
+        try {
+            const itinerary = await buildItinerary(start, end, this.currentResults.hotspots, {
+                maxStops,
+                priority,
+                onProgress: (msg, pct) => this.updateLoading(msg, pct)
+            });
+
+            this.currentItinerary = itinerary;
+            this.hideLoading();
+            this.displayItinerary(itinerary);
+        } catch (error) {
+            this.hideLoading();
+            this.showError(`Failed to build itinerary: ${error.message}`);
+        }
+    }
+
+    /**
+     * Display the generated itinerary
+     * @param {Object} itinerary - Itinerary data
+     */
+    displayItinerary(itinerary) {
+        // Hide the options panel, show results
+        this.elements.itineraryPanel.classList.add('hidden');
+        this.elements.itineraryResults.classList.remove('hidden');
+
+        // Hide normal hotspot cards
+        this.elements.hotspotCards.classList.add('hidden');
+
+        // Render summary
+        const summary = this.elements.itinerarySummary;
+        clearElement(summary);
+
+        const title = document.createElement('div');
+        title.className = 'itinerary-summary-title';
+        title.textContent = `Your Birding Itinerary (${itinerary.summary.totalStops} stops)`;
+        summary.appendChild(title);
+
+        const stats = document.createElement('div');
+        stats.className = 'itinerary-summary-stats';
+        stats.innerHTML = `
+            <div class="itinerary-stat">
+                <span class="itinerary-stat-value">${formatItineraryDuration(itinerary.summary.totalTripTime)}</span>
+                <span class="itinerary-stat-label">Total Trip Time</span>
+            </div>
+            <div class="itinerary-stat">
+                <span class="itinerary-stat-value">${(itinerary.summary.totalDistance * 0.621371).toFixed(1)} mi</span>
+                <span class="itinerary-stat-label">Total Distance</span>
+            </div>
+            <div class="itinerary-stat">
+                <span class="itinerary-stat-value">${formatItineraryDuration(itinerary.summary.totalTravelTime)}</span>
+                <span class="itinerary-stat-label">Driving Time</span>
+            </div>
+            <div class="itinerary-stat">
+                <span class="itinerary-stat-value">${formatItineraryDuration(itinerary.summary.totalVisitTime)}</span>
+                <span class="itinerary-stat-label">Birding Time</span>
+            </div>
+        `;
+        summary.appendChild(stats);
+
+        // Render stops
+        const stopsContainer = this.elements.itineraryStops;
+        clearElement(stopsContainer);
+
+        itinerary.stops.forEach((stop, index) => {
+            const stopEl = this.createItineraryStopElement(stop, index, itinerary);
+            stopsContainer.appendChild(stopEl);
+        });
+
+        // Update map with route line
+        this.displayItineraryRoute(itinerary);
+
+        // Scroll to results
+        this.elements.itineraryResults.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    /**
+     * Create an itinerary stop element
+     * @param {Object} stop - Stop data
+     * @param {number} index - Stop index
+     * @param {Object} itinerary - Full itinerary data
+     * @returns {HTMLElement}
+     */
+    createItineraryStopElement(stop, index, itinerary) {
+        const wrapper = document.createElement('div');
+
+        // Leg connector (travel info) - shown before all stops except first
+        if (index > 0 && itinerary.legs[index - 1]) {
+            const leg = itinerary.legs[index - 1];
+            const legEl = document.createElement('div');
+            legEl.className = 'itinerary-leg';
+            legEl.innerHTML = `
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                    <path fill="currentColor" d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/>
+                </svg>
+                <span>${(leg.distance * 0.621371).toFixed(1)} mi</span>
+                <span>|</span>
+                <span>${formatItineraryDuration(leg.duration / 60)}</span>
+            `;
+            wrapper.appendChild(legEl);
+        }
+
+        // Stop card
+        const stopEl = document.createElement('div');
+        stopEl.className = `itinerary-stop ${stop.type}`;
+
+        const marker = document.createElement('div');
+        marker.className = 'stop-marker';
+        marker.textContent = stop.type === 'start' ? 'S' : stop.type === 'end' ? 'E' : index;
+
+        const content = document.createElement('div');
+        content.className = 'stop-content';
+
+        const nameDiv = document.createElement('div');
+        nameDiv.className = 'stop-name';
+        nameDiv.textContent = stop.name;
+
+        if (stop.type === 'hotspot' && stop.speciesCount) {
+            const badge = document.createElement('span');
+            badge.className = 'stop-species-count';
+            badge.textContent = `${stop.speciesCount} species`;
+            nameDiv.appendChild(badge);
+        }
+
+        content.appendChild(nameDiv);
+
+        if (stop.address) {
+            const addrDiv = document.createElement('div');
+            addrDiv.className = 'stop-address';
+            addrDiv.textContent = stop.address;
+            content.appendChild(addrDiv);
+        }
+
+        const metaDiv = document.createElement('div');
+        metaDiv.className = 'stop-meta';
+
+        if (stop.arrivalTime) {
+            const arrivalSpan = document.createElement('span');
+            arrivalSpan.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg> Arrive ${formatItineraryTime(stop.arrivalTime)}`;
+            metaDiv.appendChild(arrivalSpan);
+        }
+
+        if (stop.suggestedVisitTime > 0) {
+            const visitSpan = document.createElement('span');
+            visitSpan.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/></svg> ${formatItineraryDuration(stop.suggestedVisitTime)} birding`;
+            metaDiv.appendChild(visitSpan);
+        }
+
+        if (stop.departureTime && stop.type !== 'end') {
+            const departSpan = document.createElement('span');
+            departSpan.innerHTML = `Depart ${formatItineraryTime(stop.departureTime)}`;
+            metaDiv.appendChild(departSpan);
+        }
+
+        content.appendChild(metaDiv);
+        stopEl.appendChild(marker);
+        stopEl.appendChild(content);
+        wrapper.appendChild(stopEl);
+
+        return wrapper;
+    }
+
+    /**
+     * Display the itinerary route on the map
+     * @param {Object} itinerary - Itinerary data
+     */
+    displayItineraryRoute(itinerary) {
+        // Remove existing route line
+        if (this.itineraryRouteLine && this.resultsMapInstance) {
+            this.resultsMapInstance.removeLayer(this.itineraryRouteLine);
+            this.itineraryRouteLine = null;
+        }
+
+        if (!this.resultsMapInstance || !itinerary.geometry) return;
+
+        // Add route line from geometry
+        const coords = itinerary.geometry.coordinates.map(c => [c[1], c[0]]);
+        this.itineraryRouteLine = L.polyline(coords, {
+            color: '#2E7D32',
+            weight: 4,
+            opacity: 0.8
+        }).addTo(this.resultsMapInstance);
+
+        // Update markers to show stop numbers
+        this.resultsMarkers.forEach(m => this.resultsMapInstance.removeLayer(m));
+        this.resultsMarkers = [];
+
+        itinerary.stops.forEach((stop, index) => {
+            const markerColor = stop.type === 'start' ? '#2E7D32' :
+                stop.type === 'end' ? '#D32F2F' : '#FFC107';
+            const markerText = stop.type === 'start' ? 'S' :
+                stop.type === 'end' ? 'E' : index;
+
+            const icon = L.divIcon({
+                className: 'hotspot-marker',
+                html: `<div style="background:${markerColor}">${markerText}</div>`,
+                iconSize: [28, 28],
+                iconAnchor: [14, 14]
+            });
+
+            const marker = L.marker([stop.lat, stop.lng], { icon })
+                .bindPopup(`<strong>${stop.name}</strong>${stop.speciesCount ? `<br>${stop.speciesCount} species` : ''}`)
+                .addTo(this.resultsMapInstance);
+
+            this.resultsMarkers.push(marker);
+        });
+
+        // Fit bounds to show entire route
+        this.resultsMapInstance.fitBounds(this.itineraryRouteLine.getBounds(), {
+            padding: [50, 50],
+            maxZoom: 12
+        });
+    }
+
+    /**
+     * Handle back to results button
+     */
+    handleBackToResults() {
+        // Remove route line
+        if (this.itineraryRouteLine && this.resultsMapInstance) {
+            this.resultsMapInstance.removeLayer(this.itineraryRouteLine);
+            this.itineraryRouteLine = null;
+        }
+
+        // Hide itinerary results, show normal results
+        this.elements.itineraryResults.classList.add('hidden');
+        this.elements.hotspotCards.classList.remove('hidden');
+
+        // Restore normal map markers
+        if (this.currentResults) {
+            this.initResultsMap(this.currentResults.origin, this.currentResults.hotspots);
+        }
+    }
+
+    /**
+     * Export itinerary to PDF
+     */
+    async handleExportItineraryPdf() {
+        if (!this.currentItinerary) {
+            this.showError('No itinerary to export. Please generate an itinerary first.');
+            return;
+        }
+
+        this.showLoading('Generating itinerary PDF...', 0);
+
+        try {
+            // Build itinerary-specific data for PDF
+            const itineraryData = {
+                origin: this.currentLocation,
+                hotspots: this.currentItinerary.stops.filter(s => s.type === 'hotspot'),
+                sortMethod: 'itinerary',
+                generatedDate: new Date().toLocaleDateString(),
+                isItinerary: true,
+                itinerary: this.currentItinerary
+            };
+
+            const pdf = await generatePDFReport(itineraryData, (progress) => {
+                this.updateLoading('Generating itinerary PDF...', progress);
+            });
+
+            downloadPDF(pdf, 'birding-itinerary.pdf');
+            this.hideLoading();
+            this.showSuccessToast('PDF downloaded!');
+        } catch (error) {
+            this.hideLoading();
+            this.showError(`Failed to generate PDF: ${error.message}`);
+        }
+    }
+
+    /**
+     * Export itinerary to GPX
+     */
+    handleExportItineraryGpx() {
+        if (!this.currentItinerary) {
+            this.showError('No itinerary to export. Please generate an itinerary first.');
+            return;
+        }
+
+        const gpxContent = generateGPX(this.currentItinerary, {
+            name: 'Birding Itinerary',
+            description: `Optimized birding route with ${this.currentItinerary.summary.totalStops} stops`
+        });
+
+        downloadGPX(gpxContent, 'birding-itinerary');
+        this.showSuccessToast('GPX downloaded!');
     }
 
     /**
@@ -1165,9 +2636,32 @@ class BirdingHotspotsApp {
         // Hide results section
         this.elements.resultsSection.classList.add('hidden');
 
+        // Hide and clear rare bird alert
+        this.elements.rareBirdAlert.classList.add('hidden');
+        clearElement(this.elements.rareBirdAlert);
+
+        // Hide and clear weather summary
+        this.elements.weatherSummary.classList.add('hidden');
+        clearElement(this.elements.weatherSummary);
+
+        // Hide and clear migration alert
+        this.elements.migrationAlert.classList.add('hidden');
+        clearElement(this.elements.migrationAlert);
+
         // Clear stored results
         this.currentResults = null;
         this.currentSortMethod = null;
+        this.notableObservations = [];
+
+        // Clear itinerary state
+        this.currentItinerary = null;
+        this.itineraryRouteLine = null;
+        this.elements.itineraryPanel.classList.add('hidden');
+        this.elements.itineraryResults.classList.add('hidden');
+        this.elements.hotspotCards.classList.remove('hidden');
+
+        // Show sort buttons again (may have been hidden for species search)
+        this.elements.sortBySpecies.parentElement.classList.remove('hidden');
 
         // Scroll to top of form
         document.querySelector('.header').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1219,6 +2713,7 @@ class BirdingHotspotsApp {
 
             downloadPDF(pdf, this.currentSortMethod);
             this.hideLoading();
+            this.showSuccessToast('PDF downloaded!');
         } catch (error) {
             console.error('PDF generation error:', error);
             this.hideLoading();
@@ -1265,6 +2760,33 @@ class BirdingHotspotsApp {
      */
     hideError() {
         this.elements.errorMessage.classList.add('hidden');
+    }
+
+    /**
+     * Show a brief success toast message
+     * @param {string} message - Success message to display
+     */
+    showSuccessToast(message) {
+        // Create toast element
+        const toast = document.createElement('div');
+        toast.className = 'success-toast';
+        toast.setAttribute('role', 'status');
+        toast.setAttribute('aria-live', 'polite');
+        toast.textContent = message;
+
+        // Add to DOM
+        document.body.appendChild(toast);
+
+        // Trigger animation
+        requestAnimationFrame(() => {
+            toast.classList.add('show');
+        });
+
+        // Remove after delay
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
+        }, 2500);
     }
 }
 
