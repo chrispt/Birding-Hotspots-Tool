@@ -2092,7 +2092,7 @@ class BirdingHotspotsApp {
 
         const distance = document.createElement('span');
         distance.className = 'route-hotspot-distance';
-        distance.innerHTML = `<svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/></svg> ${formatDistance(hotspot.distance)} from start`;
+        distance.innerHTML = `<svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/></svg> ${formatDistance(hotspot.distance)} from route`;
 
         details.appendChild(species);
         details.appendChild(distance);
@@ -3252,9 +3252,12 @@ class BirdingHotspotsApp {
         this.routePreviewMarkers.forEach(m => this.routePreviewMapInstance.removeLayer(m));
         this.routePreviewMarkers = [];
 
-        // Add route line (GeoJSON)
-        this.routePreviewLine = L.geoJSON(route.geometry, {
-            style: { color: '#2E7D32', weight: 4, opacity: 0.8 }
+        // Add route line (convert GeoJSON coordinates to Leaflet format)
+        const routeCoords = route.geometry.coordinates.map(c => [c[1], c[0]]);
+        this.routePreviewLine = L.polyline(routeCoords, {
+            color: '#2E7D32',
+            weight: 4,
+            opacity: 0.8
         }).addTo(this.routePreviewMapInstance);
 
         // Add start marker (green)
@@ -3268,6 +3271,47 @@ class BirdingHotspotsApp {
             radius: 8, fillColor: '#ef4444', color: '#fff', weight: 2, fillOpacity: 1
         }).addTo(this.routePreviewMapInstance);
         this.routePreviewMarkers.push(endMarker);
+
+        // Fetch and display preview hotspots along the route
+        if (this.ebirdApi) {
+            try {
+                const midLat = (start.lat + end.lat) / 2;
+                const midLng = (start.lng + end.lng) / 2;
+                const routeDistance = calculateDistance(start.lat, start.lng, end.lat, end.lng);
+                const searchRadius = Math.min(Math.max(routeDistance / 2 + 10, 20), 50);
+
+                const previewHotspots = await this.ebirdApi.getNearbyHotspots(
+                    midLat, midLng, searchRadius, CONFIG.DEFAULT_DAYS_BACK
+                );
+
+                // Filter to those near the route based on max detour setting
+                const maxDetourMiles = parseInt(this.elements.routeMaxDetour.value);
+                const maxDetour = maxDetourMiles * 1.60934; // Convert to km
+
+                const nearRouteHotspots = previewHotspots.filter(h => {
+                    const distFromStart = calculateDistance(start.lat, start.lng, h.lat, h.lng);
+                    const distFromEnd = calculateDistance(end.lat, end.lng, h.lat, h.lng);
+                    return (distFromStart + distFromEnd) <= (routeDistance + maxDetour * 2);
+                }).slice(0, 15); // Limit for performance
+
+                // Add hotspot preview markers (orange circles)
+                nearRouteHotspots.forEach(h => {
+                    const marker = L.circleMarker([h.lat, h.lng], {
+                        radius: 6,
+                        fillColor: '#FF5722',
+                        color: '#fff',
+                        weight: 1,
+                        fillOpacity: 0.8
+                    }).bindPopup(h.locName).addTo(this.routePreviewMapInstance);
+                    this.routePreviewMarkers.push(marker);
+                });
+
+                // Store for potential reuse
+                this.previewHotspots = nearRouteHotspots;
+            } catch (e) {
+                console.warn('Could not fetch preview hotspots:', e);
+            }
+        }
 
         // Fit map to route bounds
         const bounds = this.routePreviewLine.getBounds();
