@@ -1858,7 +1858,7 @@ class BirdingHotspotsApp {
                 this.updateLoading(`Loading details for ${hotspots[i].locName}...`, 40 + (i / hotspots.length) * 30);
 
                 try {
-                    const observations = await this.ebirdApi.getRecentObservationsAtHotspot(
+                    const observations = await this.ebirdApi.getRecentObservations(
                         hotspots[i].locId,
                         CONFIG.DEFAULT_DAYS_BACK
                     );
