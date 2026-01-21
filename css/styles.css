@@ -2477,6 +2477,16 @@ details.about-section[open] .about-chevron {
     transition: color var(--transition);
 }
 
+.seasonal-insights-toggle > span:first-child {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.seasonal-insights-toggle > span:first-child svg {
+    flex-shrink: 0;
+}
+
 .seasonal-insights-toggle:hover {
     color: var(--primary-color);
 }
