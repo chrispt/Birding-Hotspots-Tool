@@ -338,78 +338,84 @@
 
             <!-- Sort Options Section (for hotspot mode) -->
             <section id="sortOptionsSection" class="card">
-                <h2 class="section-title has-tooltip tooltip-left" data-tooltip="Choose how to rank hotspots: by bird diversity, straight-line distance, or actual driving time.">Sort Hotspots By</h2>
-                <div class="sort-options">
-                    <label class="radio-label radio-card">
-                        <input type="radio" name="sortMethod" value="species" checked>
-                        <span class="radio-custom"></span>
-                        <div class="radio-content">
-                            <span class="radio-title">Most Species</span>
-                            <span class="radio-desc">Prioritize locations with the highest bird diversity</span>
-                        </div>
-                    </label>
-                    <label class="radio-label radio-card">
-                        <input type="radio" name="sortMethod" value="distance">
-                        <span class="radio-custom"></span>
-                        <div class="radio-content">
-                            <span class="radio-title">Closest Distance</span>
-                            <span class="radio-desc">Find the nearest birding hotspots (as the crow flies)</span>
-                        </div>
-                    </label>
-                    <label class="radio-label radio-card">
-                        <input type="radio" name="sortMethod" value="driving">
-                        <span class="radio-custom"></span>
-                        <div class="radio-content">
-                            <span class="radio-title">Shortest Drive</span>
-                            <span class="radio-desc">Sort by actual driving distance and time</span>
-                        </div>
-                    </label>
-                </div>
+                <fieldset class="fieldset-reset">
+                    <legend class="section-title has-tooltip tooltip-left" data-tooltip="Choose how to rank hotspots: by bird diversity, straight-line distance, or actual driving time.">Sort Hotspots By</legend>
+                    <div class="sort-options">
+                        <label class="radio-label radio-card">
+                            <input type="radio" name="sortMethod" value="species" checked>
+                            <span class="radio-custom"></span>
+                            <div class="radio-content">
+                                <span class="radio-title">Most Species</span>
+                                <span class="radio-desc">Prioritize locations with the highest bird diversity</span>
+                            </div>
+                        </label>
+                        <label class="radio-label radio-card">
+                            <input type="radio" name="sortMethod" value="distance">
+                            <span class="radio-custom"></span>
+                            <div class="radio-content">
+                                <span class="radio-title">Closest Distance</span>
+                                <span class="radio-desc">Find the nearest birding hotspots (as the crow flies)</span>
+                            </div>
+                        </label>
+                        <label class="radio-label radio-card">
+                            <input type="radio" name="sortMethod" value="driving">
+                            <span class="radio-custom"></span>
+                            <div class="radio-content">
+                                <span class="radio-title">Shortest Drive</span>
+                                <span class="radio-desc">Sort by actual driving distance and time</span>
+                            </div>
+                        </label>
+                    </div>
+                </fieldset>
             </section>
 
             <!-- Search Range Section -->
             <section id="searchRangeSection" class="card">
-                <h2 class="section-title has-tooltip tooltip-left" data-tooltip="eBird limits searches to 50km (31 miles). A larger range finds more hotspots but may include distant locations.">Search Range</h2>
-                <div class="range-options">
-                    <label class="radio-label">
-                        <input type="radio" name="searchRange" value="16" checked>
-                        <span class="radio-custom"></span>
-                        10 miles
-                    </label>
-                    <label class="radio-label">
-                        <input type="radio" name="searchRange" value="32">
-                        <span class="radio-custom"></span>
-                        20 miles
-                    </label>
-                    <label class="radio-label">
-                        <input type="radio" name="searchRange" value="50">
-                        <span class="radio-custom"></span>
-                        31 miles (eBird limit)
-                    </label>
-                </div>
+                <fieldset class="fieldset-reset">
+                    <legend class="section-title has-tooltip tooltip-left" data-tooltip="eBird limits searches to 50km (31 miles). A larger range finds more hotspots but may include distant locations.">Search Range</legend>
+                    <div class="range-options">
+                        <label class="radio-label">
+                            <input type="radio" name="searchRange" value="16" checked>
+                            <span class="radio-custom"></span>
+                            10 miles
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="searchRange" value="32">
+                            <span class="radio-custom"></span>
+                            20 miles
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="searchRange" value="50">
+                            <span class="radio-custom"></span>
+                            31 miles (eBird limit)
+                        </label>
+                    </div>
+                </fieldset>
             </section>
 
             <!-- Number of Hotspots Section -->
             <section id="hotspotsCountSection" class="card">
-                <h2 class="section-title has-tooltip tooltip-left" data-tooltip="How many hotspots to include in your results. Higher counts provide more options but take longer to load.">Number of Hotspots</h2>
-                <div class="range-options">
-                    <label class="radio-label">
-                        <input type="radio" name="hotspotsCount" value="10" checked>
-                        <span class="radio-custom"></span>
-                        10 hotspots
-                    </label>
-                    <label class="radio-label">
-                        <input type="radio" name="hotspotsCount" value="20">
-                        <span class="radio-custom"></span>
-                        20 hotspots
-                    </label>
-                    <label class="radio-label">
-                        <input type="radio" name="hotspotsCount" value="30">
-                        <span class="radio-custom"></span>
-                        30 hotspots
-                    </label>
-                </div>
-                <p class="help-text">Higher counts may take longer to load</p>
+                <fieldset class="fieldset-reset">
+                    <legend class="section-title has-tooltip tooltip-left" data-tooltip="How many hotspots to include in your results. Higher counts provide more options but take longer to load.">Number of Hotspots</legend>
+                    <div class="range-options">
+                        <label class="radio-label">
+                            <input type="radio" name="hotspotsCount" value="10" checked>
+                            <span class="radio-custom"></span>
+                            10 hotspots
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="hotspotsCount" value="20">
+                            <span class="radio-custom"></span>
+                            20 hotspots
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="hotspotsCount" value="30">
+                            <span class="radio-custom"></span>
+                            30 hotspots
+                        </label>
+                    </div>
+                    <p class="help-text">Higher counts may take longer to load</p>
+                </fieldset>
             </section>
 
             <!-- Saved Locations Section (Collapsible) -->

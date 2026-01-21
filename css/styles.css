@@ -10,7 +10,7 @@
     --card-bg: #FFFFFF;
     --text-primary: #212121;
     --text-secondary: #595959;
-    --text-light: #767676;
+    --text-light: #595959; /* WCAG AA compliant contrast ratio 4.5:1 on white */
     --border-color: #E0E0E0;
     --error: #D32F2F;
     --error-bg: #FFEBEE;
@@ -29,6 +29,14 @@
     box-sizing: border-box;
     margin: 0;
     padding: 0;
+}
+
+/* Fieldset reset for accessible radio groups */
+.fieldset-reset {
+    border: none;
+    padding: 0;
+    margin: 0;
+    min-width: 0;
 }
 
 html {
@@ -991,12 +999,6 @@ body {
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin: 0 auto 20px;
-}
-
-@keyframes spin {
-    to {
-        transform: rotate(360deg);
-    }
 }
 
 .loading-status {
@@ -3044,6 +3046,31 @@ details.about-section[open] .about-chevron {
 }
 
 .success-toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+}
+
+/* Warning toast for partial failures */
+.warning-toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: #f57c00;
+    color: white;
+    padding: 12px 24px;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-hover);
+    font-weight: 500;
+    font-size: 0.95rem;
+    z-index: 1100;
+    opacity: 0;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    max-width: 400px;
+    text-align: center;
+}
+
+.warning-toast.show {
     transform: translateX(-50%) translateY(0);
     opacity: 1;
 }

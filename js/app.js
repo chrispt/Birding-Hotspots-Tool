@@ -224,8 +224,34 @@ class BirdingHotspotsApp {
         this.currentItinerary = null;
         this.itineraryRouteLine = null;
 
+        // Track partial failures during search
+        this.partialFailures = [];
+
         this.initializeEventListeners();
         this.loadSavedData();
+    }
+
+    /**
+     * Clean up all map instances to prevent memory leaks
+     */
+    cleanupMaps() {
+        if (this.previewMap) {
+            this.previewMap.remove();
+            this.previewMap = null;
+            this.previewMarker = null;
+        }
+        if (this.resultsMapInstance) {
+            this.resultsMapInstance.remove();
+            this.resultsMapInstance = null;
+        }
+        if (this.routePreviewMapInstance) {
+            this.routePreviewMapInstance.remove();
+            this.routePreviewMapInstance = null;
+        }
+        this.resultsMarkers = [];
+        this.routePreviewMarkers = [];
+        this.routePreviewLine = null;
+        this.itineraryRouteLine = null;
     }
 
     /**
@@ -973,6 +999,7 @@ class BirdingHotspotsApp {
         this.hideError();
         this.isProcessing = true;
         this.searchCancelled = false;
+        this.partialFailures = []; // Reset partial failures for new search
 
         try {
             // Validate API key
@@ -1082,6 +1109,7 @@ class BirdingHotspotsApp {
                 notableSpecies = new Set(notable.map(o => o.speciesCode));
             } catch (e) {
                 console.warn('Could not fetch notable species:', e);
+                this.partialFailures.push('notable species data');
             }
 
             if (this.searchCancelled) {
@@ -1128,6 +1156,9 @@ class BirdingHotspotsApp {
 
             this.hideLoading();
 
+            // Show warning if any data was unavailable
+            this.showPartialFailureWarning();
+
         } catch (error) {
             console.error('Report generation error:', error);
             this.hideLoading();
@@ -1143,11 +1174,18 @@ class BirdingHotspotsApp {
     async enrichHotspots(hotspots, origin, notableSpecies) {
         this.updateLoading('Fetching hotspot observations...', 35);
 
+        // Track failures for this enrichment
+        let observationFailures = 0;
+        let addressFailures = 0;
+        let drivingFailures = 0;
+        let weatherFailed = false;
+
         // Fetch all observations in parallel
         const observationsPromises = hotspots.map(hotspot =>
             this.ebirdApi.getRecentObservations(hotspot.locId, CONFIG.DEFAULT_DAYS_BACK)
                 .catch(e => {
                     console.warn(`Could not fetch observations for ${hotspot.locId}:`, e);
+                    observationFailures++;
                     return [];
                 })
         );
@@ -1164,9 +1202,19 @@ class BirdingHotspotsApp {
             this.updateLoading(`Fetching address ${current}/${total}...`, progress);
         });
 
+        // Count address failures
+        allAddresses.forEach(result => {
+            if (!result.address) addressFailures++;
+        });
+
         // Fetch driving distances
         this.updateLoading('Calculating driving distances...', 70);
         const drivingRoutes = await getDrivingRoutes(origin.lat, origin.lng, locations);
+
+        // Count driving route failures
+        drivingRoutes.forEach(route => {
+            if (!route) drivingFailures++;
+        });
 
         // Fetch weather data
         this.updateLoading('Fetching weather data...', 80);
@@ -1178,6 +1226,21 @@ class BirdingHotspotsApp {
             });
         } catch (e) {
             console.warn('Could not fetch weather data:', e);
+            weatherFailed = true;
+        }
+
+        // Record partial failures for notification
+        if (observationFailures > 0) {
+            this.partialFailures.push(`observations for ${observationFailures} hotspot${observationFailures > 1 ? 's' : ''}`);
+        }
+        if (addressFailures > 0) {
+            this.partialFailures.push(`addresses for ${addressFailures} location${addressFailures > 1 ? 's' : ''}`);
+        }
+        if (drivingFailures > 0) {
+            this.partialFailures.push(`driving distances for ${drivingFailures} hotspot${drivingFailures > 1 ? 's' : ''}`);
+        }
+        if (weatherFailed) {
+            this.partialFailures.push('weather data');
         }
 
         this.updateLoading('Building hotspot details...', 92);
@@ -2862,32 +2925,44 @@ class BirdingHotspotsApp {
         // Create species results header
         const resultsHeader = document.createElement('div');
         resultsHeader.className = 'species-results-header';
-        resultsHeader.innerHTML = `
-            <div class="species-results-icon">
-                <svg viewBox="0 0 24 24" width="28" height="28">
-                    <path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
-                </svg>
-            </div>
-            <div class="species-results-title">
-                <h3>${species.commonName} Sightings</h3>
-                <p>${sightings.length > 0 ? 'Recent sightings near your location' : 'No recent sightings found in this area'}</p>
-            </div>
-        `;
+
+        const iconDiv = document.createElement('div');
+        iconDiv.className = 'species-results-icon';
+        iconDiv.appendChild(createSVGIcon('search', 28));
+
+        const titleDiv = document.createElement('div');
+        titleDiv.className = 'species-results-title';
+
+        const h3 = document.createElement('h3');
+        h3.textContent = `${species.commonName} Sightings`;
+
+        const p = document.createElement('p');
+        p.textContent = sightings.length > 0 ? 'Recent sightings near your location' : 'No recent sightings found in this area';
+
+        titleDiv.appendChild(h3);
+        titleDiv.appendChild(p);
+        resultsHeader.appendChild(iconDiv);
+        resultsHeader.appendChild(titleDiv);
 
         this.elements.hotspotCards.appendChild(resultsHeader);
 
         if (sightings.length === 0) {
             const noResults = document.createElement('div');
             noResults.className = 'species-no-results';
-            noResults.innerHTML = `
-                <div class="species-no-results-icon">
-                    <svg viewBox="0 0 24 24" width="64" height="64">
-                        <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                    </svg>
-                </div>
-                <h3>No recent sightings</h3>
-                <p>Try expanding your search range or searching for a different species.</p>
-            `;
+
+            const noResultsIcon = document.createElement('div');
+            noResultsIcon.className = 'species-no-results-icon';
+            noResultsIcon.appendChild(createSVGIcon('check', 64));
+
+            const noResultsTitle = document.createElement('h3');
+            noResultsTitle.textContent = 'No recent sightings';
+
+            const noResultsText = document.createElement('p');
+            noResultsText.textContent = 'Try expanding your search range or searching for a different species.';
+
+            noResults.appendChild(noResultsIcon);
+            noResults.appendChild(noResultsTitle);
+            noResults.appendChild(noResultsText);
             this.elements.hotspotCards.appendChild(noResults);
         } else {
             // Create sighting cards
@@ -2927,48 +3002,84 @@ class BirdingHotspotsApp {
             ? `https://ebird.org/hotspot/${sighting.locId}`
             : `https://www.google.com/maps/search/?api=1&query=${sighting.lat},${sighting.lng}`;
 
-        card.innerHTML = `
-            <div class="species-sighting-header">
-                <div class="sighting-rank">${rank}</div>
-                <div class="sighting-info">
-                    <h4 class="sighting-location">${sighting.name}</h4>
-                    <div class="sighting-meta">
-                        <span>
-                            <svg viewBox="0 0 24 24" width="14" height="14">
-                                <path fill="currentColor" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-                            </svg>
-                            ${distanceText}
-                        </span>
-                        <span>
-                            <svg viewBox="0 0 24 24" width="14" height="14">
-                                <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                            </svg>
-                            ${sighting.observationCount} sighting${sighting.observationCount !== 1 ? 's' : ''}
-                        </span>
-                    </div>
-                </div>
-            </div>
-            <div class="sighting-details">
-                <div class="sighting-date">
-                    Last seen: <strong>${this.formatRelativeDate(sighting.lastSeen)}</strong>
-                </div>
-                ${sighting.highestCount > 1 ? `<div class="sighting-count">Highest count: ${sighting.highestCount} individuals</div>` : ''}
-            </div>
-            <div class="sighting-links">
-                <a href="${directionsUrl}" target="_blank" rel="noopener noreferrer" class="sighting-link">
-                    <svg viewBox="0 0 24 24" width="14" height="14">
-                        <path fill="currentColor" d="M21.71 11.29l-9-9c-.39-.39-1.02-.39-1.41 0l-9 9c-.39.39-.39 1.02 0 1.41l9 9c.39.39 1.02.39 1.41 0l9-9c.39-.38.39-1.01 0-1.41zM14 14.5V12h-4v3H8v-4c0-.55.45-1 1-1h5V7.5l3.5 3.5-3.5 3.5z"/>
-                    </svg>
-                    Get Directions
-                </a>
-                <a href="${ebirdUrl}" target="_blank" rel="noopener noreferrer" class="sighting-link">
-                    <svg viewBox="0 0 24 24" width="14" height="14">
-                        <path fill="currentColor" d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/>
-                    </svg>
-                    ${sighting.isHotspot ? 'View on eBird' : 'View Location'}
-                </a>
-            </div>
-        `;
+        // Header section
+        const header = document.createElement('div');
+        header.className = 'species-sighting-header';
+
+        const rankDiv = document.createElement('div');
+        rankDiv.className = 'sighting-rank';
+        rankDiv.textContent = rank;
+
+        const infoDiv = document.createElement('div');
+        infoDiv.className = 'sighting-info';
+
+        const locationH4 = document.createElement('h4');
+        locationH4.className = 'sighting-location';
+        locationH4.textContent = sighting.name;
+
+        const metaDiv = document.createElement('div');
+        metaDiv.className = 'sighting-meta';
+
+        const distanceSpan = document.createElement('span');
+        distanceSpan.appendChild(createSVGIcon('location', 14));
+        distanceSpan.appendChild(document.createTextNode(' ' + distanceText));
+
+        const countSpan = document.createElement('span');
+        countSpan.appendChild(createSVGIcon('check', 14));
+        countSpan.appendChild(document.createTextNode(` ${sighting.observationCount} sighting${sighting.observationCount !== 1 ? 's' : ''}`));
+
+        metaDiv.appendChild(distanceSpan);
+        metaDiv.appendChild(countSpan);
+        infoDiv.appendChild(locationH4);
+        infoDiv.appendChild(metaDiv);
+        header.appendChild(rankDiv);
+        header.appendChild(infoDiv);
+
+        // Details section
+        const details = document.createElement('div');
+        details.className = 'sighting-details';
+
+        const dateDiv = document.createElement('div');
+        dateDiv.className = 'sighting-date';
+        dateDiv.appendChild(document.createTextNode('Last seen: '));
+        const dateStrong = document.createElement('strong');
+        dateStrong.textContent = this.formatRelativeDate(sighting.lastSeen);
+        dateDiv.appendChild(dateStrong);
+        details.appendChild(dateDiv);
+
+        if (sighting.highestCount > 1) {
+            const countDiv = document.createElement('div');
+            countDiv.className = 'sighting-count';
+            countDiv.textContent = `Highest count: ${sighting.highestCount} individuals`;
+            details.appendChild(countDiv);
+        }
+
+        // Links section
+        const links = document.createElement('div');
+        links.className = 'sighting-links';
+
+        const directionsLink = document.createElement('a');
+        directionsLink.href = directionsUrl;
+        directionsLink.target = '_blank';
+        directionsLink.rel = 'noopener noreferrer';
+        directionsLink.className = 'sighting-link';
+        directionsLink.appendChild(createSVGIcon('directions', 14));
+        directionsLink.appendChild(document.createTextNode(' Get Directions'));
+
+        const ebirdLink = document.createElement('a');
+        ebirdLink.href = ebirdUrl;
+        ebirdLink.target = '_blank';
+        ebirdLink.rel = 'noopener noreferrer';
+        ebirdLink.className = 'sighting-link';
+        ebirdLink.appendChild(createSVGIcon('external', 14));
+        ebirdLink.appendChild(document.createTextNode(sighting.isHotspot ? ' View on eBird' : ' View Location'));
+
+        links.appendChild(directionsLink);
+        links.appendChild(ebirdLink);
+
+        card.appendChild(header);
+        card.appendChild(details);
+        card.appendChild(links);
 
         return card;
     }
@@ -3266,7 +3377,12 @@ class BirdingHotspotsApp {
 
         const sparklineLabel = document.createElement('div');
         sparklineLabel.className = 'sparkline-label';
-        sparklineLabel.innerHTML = '<span>Jan</span><span>Dec</span>';
+        const janSpan = document.createElement('span');
+        janSpan.textContent = 'Jan';
+        const decSpan = document.createElement('span');
+        decSpan.textContent = 'Dec';
+        sparklineLabel.appendChild(janSpan);
+        sparklineLabel.appendChild(decSpan);
 
         // Activity recommendation
         const recommendation = document.createElement('div');
@@ -3807,15 +3923,19 @@ class BirdingHotspotsApp {
             }
         }
 
+        // Clear previous content
+        countDisplay.textContent = '';
+
         if (count > 0) {
-            countDisplay.innerHTML = `
-                <span class="selection-badge">${count}</span> hotspot${count !== 1 ? 's' : ''} selected for itinerary
-            `;
-            countDisplay.classList.remove('hidden');
+            const badge = document.createElement('span');
+            badge.className = 'selection-badge';
+            badge.textContent = count;
+            countDisplay.appendChild(badge);
+            countDisplay.appendChild(document.createTextNode(` hotspot${count !== 1 ? 's' : ''} selected for itinerary`));
         } else {
-            countDisplay.innerHTML = 'Click on orange markers to add hotspots to your itinerary';
-            countDisplay.classList.remove('hidden');
+            countDisplay.textContent = 'Click on orange markers to add hotspots to your itinerary';
         }
+        countDisplay.classList.remove('hidden');
     }
 
     /**
@@ -3962,24 +4082,26 @@ class BirdingHotspotsApp {
 
         const stats = document.createElement('div');
         stats.className = 'itinerary-summary-stats';
-        stats.innerHTML = `
-            <div class="itinerary-stat">
-                <span class="itinerary-stat-value">${formatItineraryDuration(itinerary.summary.totalTripTime)}</span>
-                <span class="itinerary-stat-label">Total Trip Time</span>
-            </div>
-            <div class="itinerary-stat">
-                <span class="itinerary-stat-value">${(itinerary.summary.totalDistance * 0.621371).toFixed(1)} mi</span>
-                <span class="itinerary-stat-label">Total Distance</span>
-            </div>
-            <div class="itinerary-stat">
-                <span class="itinerary-stat-value">${formatItineraryDuration(itinerary.summary.totalTravelTime)}</span>
-                <span class="itinerary-stat-label">Driving Time</span>
-            </div>
-            <div class="itinerary-stat">
-                <span class="itinerary-stat-value">${formatItineraryDuration(itinerary.summary.totalVisitTime)}</span>
-                <span class="itinerary-stat-label">Birding Time</span>
-            </div>
-        `;
+
+        // Helper to create stat element
+        const createStat = (value, label) => {
+            const stat = document.createElement('div');
+            stat.className = 'itinerary-stat';
+            const valueSpan = document.createElement('span');
+            valueSpan.className = 'itinerary-stat-value';
+            valueSpan.textContent = value;
+            const labelSpan = document.createElement('span');
+            labelSpan.className = 'itinerary-stat-label';
+            labelSpan.textContent = label;
+            stat.appendChild(valueSpan);
+            stat.appendChild(labelSpan);
+            return stat;
+        };
+
+        stats.appendChild(createStat(formatItineraryDuration(itinerary.summary.totalTripTime), 'Total Trip Time'));
+        stats.appendChild(createStat(`${(itinerary.summary.totalDistance * 0.621371).toFixed(1)} mi`, 'Total Distance'));
+        stats.appendChild(createStat(formatItineraryDuration(itinerary.summary.totalTravelTime), 'Driving Time'));
+        stats.appendChild(createStat(formatItineraryDuration(itinerary.summary.totalVisitTime), 'Birding Time'));
         summary.appendChild(stats);
 
         // Render stops
@@ -4013,14 +4135,16 @@ class BirdingHotspotsApp {
             const leg = itinerary.legs[index - 1];
             const legEl = document.createElement('div');
             legEl.className = 'itinerary-leg';
-            legEl.innerHTML = `
-                <svg viewBox="0 0 24 24" width="16" height="16">
-                    <path fill="currentColor" d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/>
-                </svg>
-                <span>${(leg.distance * 0.621371).toFixed(1)} mi</span>
-                <span>|</span>
-                <span>${formatItineraryDuration(leg.duration / 60)}</span>
-            `;
+            legEl.appendChild(createSVGIcon('car', 16));
+            const distSpan = document.createElement('span');
+            distSpan.textContent = `${(leg.distance * 0.621371).toFixed(1)} mi`;
+            legEl.appendChild(distSpan);
+            const dividerSpan = document.createElement('span');
+            dividerSpan.textContent = '|';
+            legEl.appendChild(dividerSpan);
+            const durationSpan = document.createElement('span');
+            durationSpan.textContent = formatItineraryDuration(leg.duration / 60);
+            legEl.appendChild(durationSpan);
             wrapper.appendChild(legEl);
         }
 
@@ -4060,13 +4184,15 @@ class BirdingHotspotsApp {
 
         if (stop.arrivalTime) {
             const arrivalSpan = document.createElement('span');
-            arrivalSpan.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg> Arrive ${formatItineraryTime(stop.arrivalTime)}`;
+            arrivalSpan.appendChild(createSVGIcon('schedule', 14));
+            arrivalSpan.appendChild(document.createTextNode(` Arrive ${formatItineraryTime(stop.arrivalTime)}`));
             metaDiv.appendChild(arrivalSpan);
         }
 
         if (stop.suggestedVisitTime > 0) {
             const visitSpan = document.createElement('span');
-            visitSpan.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/></svg> ${formatItineraryDuration(stop.suggestedVisitTime)} birding`;
+            visitSpan.appendChild(createSVGIcon('eye', 14));
+            visitSpan.appendChild(document.createTextNode(` ${formatItineraryDuration(stop.suggestedVisitTime)} birding`));
             metaDiv.appendChild(visitSpan);
         }
 
@@ -4332,11 +4458,8 @@ class BirdingHotspotsApp {
      * Handle "New Search" button click
      */
     handleNewSearch() {
-        // Clean up results map
-        if (this.resultsMapInstance) {
-            this.resultsMapInstance.remove();
-            this.resultsMapInstance = null;
-        }
+        // Clean up all maps
+        this.cleanupMaps();
 
         // Hide results section
         this.elements.resultsSection.classList.add('hidden');
@@ -4497,6 +4620,43 @@ class BirdingHotspotsApp {
             toast.classList.remove('show');
             setTimeout(() => toast.remove(), 300);
         }, 2500);
+    }
+
+    /**
+     * Show a brief warning toast message for partial failures
+     * @param {string} message - Warning message to display
+     */
+    showWarningToast(message) {
+        const toast = document.createElement('div');
+        toast.className = 'warning-toast';
+        toast.setAttribute('role', 'status');
+        toast.setAttribute('aria-live', 'polite');
+        toast.textContent = message;
+
+        document.body.appendChild(toast);
+
+        requestAnimationFrame(() => {
+            toast.classList.add('show');
+        });
+
+        // Longer delay for warnings so users can read them
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
+        }, 4000);
+    }
+
+    /**
+     * Show warning toast if there were partial failures during search
+     */
+    showPartialFailureWarning() {
+        if (this.partialFailures.length === 0) return;
+
+        const message = this.partialFailures.length === 1
+            ? `Some data unavailable: ${this.partialFailures[0]}`
+            : `Some data unavailable: ${this.partialFailures.slice(0, 2).join(', ')}${this.partialFailures.length > 2 ? '...' : ''}`;
+
+        this.showWarningToast(message);
     }
 }
 

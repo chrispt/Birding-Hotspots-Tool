@@ -33,15 +33,20 @@ function openDatabase() {
  * @returns {Promise<Array|null>}
  */
 async function getCachedTaxonomy() {
+    let db = null;
     try {
-        const db = await openDatabase();
+        db = await openDatabase();
         return new Promise((resolve, reject) => {
             const transaction = db.transaction([STORE_NAME], 'readonly');
             const store = transaction.objectStore(STORE_NAME);
             const request = store.get('taxonomy');
 
-            request.onerror = () => reject(request.error);
+            request.onerror = () => {
+                db.close();
+                reject(request.error);
+            };
             request.onsuccess = () => {
+                db.close();
                 const result = request.result;
                 if (!result) {
                     resolve(null);
@@ -60,6 +65,7 @@ async function getCachedTaxonomy() {
             };
         });
     } catch (e) {
+        if (db) db.close();
         console.warn('IndexedDB not available:', e);
         return null;
     }
@@ -70,8 +76,9 @@ async function getCachedTaxonomy() {
  * @param {Array} taxonomy
  */
 async function cacheTaxonomy(taxonomy) {
+    let db = null;
     try {
-        const db = await openDatabase();
+        db = await openDatabase();
         return new Promise((resolve, reject) => {
             const transaction = db.transaction([STORE_NAME], 'readwrite');
             const store = transaction.objectStore(STORE_NAME);
@@ -81,10 +88,17 @@ async function cacheTaxonomy(taxonomy) {
                 timestamp: Date.now()
             });
 
-            request.onerror = () => reject(request.error);
-            request.onsuccess = () => resolve();
+            request.onerror = () => {
+                db.close();
+                reject(request.error);
+            };
+            request.onsuccess = () => {
+                db.close();
+                resolve();
+            };
         });
     } catch (e) {
+        if (db) db.close();
         console.warn('Could not cache taxonomy:', e);
     }
 }
