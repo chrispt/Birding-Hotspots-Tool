@@ -2459,8 +2459,8 @@ details.about-section[open] .about-chevron {
 /* Seasonal Insights Section (collapsible on hotspot cards) */
 .seasonal-insights-section {
     border-top: 1px solid var(--border-color);
-    margin-top: 12px;
-    padding-top: 12px;
+    margin: 0;
+    padding: 12px 20px;
 }
 
 .seasonal-insights-toggle {
@@ -2478,13 +2478,20 @@ details.about-section[open] .about-chevron {
 }
 
 .seasonal-insights-toggle > span:first-child {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
 }
 
 .seasonal-insights-toggle > span:first-child svg {
     flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+}
+
+.seasonal-insights-toggle .chevron {
+    width: 16px;
+    height: 16px;
 }
 
 .seasonal-insights-toggle:hover {
