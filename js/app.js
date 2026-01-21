@@ -2177,10 +2177,10 @@ class BirdingHotspotsApp {
             hotspots.forEach((h, index) => {
                 const marker = L.circleMarker([h.lat, h.lng], {
                     radius: 10,
-                    fillColor: '#2E7D32', // Green = selected (all start selected)
+                    fillColor: '#9E9E9E', // Gray = unselected (none selected by default)
                     color: '#fff',
                     weight: 2,
-                    fillOpacity: 0.9
+                    fillOpacity: 0.6
                 }).addTo(this.routePreviewMapInstance);
 
                 // Store index for click handler
@@ -2192,7 +2192,7 @@ class BirdingHotspotsApp {
                 popupContent.innerHTML = `
                     <strong>${h.name}</strong><br>
                     ${h.speciesCount} species<br>
-                    <button class="popup-toggle-btn selected" data-index="${index}">
+                    <button class="popup-toggle-btn" data-index="${index}">
                         <span class="add-text">Add to itinerary</span>
                         <span class="remove-text">Remove from itinerary</span>
                     </button>
@@ -2247,12 +2247,12 @@ class BirdingHotspotsApp {
      */
     createRouteHotspotCard(hotspot, index) {
         const card = document.createElement('div');
-        card.className = 'route-hotspot-card selected';
+        card.className = 'route-hotspot-card';
         card.dataset.index = index;
 
         const checkbox = document.createElement('div');
         checkbox.className = 'route-hotspot-checkbox';
-        checkbox.innerHTML = `<input type="checkbox" checked id="routeHotspot${index}" aria-label="Select ${hotspot.name}">`;
+        checkbox.innerHTML = `<input type="checkbox" id="routeHotspot${index}" aria-label="Select ${hotspot.name}">`;
 
         const info = document.createElement('div');
         info.className = 'route-hotspot-info';
@@ -2351,6 +2351,14 @@ class BirdingHotspotsApp {
                 fillColor: selected ? '#2E7D32' : '#9E9E9E', // Green if selected, gray if not
                 fillOpacity: selected ? 0.9 : 0.6
             });
+
+            // Update popup button class if popup is open
+            if (marker.isPopupOpen()) {
+                const btn = marker.getPopup().getElement().querySelector('.popup-toggle-btn');
+                if (btn) {
+                    btn.classList.toggle('selected', selected);
+                }
+            }
         }
     }
 
