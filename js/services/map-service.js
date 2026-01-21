@@ -350,3 +350,296 @@ function calculateBounds(centerLat, centerLng, hotspots) {
         maxLng: maxLng + lngPadding
     };
 }
+
+/**
+ * Calculate bounds that include route geometry and all stops
+ * @param {Object} itinerary - Itinerary with stops and geometry
+ * @returns {Object} Bounds object with min/max lat/lng
+ */
+function calculateRouteBounds(itinerary) {
+    let minLat = Infinity;
+    let maxLat = -Infinity;
+    let minLng = Infinity;
+    let maxLng = -Infinity;
+
+    // Include all stops
+    for (const stop of itinerary.stops) {
+        minLat = Math.min(minLat, stop.lat);
+        maxLat = Math.max(maxLat, stop.lat);
+        minLng = Math.min(minLng, stop.lng);
+        maxLng = Math.max(maxLng, stop.lng);
+    }
+
+    // Include route geometry if available
+    if (itinerary.geometry && itinerary.geometry.coordinates) {
+        for (const coord of itinerary.geometry.coordinates) {
+            const lng = coord[0];
+            const lat = coord[1];
+            minLat = Math.min(minLat, lat);
+            maxLat = Math.max(maxLat, lat);
+            minLng = Math.min(minLng, lng);
+            maxLng = Math.max(maxLng, lng);
+        }
+    }
+
+    // Add some padding (15%)
+    const latPadding = (maxLat - minLat) * 0.15 || 0.02;
+    const lngPadding = (maxLng - minLng) * 0.15 || 0.02;
+
+    return {
+        minLat: minLat - latPadding,
+        maxLat: maxLat + latPadding,
+        minLng: minLng - lngPadding,
+        maxLng: maxLng + lngPadding
+    };
+}
+
+/**
+ * Draw a route line on canvas from GeoJSON coordinates
+ * @param {CanvasRenderingContext2D} ctx - Canvas context
+ * @param {Array} coordinates - GeoJSON coordinates [[lng, lat], ...]
+ * @param {Function} toCanvas - Coordinate converter function
+ */
+function drawRouteLine(ctx, coordinates, toCanvas) {
+    if (!coordinates || coordinates.length < 2) return;
+
+    ctx.beginPath();
+    ctx.strokeStyle = '#2563eb'; // Blue color matching Leaflet map
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    const firstPoint = toCanvas(coordinates[0][1], coordinates[0][0]);
+    ctx.moveTo(firstPoint.x, firstPoint.y);
+
+    for (let i = 1; i < coordinates.length; i++) {
+        const point = toCanvas(coordinates[i][1], coordinates[i][0]);
+        ctx.lineTo(point.x, point.y);
+    }
+
+    ctx.stroke();
+}
+
+/**
+ * Draw route markers for start, end, and hotspots
+ * @param {CanvasRenderingContext2D} ctx - Canvas context
+ * @param {Array} stops - Itinerary stops
+ * @param {Function} toCanvas - Coordinate converter function
+ */
+function drawRouteMarkers(ctx, stops, toCanvas) {
+    // Draw hotspot markers first (so they appear under start/end if overlapping)
+    let hotspotNumber = 1;
+    stops.forEach(stop => {
+        if (stop.type === 'hotspot') {
+            const pos = toCanvas(stop.lat, stop.lng);
+
+            // Shadow
+            ctx.beginPath();
+            ctx.arc(pos.x + 2, pos.y + 2, 12, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.fill();
+
+            // Orange circle
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, 12, 0, Math.PI * 2);
+            ctx.fillStyle = '#FF5722';
+            ctx.fill();
+            ctx.strokeStyle = '#FFFFFF';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Number label
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = 'bold 10px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(hotspotNumber.toString(), pos.x, pos.y);
+            hotspotNumber++;
+        }
+    });
+
+    // Draw start marker (green)
+    const startStop = stops.find(s => s.type === 'start');
+    if (startStop) {
+        const pos = toCanvas(startStop.lat, startStop.lng);
+
+        // Shadow
+        ctx.beginPath();
+        ctx.arc(pos.x + 2, pos.y + 2, 14, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+        ctx.fill();
+
+        // Green circle
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, 14, 0, Math.PI * 2);
+        ctx.fillStyle = '#22c55e';
+        ctx.fill();
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        // "S" label
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 12px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('S', pos.x, pos.y);
+    }
+
+    // Draw end marker (red) - only if different from start
+    const endStop = stops.find(s => s.type === 'end');
+    if (endStop) {
+        const pos = toCanvas(endStop.lat, endStop.lng);
+
+        // Shadow
+        ctx.beginPath();
+        ctx.arc(pos.x + 2, pos.y + 2, 14, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+        ctx.fill();
+
+        // Red circle
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, 14, 0, Math.PI * 2);
+        ctx.fillStyle = '#ef4444';
+        ctx.fill();
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        // "E" label
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 12px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('E', pos.x, pos.y);
+    }
+}
+
+/**
+ * Draw route legend in bottom-left corner
+ * @param {CanvasRenderingContext2D} ctx - Canvas context
+ * @param {number} width - Canvas width
+ * @param {number} height - Canvas height
+ * @param {boolean} hasEnd - Whether there's a separate end point
+ */
+function drawRouteLegend(ctx, width, height, hasEnd) {
+    const legendHeight = hasEnd ? 75 : 55;
+    const legendWidth = 150;
+
+    // Legend background
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+    ctx.fillRect(10, height - legendHeight - 10, legendWidth, legendHeight);
+    ctx.strokeStyle = '#BDBDBD';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(10, height - legendHeight - 10, legendWidth, legendHeight);
+
+    let yOffset = height - legendHeight;
+
+    // Start marker
+    ctx.beginPath();
+    ctx.arc(30, yOffset + 12, 8, 0, Math.PI * 2);
+    ctx.fillStyle = '#22c55e';
+    ctx.fill();
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 8px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('S', 30, yOffset + 12);
+
+    ctx.fillStyle = '#212121';
+    ctx.font = '11px Arial';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('Start', 45, yOffset + 12);
+
+    yOffset += 20;
+
+    // End marker (if present)
+    if (hasEnd) {
+        ctx.beginPath();
+        ctx.arc(30, yOffset + 12, 8, 0, Math.PI * 2);
+        ctx.fillStyle = '#ef4444';
+        ctx.fill();
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 8px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('E', 30, yOffset + 12);
+
+        ctx.fillStyle = '#212121';
+        ctx.font = '11px Arial';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('End', 45, yOffset + 12);
+
+        yOffset += 20;
+    }
+
+    // Hotspot marker
+    ctx.beginPath();
+    ctx.arc(30, yOffset + 12, 8, 0, Math.PI * 2);
+    ctx.fillStyle = '#FF5722';
+    ctx.fill();
+
+    ctx.fillStyle = '#212121';
+    ctx.font = '11px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText('Birding Hotspot', 45, yOffset + 12);
+}
+
+/**
+ * Generate a route map image with driving path and markers
+ * @param {Object} itinerary - Itinerary with stops, legs, and geometry
+ * @param {Object} options - Canvas options
+ * @returns {Promise<string>} Data URL of the canvas image
+ */
+export async function generateRouteMap(itinerary, options = {}) {
+    const {
+        width = 800,
+        height = 400
+    } = options;
+
+    // Use 2x resolution for sharper output in PDFs
+    const scale = 2;
+    const canvasWidth = width * scale;
+    const canvasHeight = height * scale;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = canvasWidth;
+    canvas.height = canvasHeight;
+    const ctx = canvas.getContext('2d');
+
+    // Scale context for higher resolution
+    ctx.scale(scale, scale);
+
+    // Calculate bounds that include route and all stops
+    const bounds = calculateRouteBounds(itinerary);
+
+    // Calculate appropriate zoom level
+    const zoom = calculateZoom(bounds, canvasWidth, canvasHeight);
+
+    // Try to fetch and draw OSM tiles
+    try {
+        await drawOSMTiles(ctx, bounds, zoom, width, height, scale);
+    } catch (e) {
+        console.warn('Could not load OSM tiles, using fallback background:', e);
+        drawFallbackBackground(ctx, width, height);
+    }
+
+    // Create coordinate conversion function based on bounds
+    const toCanvas = createCoordinateConverter(bounds, width, height);
+
+    // Draw route line first (so markers appear on top)
+    if (itinerary.geometry && itinerary.geometry.coordinates) {
+        drawRouteLine(ctx, itinerary.geometry.coordinates, toCanvas);
+    }
+
+    // Draw markers
+    drawRouteMarkers(ctx, itinerary.stops, toCanvas);
+
+    // Draw legend
+    const hasEnd = itinerary.stops.some(s => s.type === 'end');
+    drawRouteLegend(ctx, width, height, hasEnd);
+
+    return canvas.toDataURL('image/png');
+}

@@ -11,7 +11,7 @@ import { storage } from './services/storage.js';
 import { geocodeAddress, getCurrentPosition } from './api/geocoding.js';
 import { reverseGeocode, batchReverseGeocode } from './api/reverse-geo.js';
 import { EBirdAPI, processObservations } from './api/ebird.js';
-import { generatePDFReport, downloadPDF } from './services/pdf-generator.js';
+import { generatePDFReport, downloadPDF, generateRoutePDFReport, downloadRoutePDF } from './services/pdf-generator.js';
 import { getDrivingRoutes, getRouteThrough } from './api/routing.js';
 import { getWeatherForLocations, getOverallBirdingConditions, getBirdingConditionScore } from './api/weather.js';
 import { SpeciesSearch } from './services/species-search.js';
@@ -3441,26 +3441,35 @@ class BirdingHotspotsApp {
             return;
         }
 
-        this.showLoading('Generating itinerary PDF...', 0);
+        this.showLoading('Generating route PDF...', 0);
 
         try {
-            // Build itinerary-specific data for PDF
-            const itineraryData = {
-                origin: this.currentLocation,
-                hotspots: this.currentItinerary.stops.filter(s => s.type === 'hotspot'),
-                sortMethod: 'itinerary',
-                generatedDate: new Date().toLocaleDateString(),
-                isItinerary: true,
-                itinerary: this.currentItinerary
+            // Get start and end from itinerary stops
+            const startStop = this.currentItinerary.stops.find(s => s.type === 'start');
+            const endStop = this.currentItinerary.stops.find(s => s.type === 'end') || startStop;
+
+            const routeData = {
+                start: {
+                    address: startStop.address || startStop.name,
+                    lat: startStop.lat,
+                    lng: startStop.lng
+                },
+                end: {
+                    address: endStop.address || endStop.name,
+                    lat: endStop.lat,
+                    lng: endStop.lng
+                },
+                itinerary: this.currentItinerary,
+                generatedDate: new Date().toLocaleDateString()
             };
 
-            const pdf = await generatePDFReport(itineraryData, (progress) => {
-                this.updateLoading('Generating itinerary PDF...', progress);
+            const pdf = await generateRoutePDFReport(routeData, (msg, pct) => {
+                this.updateLoading(msg, pct);
             });
 
-            downloadPDF(pdf, 'birding-itinerary.pdf');
+            downloadRoutePDF(pdf);
             this.hideLoading();
-            this.showSuccessToast('PDF downloaded!');
+            this.showSuccessToast('Route PDF downloaded!');
         } catch (error) {
             this.hideLoading();
             this.showError(`Failed to generate PDF: ${error.message}`);
