@@ -3602,6 +3602,12 @@ class BirdingHotspotsApp {
                 // Re-fit bounds after resize
                 this.routePreviewMapInstance.fitBounds(bounds, { padding: [20, 20] });
             }
+
+            // Scroll to route preview section so user can see the map
+            this.elements.routePreviewSection.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+            });
         }, 250);
     }
 
