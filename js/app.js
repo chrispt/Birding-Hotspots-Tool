@@ -129,6 +129,14 @@ class BirdingHotspotsApp {
             routeDistanceValue: document.getElementById('routeDistanceValue'),
             routeDurationValue: document.getElementById('routeDurationValue'),
             openRouteInGoogleMaps: document.getElementById('openRouteInGoogleMaps'),
+            // Route hotspots selection elements
+            routeHotspotsSection: document.getElementById('routeHotspotsSection'),
+            routeHotspotsMeta: document.getElementById('routeHotspotsMeta'),
+            routeHotspotsList: document.getElementById('routeHotspotsList'),
+            selectAllRouteHotspots: document.getElementById('selectAllRouteHotspots'),
+            deselectAllRouteHotspots: document.getElementById('deselectAllRouteHotspots'),
+            selectedHotspotsCount: document.getElementById('selectedHotspotsCount'),
+            buildRouteItinerary: document.getElementById('buildRouteItinerary'),
             sortOptionsSection: document.getElementById('sortOptionsSection'),
             searchRangeSection: document.getElementById('searchRangeSection'),
             hotspotsCountSection: document.getElementById('hotspotsCountSection'),
@@ -192,6 +200,11 @@ class BirdingHotspotsApp {
         this.validatedRouteStartCoords = null;
         this.routeEndValidated = false;
         this.validatedRouteEndCoords = null;
+
+        // Store route hotspots for selection
+        this.routeHotspots = [];
+        this.routeStartAddress = null;
+        this.routeEndAddressText = null;
 
         // Route preview map
         this.routePreviewMapInstance = null;
@@ -330,6 +343,11 @@ class BirdingHotspotsApp {
         this.elements.exportItineraryPdf.addEventListener('click', () => this.handleExportItineraryPdf());
         this.elements.exportItineraryGpx.addEventListener('click', () => this.handleExportItineraryGpx());
         this.elements.backToResults.addEventListener('click', () => this.handleBackToResults());
+
+        // Route hotspots selection events
+        this.elements.selectAllRouteHotspots.addEventListener('click', () => this.selectAllRouteHotspots());
+        this.elements.deselectAllRouteHotspots.addEventListener('click', () => this.deselectAllRouteHotspots());
+        this.elements.buildRouteItinerary.addEventListener('click', () => this.handleBuildRouteItinerary());
     }
 
     /**
@@ -1971,7 +1989,7 @@ class BirdingHotspotsApp {
                         hotspots[i].locId,
                         CONFIG.DEFAULT_DAYS_BACK
                     );
-                    const processed = processObservations(observations);
+                    const birds = processObservations(observations);
 
                     enrichedHotspots.push({
                         ...hotspots[i],
@@ -1979,8 +1997,8 @@ class BirdingHotspotsApp {
                         lat: hotspots[i].lat,
                         lng: hotspots[i].lng,
                         locId: hotspots[i].locId,
-                        speciesCount: processed.speciesCount,
-                        birds: processed.birds,
+                        speciesCount: birds.length,
+                        birds: birds,
                         distance: calculateDistance(startCoords.lat, startCoords.lng, hotspots[i].lat, hotspots[i].lng)
                     });
                 } catch (e) {
@@ -1995,32 +2013,208 @@ class BirdingHotspotsApp {
                 return;
             }
 
-            this.updateLoading('Building your birding itinerary...', 75);
+            // Sort hotspots by species count (highest first)
+            enrichedHotspots.sort((a, b) => b.speciesCount - a.speciesCount);
 
-            // Build itinerary from start to end through hotspots
-            const start = { lat: startCoords.lat, lng: startCoords.lng, address: startAddress };
-            const end = { lat: endCoords.lat, lng: endCoords.lng, address: endAddress };
+            this.hideLoading();
 
-            const itinerary = await buildItinerary(start, end, enrichedHotspots, {
-                maxStops: Math.min(enrichedHotspots.length, 5),
+            // Store route data for later itinerary building
+            this.routeHotspots = enrichedHotspots;
+            this.routeStartAddress = startAddress;
+            this.routeEndAddressText = endAddress;
+
+            // Display hotspots for user selection
+            this.displayRouteHotspotsSelection(enrichedHotspots);
+
+        } catch (error) {
+            this.hideLoading();
+            this.showError(`Failed to find hotspots: ${error.message}`);
+        } finally {
+            this.isProcessing = false;
+        }
+    }
+
+    /**
+     * Display route hotspots for user selection
+     * @param {Array} hotspots - Enriched hotspots along the route
+     */
+    displayRouteHotspotsSelection(hotspots) {
+        // Clear previous list
+        clearElement(this.elements.routeHotspotsList);
+
+        // Update meta text
+        this.elements.routeHotspotsMeta.textContent = `Found ${hotspots.length} birding ${hotspots.length === 1 ? 'hotspot' : 'hotspots'} along your route`;
+
+        // Create hotspot cards with checkboxes
+        hotspots.forEach((hotspot, index) => {
+            const card = this.createRouteHotspotCard(hotspot, index);
+            this.elements.routeHotspotsList.appendChild(card);
+        });
+
+        // Show the section
+        this.elements.routeHotspotsSection.classList.remove('hidden');
+
+        // Update selected count
+        this.updateRouteHotspotsCount();
+
+        // Scroll to section
+        this.elements.routeHotspotsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    /**
+     * Create a route hotspot card with checkbox
+     * @param {Object} hotspot - Hotspot data
+     * @param {number} index - Index in the list
+     * @returns {HTMLElement} The card element
+     */
+    createRouteHotspotCard(hotspot, index) {
+        const card = document.createElement('div');
+        card.className = 'route-hotspot-card selected';
+        card.dataset.index = index;
+
+        const checkbox = document.createElement('div');
+        checkbox.className = 'route-hotspot-checkbox';
+        checkbox.innerHTML = `<input type="checkbox" checked id="routeHotspot${index}" aria-label="Select ${hotspot.name}">`;
+
+        const info = document.createElement('div');
+        info.className = 'route-hotspot-info';
+
+        const name = document.createElement('div');
+        name.className = 'route-hotspot-name';
+        name.textContent = hotspot.name;
+
+        const details = document.createElement('div');
+        details.className = 'route-hotspot-details';
+
+        const species = document.createElement('span');
+        species.className = 'route-hotspot-species';
+        species.textContent = `${hotspot.speciesCount} species`;
+
+        const distance = document.createElement('span');
+        distance.className = 'route-hotspot-distance';
+        distance.innerHTML = `<svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/></svg> ${formatDistance(hotspot.distance)} from start`;
+
+        details.appendChild(species);
+        details.appendChild(distance);
+        info.appendChild(name);
+        info.appendChild(details);
+
+        card.appendChild(checkbox);
+        card.appendChild(info);
+
+        // Toggle selection on card click
+        card.addEventListener('click', (e) => {
+            if (e.target.tagName !== 'INPUT') {
+                const input = card.querySelector('input');
+                input.checked = !input.checked;
+            }
+            this.toggleRouteHotspotSelection(card);
+        });
+
+        // Toggle selection on checkbox change
+        const input = checkbox.querySelector('input');
+        input.addEventListener('change', () => {
+            this.toggleRouteHotspotSelection(card);
+        });
+
+        return card;
+    }
+
+    /**
+     * Toggle route hotspot card selection state
+     * @param {HTMLElement} card - The card element
+     */
+    toggleRouteHotspotSelection(card) {
+        const input = card.querySelector('input');
+        if (input.checked) {
+            card.classList.add('selected');
+        } else {
+            card.classList.remove('selected');
+        }
+        this.updateRouteHotspotsCount();
+    }
+
+    /**
+     * Update the selected hotspots count display
+     */
+    updateRouteHotspotsCount() {
+        const selectedCount = this.elements.routeHotspotsList.querySelectorAll('input:checked').length;
+        this.elements.selectedHotspotsCount.textContent = `${selectedCount} ${selectedCount === 1 ? 'hotspot' : 'hotspots'} selected`;
+        this.elements.buildRouteItinerary.disabled = selectedCount === 0;
+    }
+
+    /**
+     * Select all route hotspots
+     */
+    selectAllRouteHotspots() {
+        const cards = this.elements.routeHotspotsList.querySelectorAll('.route-hotspot-card');
+        cards.forEach(card => {
+            card.classList.add('selected');
+            card.querySelector('input').checked = true;
+        });
+        this.updateRouteHotspotsCount();
+    }
+
+    /**
+     * Deselect all route hotspots
+     */
+    deselectAllRouteHotspots() {
+        const cards = this.elements.routeHotspotsList.querySelectorAll('.route-hotspot-card');
+        cards.forEach(card => {
+            card.classList.remove('selected');
+            card.querySelector('input').checked = false;
+        });
+        this.updateRouteHotspotsCount();
+    }
+
+    /**
+     * Build itinerary from selected route hotspots
+     */
+    async handleBuildRouteItinerary() {
+        // Get selected hotspots
+        const selectedIndices = [];
+        this.elements.routeHotspotsList.querySelectorAll('input:checked').forEach(input => {
+            const card = input.closest('.route-hotspot-card');
+            selectedIndices.push(parseInt(card.dataset.index));
+        });
+
+        if (selectedIndices.length === 0) {
+            this.showError('Please select at least one hotspot for your itinerary.');
+            return;
+        }
+
+        const selectedHotspots = selectedIndices.map(i => this.routeHotspots[i]);
+
+        this.showLoading('Building your birding itinerary...', 0);
+
+        try {
+            const startCoords = this.validatedRouteStartCoords;
+            const endCoords = this.validatedRouteEndCoords;
+
+            const start = { lat: startCoords.lat, lng: startCoords.lng, address: this.routeStartAddress };
+            const end = { lat: endCoords.lat, lng: endCoords.lng, address: this.routeEndAddressText };
+
+            const itinerary = await buildItinerary(start, end, selectedHotspots, {
+                maxStops: selectedHotspots.length,
                 priority: 'balanced',
-                onProgress: (msg, pct) => this.updateLoading(msg, 75 + pct * 0.2)
+                onProgress: (msg, pct) => this.updateLoading(msg, pct)
             });
 
             this.hideLoading();
 
-            // Store current location as the start for the results map
+            // Store current location and itinerary
             this.currentLocation = start;
             this.currentItinerary = itinerary;
+
+            // Hide hotspots selection section
+            this.elements.routeHotspotsSection.classList.add('hidden');
 
             // Display the itinerary results
             this.displayRouteItinerary(itinerary, start, end);
 
         } catch (error) {
             this.hideLoading();
-            this.showError(`Failed to plan route: ${error.message}`);
-        } finally {
-            this.isProcessing = false;
+            this.showError(`Failed to build itinerary: ${error.message}`);
         }
     }
 
@@ -2211,7 +2405,7 @@ class BirdingHotspotsApp {
 
             const speciesSpan = document.createElement('span');
             speciesSpan.className = 'species-count';
-            speciesSpan.textContent = `${stop.speciesCount} species`;
+            speciesSpan.textContent = `${stop.speciesCount || 0} species`;
 
             const visitSpan = document.createElement('span');
             visitSpan.className = 'visit-time';
@@ -2290,7 +2484,7 @@ class BirdingHotspotsApp {
             });
 
             const marker = L.marker([stop.lat, stop.lng], { icon })
-                .bindPopup(`<strong>${stop.name || stop.address}</strong>${isHotspot ? `<br>${stop.speciesCount} species` : ''}`)
+                .bindPopup(`<strong>${stop.name || stop.address}</strong>${isHotspot && stop.speciesCount ? `<br>${stop.speciesCount} species` : ''}`)
                 .addTo(this.resultsMapInstance);
 
             this.resultsMarkers.push(marker);
@@ -3027,7 +3221,7 @@ class BirdingHotspotsApp {
             return; // Silently fail if routing unavailable
         }
 
-        // Show section
+        // Show section first so container has dimensions
         this.elements.routePreviewSection.classList.remove('hidden');
 
         // Update stats
@@ -3039,6 +3233,9 @@ class BirdingHotspotsApp {
         this.elements.openRouteInGoogleMaps.href = getGoogleMapsDirectionsUrl(
             start.lat, start.lng, end.lat, end.lng
         );
+
+        // Wait for DOM to update and container to have dimensions
+        await new Promise(resolve => setTimeout(resolve, 50));
 
         // Initialize or update map
         if (!this.routePreviewMapInstance) {
@@ -3076,8 +3273,14 @@ class BirdingHotspotsApp {
         const bounds = this.routePreviewLine.getBounds();
         this.routePreviewMapInstance.fitBounds(bounds, { padding: [20, 20] });
 
-        // Force resize
-        setTimeout(() => this.routePreviewMapInstance?.invalidateSize(), 100);
+        // Force resize with longer delay to ensure tiles load
+        setTimeout(() => {
+            if (this.routePreviewMapInstance) {
+                this.routePreviewMapInstance.invalidateSize();
+                // Re-fit bounds after resize
+                this.routePreviewMapInstance.fitBounds(bounds, { padding: [20, 20] });
+            }
+        }, 250);
     }
 
     /**
@@ -3646,6 +3849,11 @@ class BirdingHotspotsApp {
         this.elements.itineraryPanel.classList.add('hidden');
         this.elements.itineraryResults.classList.add('hidden');
         this.elements.hotspotCards.classList.remove('hidden');
+
+        // Hide and clear route hotspots selection
+        this.elements.routeHotspotsSection.classList.add('hidden');
+        clearElement(this.elements.routeHotspotsList);
+        this.routeHotspots = [];
 
         // Show sort buttons again (may have been hidden for species search)
         this.elements.sortBySpecies.parentElement.classList.remove('hidden');

@@ -283,6 +283,36 @@
                 </div>
             </section>
 
+            <!-- Route Hotspots Selection Section (shown after finding hotspots along route) -->
+            <section id="routeHotspotsSection" class="card hidden">
+                <h2 class="section-title">
+                    <svg viewBox="0 0 24 24" width="24" height="24">
+                        <path fill="currentColor" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                    </svg>
+                    Select Birding Stops
+                </h2>
+                <p id="routeHotspotsMeta" class="results-meta">Found hotspots along your route</p>
+
+                <div class="route-hotspots-actions">
+                    <button type="button" id="selectAllRouteHotspots" class="btn btn-secondary btn-small">Select All</button>
+                    <button type="button" id="deselectAllRouteHotspots" class="btn btn-secondary btn-small">Deselect All</button>
+                </div>
+
+                <div id="routeHotspotsList" class="route-hotspots-list">
+                    <!-- Hotspot cards with checkboxes will be inserted here -->
+                </div>
+
+                <div class="route-hotspots-footer">
+                    <span id="selectedHotspotsCount">0 hotspots selected</span>
+                    <button type="button" id="buildRouteItinerary" class="btn btn-primary" disabled>
+                        <svg viewBox="0 0 24 24" width="20" height="20">
+                            <path fill="currentColor" d="M21.71 11.29l-9-9c-.39-.39-1.02-.39-1.41 0l-9 9c-.39.39-.39 1.02 0 1.41l9 9c.39.39 1.02.39 1.41 0l9-9c.39-.38.39-1.01 0-1.41zM14 14.5V12h-4v3H8v-4c0-.55.45-1 1-1h5V7.5l3.5 3.5-3.5 3.5z"/>
+                        </svg>
+                        Build Itinerary
+                    </button>
+                </div>
+            </section>
+
             <!-- Sort Options Section (for hotspot mode) -->
             <section id="sortOptionsSection" class="card">
                 <h2 class="section-title has-tooltip tooltip-left" data-tooltip="Choose how to rank hotspots: by bird diversity, straight-line distance, or actual driving time.">Sort Hotspots By</h2>

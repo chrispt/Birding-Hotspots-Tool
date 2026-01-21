@@ -736,6 +736,125 @@ body {
     }
 }
 
+/* Route Hotspots Selection */
+.route-hotspots-actions {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.route-hotspots-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.route-hotspot-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px;
+    background: var(--background);
+    border-radius: var(--radius);
+    border: 2px solid transparent;
+    transition: border-color var(--transition), background var(--transition);
+    cursor: pointer;
+}
+
+.route-hotspot-card:hover {
+    background: var(--hover-bg);
+}
+
+.route-hotspot-card.selected {
+    border-color: var(--primary-color);
+    background: var(--hover-bg);
+}
+
+.route-hotspot-checkbox {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    margin-top: 2px;
+}
+
+.route-hotspot-checkbox input {
+    width: 20px;
+    height: 20px;
+    accent-color: var(--primary-color);
+    cursor: pointer;
+}
+
+.route-hotspot-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.route-hotspot-name {
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.route-hotspot-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.route-hotspot-species {
+    color: var(--primary-color);
+    font-weight: 500;
+}
+
+.route-hotspot-distance {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.route-hotspot-distance svg {
+    width: 14px;
+    height: 14px;
+    fill: currentColor;
+}
+
+.route-hotspots-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+}
+
+#selectedHotspotsCount {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+#buildRouteItinerary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+@media (max-width: 480px) {
+    .route-hotspots-footer {
+        flex-direction: column;
+        gap: 12px;
+        align-items: stretch;
+    }
+    #selectedHotspotsCount {
+        text-align: center;
+    }
+    #buildRouteItinerary {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
 /* Footer */
 .footer {
     text-align: center;
