@@ -3529,17 +3529,20 @@ class BirdingHotspotsApp {
                 // Add hotspot preview markers (orange circles)
                 nearRouteHotspots.forEach(h => {
                     const marker = L.circleMarker([h.lat, h.lng], {
-                        radius: 6,
+                        radius: 8,
                         fillColor: '#FF5722',
                         color: '#fff',
-                        weight: 1,
-                        fillOpacity: 0.8
+                        weight: 2,
+                        fillOpacity: 0.9,
+                        interactive: true
                     }).addTo(this.routePreviewMapInstance);
 
                     // Bind tooltip for hover (shows name and species count)
-                    marker.bindTooltip(`<strong>${h.locName}</strong><br>${h.numSpeciesAllTime || 'N/A'} species`, {
+                    const speciesText = h.numSpeciesAllTime ? `${h.numSpeciesAllTime} species` : 'Species data loading...';
+                    marker.bindTooltip(`<strong>${h.locName}</strong><br>${speciesText}`, {
                         direction: 'top',
-                        offset: [0, -5]
+                        offset: [0, -8],
+                        className: 'hotspot-preview-tooltip'
                     });
 
                     this.routePreviewMarkers.push(marker);

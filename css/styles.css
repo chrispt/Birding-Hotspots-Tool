@@ -3575,3 +3575,18 @@ details.about-section[open] .about-chevron {
         margin-bottom: 0;
     }
 }
+
+/* Leaflet Tooltip Styling for Hotspot Preview */
+.hotspot-preview-tooltip {
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 0.85rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+}
+
+.hotspot-preview-tooltip strong {
+    color: var(--primary-color);
+}
