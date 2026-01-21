@@ -57,6 +57,8 @@ class BirdingHotspotsApp {
             // Favorites
             favoritesList: document.getElementById('favoritesList'),
             saveFavorite: document.getElementById('saveFavorite'),
+            savedLocationsToggle: document.getElementById('savedLocationsToggle'),
+            savedLocationsContent: document.getElementById('savedLocationsContent'),
             saveFavoriteModal: document.getElementById('saveFavoriteModal'),
             favoriteName: document.getElementById('favoriteName'),
             cancelSaveFavorite: document.getElementById('cancelSaveFavorite'),
@@ -248,6 +250,9 @@ class BirdingHotspotsApp {
         this.elements.cancelSaveFavorite.addEventListener('click', () => this.hideSaveFavoriteModal());
         this.elements.confirmSaveFavorite.addEventListener('click', () => this.handleSaveFavorite());
         this.elements.saveFavoriteModal.querySelector('.modal-backdrop').addEventListener('click', () => this.hideSaveFavoriteModal());
+
+        // Saved locations collapsible toggle
+        this.elements.savedLocationsToggle.addEventListener('click', () => this.toggleSavedLocations());
 
         // Generate report
         this.elements.generateReport.addEventListener('click', () => this.handleGenerateReport());
@@ -761,6 +766,15 @@ class BirdingHotspotsApp {
      */
     hideSaveFavoriteModal() {
         this.elements.saveFavoriteModal.classList.add('hidden');
+    }
+
+    /**
+     * Toggle the saved locations collapsible section
+     */
+    toggleSavedLocations() {
+        const isExpanded = this.elements.savedLocationsToggle.getAttribute('aria-expanded') === 'true';
+        this.elements.savedLocationsToggle.setAttribute('aria-expanded', !isExpanded);
+        this.elements.savedLocationsContent.classList.toggle('collapsed');
     }
 
     /**
@@ -2334,8 +2348,7 @@ class BirdingHotspotsApp {
             this.updateMapMarkerStyle(index, input.checked);
             this.updateRouteHotspotsCount();
 
-            // Scroll card into view
-            card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            // Don't scroll - keep focus on map when selecting from map
         }
     }
 

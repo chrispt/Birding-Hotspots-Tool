@@ -406,18 +406,25 @@
                 <p class="help-text">Higher counts may take longer to load</p>
             </section>
 
-            <!-- Saved Locations Section -->
-            <section class="card">
-                <h2 class="section-title has-tooltip tooltip-left" data-tooltip="Bookmark your favorite starting points for quick access. Saved in your browser's local storage.">Saved Locations</h2>
-                <div id="favoritesList" class="favorites-list">
-                    <p class="no-favorites">No saved locations yet</p>
-                </div>
-                <button type="button" id="saveFavorite" class="btn btn-secondary btn-small">
-                    <svg viewBox="0 0 24 24" width="16" height="16">
-                        <path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+            <!-- Saved Locations Section (Collapsible) -->
+            <section class="card collapsible-section">
+                <button type="button" class="collapsible-header" id="savedLocationsToggle" aria-expanded="false">
+                    <h2 class="section-title has-tooltip tooltip-left" data-tooltip="Bookmark your favorite starting points for quick access. Saved in your browser's local storage.">Saved Locations</h2>
+                    <svg class="collapse-icon" viewBox="0 0 24 24" width="20" height="20">
+                        <path fill="currentColor" d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
                     </svg>
-                    Save Current Location
                 </button>
+                <div id="savedLocationsContent" class="collapsible-content collapsed">
+                    <div id="favoritesList" class="favorites-list">
+                        <p class="no-favorites">No saved locations yet</p>
+                    </div>
+                    <button type="button" id="saveFavorite" class="btn btn-secondary btn-small">
+                        <svg viewBox="0 0 24 24" width="16" height="16">
+                            <path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                        </svg>
+                        Save Current Location
+                    </button>
+                </div>
             </section>
 
             <!-- Generate Button -->
