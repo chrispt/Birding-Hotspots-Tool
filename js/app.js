@@ -107,6 +107,8 @@ class BirdingHotspotsApp {
             routeStartError: document.getElementById('routeStartError'),
             routeEndAddress: document.getElementById('routeEndAddress'),
             routeEndError: document.getElementById('routeEndError'),
+            useCurrentLocationStart: document.getElementById('useCurrentLocationStart'),
+            useCurrentLocationEnd: document.getElementById('useCurrentLocationEnd'),
             sortOptionsSection: document.getElementById('sortOptionsSection'),
             // Itinerary elements
             buildItineraryBtn: document.getElementById('buildItineraryBtn'),
@@ -252,6 +254,8 @@ class BirdingHotspotsApp {
         this.elements.routeStartAddress.addEventListener('blur', () => this.handleRouteStartBlur());
         this.elements.routeEndAddress.addEventListener('input', () => this.handleRouteEndInputChange());
         this.elements.routeEndAddress.addEventListener('blur', () => this.handleRouteEndBlur());
+        this.elements.useCurrentLocationStart.addEventListener('click', () => this.handleUseCurrentLocationForRoute('start'));
+        this.elements.useCurrentLocationEnd.addEventListener('click', () => this.handleUseCurrentLocationForRoute('end'));
 
         // Species search input
         this.elements.speciesSearchInput.addEventListener('input', () => this.handleSpeciesSearchInput());
@@ -2875,6 +2879,57 @@ class BirdingHotspotsApp {
         this.elements.routeEndError.classList.add('hidden');
         this.elements.routeEndError.style.color = '';
         this.elements.routeEndAddress.classList.remove('error');
+    }
+
+    /**
+     * Handle using current location for route start or end
+     * @param {'start'|'end'} target - Which input to fill
+     */
+    async handleUseCurrentLocationForRoute(target) {
+        const button = target === 'start'
+            ? this.elements.useCurrentLocationStart
+            : this.elements.useCurrentLocationEnd;
+        const input = target === 'start'
+            ? this.elements.routeStartAddress
+            : this.elements.routeEndAddress;
+
+        button.disabled = true;
+
+        try {
+            // Get current GPS position
+            const position = await getCurrentPosition();
+
+            // Reverse geocode to get address
+            let address = '';
+            try {
+                const reverseResult = await reverseGeocode(position.lat, position.lng);
+                if (reverseResult.address && reverseResult.address !== 'Address unavailable') {
+                    address = reverseResult.address;
+                }
+            } catch (e) {
+                console.warn('Reverse geocoding failed:', e);
+            }
+
+            // Fill input with address or coordinates
+            input.value = address || `${position.lat.toFixed(6)}, ${position.lng.toFixed(6)}`;
+
+            // Store validated coordinates
+            if (target === 'start') {
+                this.routeStartValidated = true;
+                this.validatedRouteStartCoords = { lat: position.lat, lng: position.lng };
+                this.clearRouteStartError();
+            } else {
+                this.routeEndValidated = true;
+                this.validatedRouteEndCoords = { lat: position.lat, lng: position.lng };
+                this.clearRouteEndError();
+            }
+
+        } catch (error) {
+            const showError = target === 'start' ? this.showRouteStartError.bind(this) : this.showRouteEndError.bind(this);
+            showError(error.message || 'Could not get your location');
+        } finally {
+            button.disabled = false;
+        }
     }
 
     /**
