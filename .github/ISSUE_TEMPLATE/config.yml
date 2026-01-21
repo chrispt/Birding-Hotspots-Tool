@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: eBird Documentation
+    url: https://ebird.org/home
+    about: For questions about eBird data or API

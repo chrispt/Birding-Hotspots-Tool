@@ -3384,6 +3384,10 @@ details.about-section[open] .about-chevron {
 
 .header-nav {
     margin-top: 12px;
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
 }
 
 .header-nav .help-link {
@@ -3402,6 +3406,10 @@ details.about-section[open] .about-chevron {
 .header-nav .help-link:hover {
     background: rgba(46, 125, 50, 0.2);
     color: var(--primary-color);
+}
+
+.header-nav .feedback-link svg {
+    flex-shrink: 0;
 }
 
 /* ========================================
