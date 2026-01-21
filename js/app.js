@@ -109,6 +109,8 @@ class BirdingHotspotsApp {
             routeEndError: document.getElementById('routeEndError'),
             useCurrentLocationStart: document.getElementById('useCurrentLocationStart'),
             useCurrentLocationEnd: document.getElementById('useCurrentLocationEnd'),
+            routeMaxDetour: document.getElementById('routeMaxDetour'),
+            routeMaxDetourValue: document.getElementById('routeMaxDetourValue'),
             sortOptionsSection: document.getElementById('sortOptionsSection'),
             // Itinerary elements
             buildItineraryBtn: document.getElementById('buildItineraryBtn'),
@@ -256,6 +258,9 @@ class BirdingHotspotsApp {
         this.elements.routeEndAddress.addEventListener('blur', () => this.handleRouteEndBlur());
         this.elements.useCurrentLocationStart.addEventListener('click', () => this.handleUseCurrentLocationForRoute('start'));
         this.elements.useCurrentLocationEnd.addEventListener('click', () => this.handleUseCurrentLocationForRoute('end'));
+        this.elements.routeMaxDetour.addEventListener('input', () => {
+            this.elements.routeMaxDetourValue.textContent = this.elements.routeMaxDetour.value;
+        });
 
         // Species search input
         this.elements.speciesSearchInput.addEventListener('input', () => this.handleSpeciesSearchInput());

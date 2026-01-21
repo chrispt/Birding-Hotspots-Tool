@@ -157,3 +157,95 @@ export function calculateDistance(lat1, lng1, lat2, lng2) {
 function toRad(deg) {
     return deg * (Math.PI / 180);
 }
+
+/**
+ * Sample points along a route at regular intervals
+ * @param {Array} coords - Route coordinates [[lng, lat], ...]
+ * @param {number} intervalKm - Approximate interval between samples
+ * @returns {Array<{lat, lng}>} Sample points
+ */
+export function sampleRoutePoints(coords, intervalKm) {
+    const points = [];
+    let accumulated = 0;
+
+    // Always include start
+    points.push({ lat: coords[0][1], lng: coords[0][0] });
+
+    for (let i = 1; i < coords.length; i++) {
+        const dist = calculateDistance(
+            coords[i - 1][1], coords[i - 1][0],
+            coords[i][1], coords[i][0]
+        );
+        accumulated += dist;
+
+        if (accumulated >= intervalKm) {
+            points.push({ lat: coords[i][1], lng: coords[i][0] });
+            accumulated = 0;
+        }
+    }
+
+    // Always include end
+    const last = coords[coords.length - 1];
+    if (points[points.length - 1].lat !== last[1] || points[points.length - 1].lng !== last[0]) {
+        points.push({ lat: last[1], lng: last[0] });
+    }
+
+    return points;
+}
+
+/**
+ * Calculate minimum distance from a point to a polyline (route)
+ * @param {number} lat - Point latitude
+ * @param {number} lng - Point longitude
+ * @param {Array} routeCoords - Route coordinates [[lng, lat], ...]
+ * @returns {number} Distance in km
+ */
+export function distanceToRouteLine(lat, lng, routeCoords) {
+    let minDist = Infinity;
+
+    for (let i = 0; i < routeCoords.length - 1; i++) {
+        const segDist = pointToSegmentDistance(
+            lat, lng,
+            routeCoords[i][1], routeCoords[i][0],
+            routeCoords[i + 1][1], routeCoords[i + 1][0]
+        );
+        minDist = Math.min(minDist, segDist);
+    }
+
+    return minDist;
+}
+
+/**
+ * Calculate distance from a point to a line segment
+ * @param {number} px - Point latitude
+ * @param {number} py - Point longitude
+ * @param {number} x1 - Segment start latitude
+ * @param {number} y1 - Segment start longitude
+ * @param {number} x2 - Segment end latitude
+ * @param {number} y2 - Segment end longitude
+ * @returns {number} Distance in km
+ */
+function pointToSegmentDistance(px, py, x1, y1, x2, y2) {
+    const A = px - x1;
+    const B = py - y1;
+    const C = x2 - x1;
+    const D = y2 - y1;
+
+    const dot = A * C + B * D;
+    const lenSq = C * C + D * D;
+    let param = -1;
+
+    if (lenSq !== 0) param = dot / lenSq;
+
+    let xx, yy;
+    if (param < 0) {
+        xx = x1; yy = y1;
+    } else if (param > 1) {
+        xx = x2; yy = y2;
+    } else {
+        xx = x1 + param * C;
+        yy = y1 + param * D;
+    }
+
+    return calculateDistance(px, py, xx, yy);
+}
