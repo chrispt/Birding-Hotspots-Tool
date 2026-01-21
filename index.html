@@ -37,6 +37,11 @@
                 <h1>Birding Hotspots Finder</h1>
             </div>
             <p class="tagline">Discover the best birding spots near your location</p>
+            <nav class="header-nav">
+                <a href="support.html" class="help-link" aria-label="Help and FAQ">
+                    <span class="tooltip-icon">?</span> Help & FAQ
+                </a>
+            </nav>
         </header>
 
         <!-- About Section (Collapsible) -->
@@ -127,7 +132,7 @@
 
             <!-- API Key Section -->
             <section class="card">
-                <h2 class="section-title">
+                <h2 class="section-title has-tooltip tooltip-left" data-tooltip="Your personal eBird API key is required to fetch bird sighting data. Get one free from eBird.">
                     eBird API Key
                     <a href="https://ebird.org/api/keygen" target="_blank" rel="noopener noreferrer" class="help-link" title="Get your free API key">
                         <svg viewBox="0 0 24 24" width="18" height="18">
@@ -219,13 +224,19 @@
                             <div id="routeEndError" class="input-error hidden"></div>
                         </div>
                     </div>
-                    <p class="help-text">We'll find birding hotspots along your route</p>
+                    <div class="input-group route-option">
+                        <label for="routeMaxDetour" class="input-label has-tooltip tooltip-left" data-tooltip="Maximum distance from your driving route to search for hotspots. Smaller values keep you closer to your path.">
+                            Max Detour from Route: <span id="routeMaxDetourValue">10</span> km
+                        </label>
+                        <input type="range" id="routeMaxDetour" class="range-input" min="5" max="25" value="10" step="5" aria-label="Maximum detour distance from route">
+                    </div>
+                    <p class="help-text">We'll find birding hotspots within your detour distance from the driving route</p>
                 </div>
             </section>
 
             <!-- Sort Options Section (for hotspot mode) -->
             <section id="sortOptionsSection" class="card">
-                <h2 class="section-title">Sort Hotspots By</h2>
+                <h2 class="section-title has-tooltip tooltip-left" data-tooltip="Choose how to rank hotspots: by bird diversity, straight-line distance, or actual driving time.">Sort Hotspots By</h2>
                 <div class="sort-options">
                     <label class="radio-label radio-card">
                         <input type="radio" name="sortMethod" value="species" checked>
@@ -256,7 +267,7 @@
 
             <!-- Search Range Section -->
             <section class="card">
-                <h2 class="section-title">Search Range</h2>
+                <h2 class="section-title has-tooltip tooltip-left" data-tooltip="eBird limits searches to 50km (31 miles). A larger range finds more hotspots but may include distant locations.">Search Range</h2>
                 <div class="range-options">
                     <label class="radio-label">
                         <input type="radio" name="searchRange" value="16">
@@ -278,7 +289,7 @@
 
             <!-- Number of Hotspots Section -->
             <section class="card">
-                <h2 class="section-title">Number of Hotspots</h2>
+                <h2 class="section-title has-tooltip tooltip-left" data-tooltip="How many hotspots to include in your results. Higher counts provide more options but take longer to load.">Number of Hotspots</h2>
                 <div class="range-options">
                     <label class="radio-label">
                         <input type="radio" name="hotspotsCount" value="10" checked>
@@ -301,7 +312,7 @@
 
             <!-- Saved Locations Section -->
             <section class="card">
-                <h2 class="section-title">Saved Locations</h2>
+                <h2 class="section-title has-tooltip tooltip-left" data-tooltip="Bookmark your favorite starting points for quick access. Saved in your browser's local storage.">Saved Locations</h2>
                 <div id="favoritesList" class="favorites-list">
                     <p class="no-favorites">No saved locations yet</p>
                 </div>
@@ -478,7 +489,7 @@
         <!-- Footer -->
         <footer class="footer">
             <p>Data provided by <a href="https://ebird.org" target="_blank" rel="noopener noreferrer">eBird</a> (Cornell Lab of Ornithology)</p>
-            <p class="attribution">Geocoding by <a href="https://locationiq.com" target="_blank" rel="noopener noreferrer">LocationIQ</a></p>
+            <p class="attribution">Geocoding by <a href="https://locationiq.com" target="_blank" rel="noopener noreferrer">LocationIQ</a> | <a href="support.html">Help & FAQ</a></p>
         </footer>
     </div>
 

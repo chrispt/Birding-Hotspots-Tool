@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Help and FAQ for Birding Hotspots Finder">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <title>Help & Support - Birding Hotspots Finder</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%232E7D32' d='M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z'/%3E%3Cpath fill='%23FF5722' d='M12 4.5c-.8 1.2-1.5 2.3-2 3.5-.6 1.3-.5 2.5.2 3.5.5-.8 1.2-1.5 1.8-2.2.6.7 1.3 1.4 1.8 2.2.7-1 .8-2.2.2-3.5-.5-1.2-1.2-2.3-2-3.5z'/%3E%3Cpath fill='%23FFC107' d='M12 7c-.5.8-1 1.5-1 2.5 0 .8.5 1.5 1 1.5s1-.7 1-1.5c0-1-.5-1.7-1-2.5z'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <svg class="logo-icon" viewBox="0 0 24 24" width="40" height="40">
+                    <path fill="#2E7D32" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+                    <path fill="#FF5722" d="M12 4.5c-.8 1.2-1.5 2.3-2 3.5-.6 1.3-.5 2.5.2 3.5.5-.8 1.2-1.5 1.8-2.2.6.7 1.3 1.4 1.8 2.2.7-1 .8-2.2.2-3.5-.5-1.2-1.2-2.3-2-3.5z"/>
+                    <path fill="#FFC107" d="M12 7c-.5.8-1 1.5-1 2.5 0 .8.5 1.5 1 1.5s1-.7 1-1.5c0-1-.5-1.7-1-2.5z"/>
+                </svg>
+                <h1>Help & Support</h1>
+            </div>
+            <p class="tagline">Frequently asked questions and tips</p>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <a href="index.html" class="btn btn-secondary back-link">
+                <svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align: middle; margin-right: 4px;">
+                    <path fill="currentColor" d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+                </svg>
+                Back to Hotspots Finder
+            </a>
+
+            <!-- Getting Started -->
+            <section class="card">
+                <h2 class="section-title">Getting Started</h2>
+
+                <details class="faq-item">
+                    <summary class="faq-question">How do I get an eBird API key?</summary>
+                    <div class="faq-answer">
+                        <p>You need a free eBird API key to use this tool. Here's how to get one:</p>
+                        <ol>
+                            <li>Visit <a href="https://ebird.org/api/keygen" target="_blank" rel="noopener noreferrer">ebird.org/api/keygen</a></li>
+                            <li>Sign in with your eBird account (or create one for free)</li>
+                            <li>Fill out the short form requesting API access</li>
+                            <li>Copy the API key that's generated</li>
+                            <li>Paste it into the "eBird API Key" field on the main page</li>
+                        </ol>
+                        <p>Your API key is typically issued immediately. Check the "Remember my API key" box to save it for future visits.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">Is my API key stored securely?</summary>
+                    <div class="faq-answer">
+                        <p>Yes. Your API key is stored only in your browser's local storage on your device. It is never sent to any server except eBird's API when making requests for hotspot data.</p>
+                        <p>If you clear your browser data or use a different browser/device, you'll need to enter your API key again.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">What data sources does this tool use?</summary>
+                    <div class="faq-answer">
+                        <p>This tool combines data from several free services:</p>
+                        <ul>
+                            <li><strong>eBird</strong> (Cornell Lab of Ornithology) - Hotspot locations and bird observation data</li>
+                            <li><strong>LocationIQ</strong> - Address geocoding (converting addresses to coordinates)</li>
+                            <li><strong>OpenStreetMap</strong> - Map tiles and driving route calculations</li>
+                            <li><strong>Open-Meteo</strong> - Weather conditions for birding insights</li>
+                        </ul>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">Can I share my API key with others?</summary>
+                    <div class="faq-answer">
+                        <p>No, eBird API keys are for personal use only. Each user should request their own free API key from eBird. Sharing API keys violates eBird's terms of service and could result in the key being revoked.</p>
+                    </div>
+                </details>
+            </section>
+
+            <!-- Search Options -->
+            <section class="card">
+                <h2 class="section-title">Search Options</h2>
+
+                <details class="faq-item">
+                    <summary class="faq-question">What's the difference between "Find Nearby Hotspots" and "Plan a Route"?</summary>
+                    <div class="faq-answer">
+                        <p><strong>Find Nearby Hotspots</strong> searches for birding locations within a circular radius around a single location (your address or GPS coordinates).</p>
+                        <p><strong>Plan a Route</strong> finds hotspots along an actual driving path between two locations. This is useful for road trips where you want to stop at birding spots along the way without going too far off your route.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">Why is the search range limited to 50km (31 miles)?</summary>
+                    <div class="faq-answer">
+                        <p>This is a limitation of the eBird API. Their hotspot search endpoint only returns results within a 50km radius. For longer distances, consider using the "Plan a Route" feature, which searches along your entire driving path.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">What does "Days to Look Back" mean?</summary>
+                    <div class="faq-answer">
+                        <p>This setting controls how recent the bird observation data must be. A setting of 14 days means only species observed at a hotspot within the last 14 days will appear in the results.</p>
+                        <ul>
+                            <li><strong>Shorter periods (1-7 days)</strong> - Shows only very recently active hotspots, useful during migration or when looking for current activity</li>
+                            <li><strong>Longer periods (14-30 days)</strong> - Includes more species but some may no longer be present</li>
+                        </ul>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">What does "Max Detour from Route" do?</summary>
+                    <div class="faq-answer">
+                        <p>When using the "Plan a Route" feature, this slider controls how far off your driving path you're willing to go to visit a hotspot.</p>
+                        <ul>
+                            <li><strong>5km</strong> - Only shows hotspots very close to your route</li>
+                            <li><strong>25km</strong> - Includes hotspots further from the route, giving you more options but longer detours</li>
+                        </ul>
+                    </div>
+                </details>
+            </section>
+
+            <!-- Understanding Results -->
+            <section class="card">
+                <h2 class="section-title">Understanding Results</h2>
+
+                <details class="faq-item">
+                    <summary class="faq-question">How are hotspots ranked?</summary>
+                    <div class="faq-answer">
+                        <p>You can sort results by three different methods:</p>
+                        <ul>
+                            <li><strong>Most Species</strong> - Hotspots with the highest number of unique bird species observed within your "Days to Look Back" period appear first</li>
+                            <li><strong>Closest Distance</strong> - Hotspots nearest to your location (straight-line distance) appear first</li>
+                            <li><strong>Shortest Drive</strong> - Hotspots with the shortest actual driving time from your location appear first</li>
+                        </ul>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">What does the species count mean?</summary>
+                    <div class="faq-answer">
+                        <p>The species count shows the number of unique bird species observed at that hotspot within your selected "Days to Look Back" period. This is based on observations reported to eBird by citizen scientists.</p>
+                        <p>A higher count generally indicates an active, diverse location, but species presence varies by season and conditions.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">How accurate are driving times?</summary>
+                    <div class="faq-answer">
+                        <p>Driving times are calculated using OpenStreetMap's routing service (OSRM). They represent estimated driving times under normal conditions and don't account for real-time traffic.</p>
+                        <p>Actual travel times may vary based on traffic, road conditions, and your specific route preferences.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">What do the weather icons mean?</summary>
+                    <div class="faq-answer">
+                        <p>Weather information is provided to help you plan your birding trip. The tool shows current conditions and provides a "birding conditions" score based on factors like temperature, wind, and precipitation.</p>
+                        <p>Generally, calm, mild conditions with no rain are best for birding, though some species are more active in specific weather.</p>
+                    </div>
+                </details>
+            </section>
+
+            <!-- Route Planning -->
+            <section class="card">
+                <h2 class="section-title">Route Planning</h2>
+
+                <details class="faq-item">
+                    <summary class="faq-question">How does route planning work?</summary>
+                    <div class="faq-answer">
+                        <p>When you enter start and end locations, the tool:</p>
+                        <ol>
+                            <li>Calculates the actual driving route between your locations</li>
+                            <li>Searches for eBird hotspots along the entire route corridor</li>
+                            <li>Filters hotspots based on your "Max Detour" setting</li>
+                            <li>Creates an optimized itinerary with suggested stops</li>
+                        </ol>
+                        <p>This ensures you find birding spots along your actual path, not just near the midpoint.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">Can I add custom stops to my route?</summary>
+                    <div class="faq-answer">
+                        <p>Currently, the tool automatically selects the best hotspots along your route based on species diversity and proximity. Custom stop selection may be added in a future update.</p>
+                        <p>You can adjust how many hotspots are included by changing the "Max Detour" setting.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">How do I export my itinerary?</summary>
+                    <div class="faq-answer">
+                        <p>After generating a route, you have several export options:</p>
+                        <ul>
+                            <li><strong>PDF Report</strong> - Download a printable report with maps, directions, and species lists</li>
+                            <li><strong>GPX File</strong> - Export waypoints for use in GPS devices or mapping apps</li>
+                            <li><strong>Google Maps</strong> - Click the directions link to open your route in Google Maps</li>
+                        </ul>
+                    </div>
+                </details>
+            </section>
+
+            <!-- Saved Locations -->
+            <section class="card">
+                <h2 class="section-title">Saved Locations</h2>
+
+                <details class="faq-item">
+                    <summary class="faq-question">How do I save a location?</summary>
+                    <div class="faq-answer">
+                        <p>After entering an address or coordinates, click the star icon next to the location field to save it as a favorite. Give it a name (like "Home" or "Cabin") for easy reference.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">Where are my saved locations stored?</summary>
+                    <div class="faq-answer">
+                        <p>Saved locations are stored in your browser's local storage. They're only available on the same device and browser where you saved them. Clearing your browser data will remove saved locations.</p>
+                    </div>
+                </details>
+            </section>
+
+            <!-- Troubleshooting -->
+            <section class="card">
+                <h2 class="section-title">Troubleshooting</h2>
+
+                <details class="faq-item">
+                    <summary class="faq-question">"Invalid API key" error</summary>
+                    <div class="faq-answer">
+                        <p>This error means your eBird API key is not being accepted. Try these steps:</p>
+                        <ol>
+                            <li>Double-check that you copied the entire key without extra spaces</li>
+                            <li>Clear the key and re-enter it</li>
+                            <li>Verify your key is still active at <a href="https://ebird.org/api/keygen" target="_blank" rel="noopener noreferrer">ebird.org/api/keygen</a></li>
+                            <li>If the key was recently generated, wait a few minutes and try again</li>
+                        </ol>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">"Location not found" error</summary>
+                    <div class="faq-answer">
+                        <p>The geocoding service couldn't find your address. Try these tips:</p>
+                        <ul>
+                            <li>Use a complete address with city and state/country</li>
+                            <li>Check spelling of street and city names</li>
+                            <li>Try a nearby landmark or intersection if your exact address isn't found</li>
+                            <li>Switch to GPS coordinates if you have them</li>
+                        </ul>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">"No hotspots found" message</summary>
+                    <div class="faq-answer">
+                        <p>This can happen for several reasons:</p>
+                        <ul>
+                            <li><strong>Remote area</strong> - Some regions have few or no eBird hotspots. Try increasing the search range.</li>
+                            <li><strong>No recent activity</strong> - If "Days to Look Back" is set too low, hotspots without recent observations won't appear. Try increasing it to 30 days.</li>
+                            <li><strong>Route too short</strong> - For route planning, very short routes may not have hotspots within your detour distance.</li>
+                        </ul>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">Map not loading properly</summary>
+                    <div class="faq-answer">
+                        <p>If the map appears blank or tiles don't load:</p>
+                        <ul>
+                            <li>Check your internet connection</li>
+                            <li>Try refreshing the page</li>
+                            <li>Disable browser extensions that might block map tiles (ad blockers, privacy extensions)</li>
+                            <li>Try a different browser</li>
+                        </ul>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">Results are loading slowly</summary>
+                    <div class="faq-answer">
+                        <p>Loading times depend on several factors:</p>
+                        <ul>
+                            <li>Number of hotspots in your search area</li>
+                            <li>Your internet connection speed</li>
+                            <li>eBird API response times (can be slower during peak hours)</li>
+                        </ul>
+                        <p>Reducing the search range or "Days to Look Back" can speed up results. The tool shows progress as it loads each hotspot's details.</p>
+                    </div>
+                </details>
+            </section>
+
+            <!-- Contact -->
+            <section class="card">
+                <h2 class="section-title">Still Need Help?</h2>
+                <p>If you can't find the answer to your question above, check if there's an issue or feature request on our <a href="https://github.com/chrispt/birding-hotspots-tool/issues" target="_blank" rel="noopener noreferrer">GitHub repository</a>.</p>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>Data provided by <a href="https://ebird.org" target="_blank" rel="noopener noreferrer">eBird</a> (Cornell Lab of Ornithology)</p>
+            <p class="attribution">Geocoding by <a href="https://locationiq.com" target="_blank" rel="noopener noreferrer">LocationIQ</a></p>
+            <p><a href="index.html">Back to Hotspots Finder</a></p>
+        </footer>
+    </div>
+</body>
+</html>

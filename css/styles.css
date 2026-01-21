@@ -1880,6 +1880,12 @@ details.about-section[open] .about-chevron {
     margin-bottom: 0;
 }
 
+.route-option {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+}
+
 /* Species Search Results */
 .species-results-header {
     display: flex;
@@ -2924,5 +2930,214 @@ details.about-section[open] .about-chevron {
         flex-direction: column;
         align-items: flex-start;
         gap: 4px;
+    }
+}
+
+/* ========================================
+   FAQ / Support Page Styles
+   ======================================== */
+
+.faq-item {
+    border-bottom: 1px solid var(--border-color);
+    padding: 12px 0;
+}
+
+.faq-item:last-child {
+    border-bottom: none;
+}
+
+.faq-question {
+    font-weight: 500;
+    cursor: pointer;
+    padding: 8px 0;
+    list-style: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--text-primary);
+}
+
+.faq-question::-webkit-details-marker {
+    display: none;
+}
+
+.faq-question::after {
+    content: '+';
+    font-size: 1.2rem;
+    color: var(--text-secondary);
+    font-weight: 400;
+    transition: transform 0.2s ease;
+    flex-shrink: 0;
+    margin-left: 12px;
+}
+
+.faq-item[open] .faq-question::after {
+    content: '\2212'; /* minus sign */
+}
+
+.faq-answer {
+    padding: 12px 0 8px 0;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.faq-answer p {
+    margin-bottom: 12px;
+}
+
+.faq-answer p:last-child {
+    margin-bottom: 0;
+}
+
+.faq-answer ul,
+.faq-answer ol {
+    margin: 12px 0;
+    padding-left: 24px;
+}
+
+.faq-answer li {
+    margin-bottom: 8px;
+}
+
+.faq-answer a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.faq-answer a:hover {
+    text-decoration: underline;
+}
+
+.back-link {
+    display: inline-flex;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+/* ========================================
+   Header Navigation
+   ======================================== */
+
+.header-nav {
+    margin-top: 12px;
+}
+
+.header-nav .help-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 0.9rem;
+    padding: 6px 12px;
+    border-radius: 20px;
+    background: rgba(46, 125, 50, 0.1);
+    transition: background 0.2s, color 0.2s;
+}
+
+.header-nav .help-link:hover {
+    background: rgba(46, 125, 50, 0.2);
+    color: var(--primary-color);
+}
+
+/* ========================================
+   Tooltips
+   ======================================== */
+
+.has-tooltip {
+    position: relative;
+    cursor: help;
+}
+
+.has-tooltip::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--text-primary);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 400;
+    font-style: normal;
+    line-height: 1.4;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s, visibility 0.2s;
+    z-index: 1000;
+    max-width: 250px;
+    width: max-content;
+    text-align: center;
+    pointer-events: none;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.has-tooltip::before {
+    content: '';
+    position: absolute;
+    bottom: calc(100% + 2px);
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: var(--text-primary);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s, visibility 0.2s;
+    z-index: 1000;
+    pointer-events: none;
+}
+
+.has-tooltip:hover::after,
+.has-tooltip:hover::before,
+.has-tooltip:focus::after,
+.has-tooltip:focus::before {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Tooltip positioning adjustments for edge cases */
+.has-tooltip.tooltip-left::after {
+    left: 0;
+    transform: translateX(0);
+}
+
+.has-tooltip.tooltip-left::before {
+    left: 16px;
+    transform: translateX(0);
+}
+
+.has-tooltip.tooltip-right::after {
+    left: auto;
+    right: 0;
+    transform: translateX(0);
+}
+
+.has-tooltip.tooltip-right::before {
+    left: auto;
+    right: 16px;
+    transform: translateX(0);
+}
+
+/* Help icon for navigation */
+.tooltip-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+/* Responsive tooltip adjustments */
+@media (max-width: 480px) {
+    .has-tooltip::after {
+        max-width: 200px;
+        font-size: 0.75rem;
     }
 }
