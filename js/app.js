@@ -3534,7 +3534,14 @@ class BirdingHotspotsApp {
                         color: '#fff',
                         weight: 1,
                         fillOpacity: 0.8
-                    }).bindPopup(h.locName).addTo(this.routePreviewMapInstance);
+                    }).addTo(this.routePreviewMapInstance);
+
+                    // Bind tooltip for hover (shows name and species count)
+                    marker.bindTooltip(`<strong>${h.locName}</strong><br>${h.numSpeciesAllTime || 'N/A'} species`, {
+                        direction: 'top',
+                        offset: [0, -5]
+                    });
+
                     this.routePreviewMarkers.push(marker);
                 });
 
