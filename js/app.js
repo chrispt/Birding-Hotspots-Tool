@@ -3572,7 +3572,9 @@ class BirdingHotspotsApp {
                         const popup = e.popup;
                         const btn = popup.getElement().querySelector('.popup-itinerary-btn');
                         if (btn) {
-                            btn.addEventListener('click', () => {
+                            btn.addEventListener('click', (evt) => {
+                                evt.preventDefault();
+                                evt.stopPropagation();
                                 this.togglePreviewHotspotSelection(h, marker, popup);
                             });
                         }
@@ -3667,7 +3669,9 @@ class BirdingHotspotsApp {
         setTimeout(() => {
             const btn = popup.getElement().querySelector('.popup-itinerary-btn');
             if (btn) {
-                btn.addEventListener('click', () => {
+                btn.addEventListener('click', (evt) => {
+                    evt.preventDefault();
+                    evt.stopPropagation();
                     this.togglePreviewHotspotSelection(hotspot, marker, popup);
                 });
             }
