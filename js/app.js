@@ -2177,10 +2177,10 @@ class BirdingHotspotsApp {
             hotspots.forEach((h, index) => {
                 const marker = L.circleMarker([h.lat, h.lng], {
                     radius: 10,
-                    fillColor: '#9E9E9E', // Gray = unselected (none selected by default)
+                    fillColor: '#FF9800', // Orange = unselected (none selected by default)
                     color: '#fff',
                     weight: 2,
-                    fillOpacity: 0.6
+                    fillOpacity: 0.85
                 }).addTo(this.routePreviewMapInstance);
 
                 // Store index for click handler
@@ -2348,8 +2348,8 @@ class BirdingHotspotsApp {
         if (this.routeHotspotMarkers && this.routeHotspotMarkers[index]) {
             const marker = this.routeHotspotMarkers[index];
             marker.setStyle({
-                fillColor: selected ? '#2E7D32' : '#9E9E9E', // Green if selected, gray if not
-                fillOpacity: selected ? 0.9 : 0.6
+                fillColor: selected ? '#2E7D32' : '#FF9800', // Green if selected, orange if not
+                fillOpacity: selected ? 0.9 : 0.85
             });
 
             // Update popup button class if popup is open
