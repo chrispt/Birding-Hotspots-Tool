@@ -96,10 +96,17 @@ class BirdingHotspotsApp {
             // Species search elements
             hotspotModeBtn: document.getElementById('hotspotModeBtn'),
             speciesModeBtn: document.getElementById('speciesModeBtn'),
+            routeModeBtn: document.getElementById('routeModeBtn'),
             speciesSearchPanel: document.getElementById('speciesSearchPanel'),
-            speciesSearchInput: document.getElementById('speciesSearchInput'),
             speciesDropdown: document.getElementById('speciesDropdown'),
             selectedSpecies: document.getElementById('selectedSpecies'),
+            speciesSearchInput: document.getElementById('speciesSearchInput'),
+            // Route planning elements
+            routePlanningPanel: document.getElementById('routePlanningPanel'),
+            routeStartAddress: document.getElementById('routeStartAddress'),
+            routeStartError: document.getElementById('routeStartError'),
+            routeEndAddress: document.getElementById('routeEndAddress'),
+            routeEndError: document.getElementById('routeEndError'),
             sortOptionsSection: document.getElementById('sortOptionsSection'),
             // Itinerary elements
             buildItineraryBtn: document.getElementById('buildItineraryBtn'),
@@ -152,6 +159,12 @@ class BirdingHotspotsApp {
         // Track if end address has been validated (for itinerary)
         this.endAddressValidated = false;
         this.validatedEndCoords = null;
+
+        // Track if route addresses have been validated
+        this.routeStartValidated = false;
+        this.validatedRouteStartCoords = null;
+        this.routeEndValidated = false;
+        this.validatedRouteEndCoords = null;
 
         // Track if search was cancelled
         this.searchCancelled = false;
@@ -232,6 +245,13 @@ class BirdingHotspotsApp {
         // Search mode toggle
         this.elements.hotspotModeBtn.addEventListener('click', () => this.setSearchMode('hotspot'));
         this.elements.speciesModeBtn.addEventListener('click', () => this.setSearchMode('species'));
+        this.elements.routeModeBtn.addEventListener('click', () => this.setSearchMode('route'));
+
+        // Route planning address validation
+        this.elements.routeStartAddress.addEventListener('input', () => this.handleRouteStartInputChange());
+        this.elements.routeStartAddress.addEventListener('blur', () => this.handleRouteStartBlur());
+        this.elements.routeEndAddress.addEventListener('input', () => this.handleRouteEndInputChange());
+        this.elements.routeEndAddress.addEventListener('blur', () => this.handleRouteEndBlur());
 
         // Species search input
         this.elements.speciesSearchInput.addEventListener('input', () => this.handleSpeciesSearchInput());
@@ -747,6 +767,12 @@ class BirdingHotspotsApp {
             // Delegate to species search if in species mode
             if (this.searchMode === 'species') {
                 await this.handleSpeciesSearch();
+                return;
+            }
+
+            // Delegate to route planning if in route mode
+            if (this.searchMode === 'route') {
+                await this.handleRouteSearch();
                 return;
             }
 
@@ -1392,8 +1418,8 @@ class BirdingHotspotsApp {
     }
 
     /**
-     * Set search mode (hotspot or species)
-     * @param {string} mode - 'hotspot' or 'species'
+     * Set search mode (hotspot, species, or route)
+     * @param {string} mode - 'hotspot', 'species', or 'route'
      */
     setSearchMode(mode) {
         this.searchMode = mode;
@@ -1401,21 +1427,36 @@ class BirdingHotspotsApp {
         // Update button states
         this.elements.hotspotModeBtn.classList.toggle('active', mode === 'hotspot');
         this.elements.speciesModeBtn.classList.toggle('active', mode === 'species');
+        this.elements.routeModeBtn.classList.toggle('active', mode === 'route');
         this.elements.hotspotModeBtn.setAttribute('aria-selected', mode === 'hotspot');
         this.elements.speciesModeBtn.setAttribute('aria-selected', mode === 'species');
+        this.elements.routeModeBtn.setAttribute('aria-selected', mode === 'route');
 
         // Toggle panels
-        this.elements.speciesSearchPanel.classList.toggle('hidden', mode === 'hotspot');
-        this.elements.sortOptionsSection.classList.toggle('hidden', mode === 'species');
+        this.elements.speciesSearchPanel.classList.toggle('hidden', mode !== 'species');
+        this.elements.routePlanningPanel.classList.toggle('hidden', mode !== 'route');
+        this.elements.sortOptionsSection.classList.toggle('hidden', mode === 'species' || mode === 'route');
 
-        // Update generate button text
-        this.elements.generateReport.innerHTML = mode === 'species'
-            ? '<svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg> Find This Species'
-            : '<svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg> Find Hotspots';
+        // Update generate button text based on mode
+        const searchIcon = '<svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>';
+        const routeIcon = '<svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M21.71 11.29l-9-9c-.39-.39-1.02-.39-1.41 0l-9 9c-.39.39-.39 1.02 0 1.41l9 9c.39.39 1.02.39 1.41 0l9-9c.39-.38.39-1.01 0-1.41zM14 14.5V12h-4v3H8v-4c0-.55.45-1 1-1h5V7.5l3.5 3.5-3.5 3.5z"/></svg>';
+
+        if (mode === 'species') {
+            this.elements.generateReport.innerHTML = `${searchIcon} Find This Species`;
+        } else if (mode === 'route') {
+            this.elements.generateReport.innerHTML = `${routeIcon} Plan Route`;
+        } else {
+            this.elements.generateReport.innerHTML = `${searchIcon} Find Hotspots`;
+        }
 
         // Initialize species search if switching to species mode
         if (mode === 'species' && !this.speciesSearch) {
             this.initializeSpeciesSearch();
+        }
+
+        // Focus first input when entering route mode
+        if (mode === 'route') {
+            this.elements.routeStartAddress.focus();
         }
     }
 
@@ -1685,6 +1726,473 @@ class BirdingHotspotsApp {
         } finally {
             this.isProcessing = false;
         }
+    }
+
+    /**
+     * Handle route planning search (called from handleGenerateReport)
+     * Finds birding hotspots along a route between two addresses
+     */
+    async handleRouteSearch() {
+        // Validate start address
+        const startAddress = this.elements.routeStartAddress.value.trim();
+        if (startAddress.length < 3) {
+            this.showRouteStartError('Please enter a starting address.');
+            this.isProcessing = false;
+            return;
+        }
+
+        // Validate end address
+        const endAddress = this.elements.routeEndAddress.value.trim();
+        if (endAddress.length < 3) {
+            this.showRouteEndError('Please enter a destination address.');
+            this.isProcessing = false;
+            return;
+        }
+
+        this.showLoading('Validating addresses...', 0);
+
+        // Geocode start address if not already validated
+        let startCoords;
+        if (this.routeStartValidated && this.validatedRouteStartCoords) {
+            startCoords = this.validatedRouteStartCoords;
+        } else {
+            try {
+                const result = await geocodeAddress(startAddress);
+                startCoords = { lat: result.lat, lng: result.lng };
+                this.routeStartValidated = true;
+                this.validatedRouteStartCoords = startCoords;
+                this.clearRouteStartError();
+            } catch (error) {
+                this.hideLoading();
+                this.showRouteStartError('Could not find start address. Please check and try again.');
+                this.isProcessing = false;
+                return;
+            }
+        }
+
+        // Geocode end address if not already validated
+        let endCoords;
+        if (this.routeEndValidated && this.validatedRouteEndCoords) {
+            endCoords = this.validatedRouteEndCoords;
+        } else {
+            try {
+                const result = await geocodeAddress(endAddress);
+                endCoords = { lat: result.lat, lng: result.lng };
+                this.routeEndValidated = true;
+                this.validatedRouteEndCoords = endCoords;
+                this.clearRouteEndError();
+            } catch (error) {
+                this.hideLoading();
+                this.showRouteEndError('Could not find destination address. Please check and try again.');
+                this.isProcessing = false;
+                return;
+            }
+        }
+
+        this.updateLoading('Finding hotspots along route...', 20);
+
+        try {
+            // Calculate midpoint of the route for hotspot search
+            const midLat = (startCoords.lat + endCoords.lat) / 2;
+            const midLng = (startCoords.lng + endCoords.lng) / 2;
+
+            // Calculate distance between start and end to determine search radius
+            const routeDistance = calculateDistance(startCoords.lat, startCoords.lng, endCoords.lat, endCoords.lng);
+            // Search radius should cover the route - use half the distance plus a buffer
+            const searchRadius = Math.min(Math.max(routeDistance / 2 + 10, 20), 50); // Between 20-50 km
+
+            // Fetch hotspots near the midpoint
+            let hotspots = await this.ebirdApi.getNearbyHotspots(
+                midLat,
+                midLng,
+                searchRadius,
+                CONFIG.DEFAULT_DAYS_BACK
+            );
+
+            if (this.searchCancelled) {
+                this.isProcessing = false;
+                return;
+            }
+
+            if (!hotspots || hotspots.length === 0) {
+                this.hideLoading();
+                this.showError('No birding hotspots found along this route. Try a longer route or different locations.');
+                this.isProcessing = false;
+                return;
+            }
+
+            this.updateLoading('Loading hotspot details...', 40);
+
+            // Filter hotspots to those reasonably close to the route line
+            // Simple approach: keep hotspots that are within reasonable distance from either endpoint
+            const maxDetour = searchRadius * 0.7; // Max detour from direct route
+            hotspots = hotspots.filter(h => {
+                const distFromStart = calculateDistance(startCoords.lat, startCoords.lng, h.lat, h.lng);
+                const distFromEnd = calculateDistance(endCoords.lat, endCoords.lng, h.lat, h.lng);
+                // Total detour should be reasonable
+                return (distFromStart + distFromEnd) <= (routeDistance + maxDetour * 2);
+            });
+
+            if (hotspots.length === 0) {
+                this.hideLoading();
+                this.showError('No birding hotspots found along this route. Try a longer route or different locations.');
+                this.isProcessing = false;
+                return;
+            }
+
+            // Limit hotspots and get species data
+            hotspots = hotspots.slice(0, 10);
+
+            // Enrich hotspots with species data
+            const enrichedHotspots = [];
+            for (let i = 0; i < hotspots.length; i++) {
+                if (this.searchCancelled) {
+                    this.isProcessing = false;
+                    return;
+                }
+
+                this.updateLoading(`Loading details for ${hotspots[i].locName}...`, 40 + (i / hotspots.length) * 30);
+
+                try {
+                    const observations = await this.ebirdApi.getRecentObservationsAtHotspot(
+                        hotspots[i].locId,
+                        CONFIG.DEFAULT_DAYS_BACK
+                    );
+                    const processed = processObservations(observations);
+
+                    enrichedHotspots.push({
+                        ...hotspots[i],
+                        name: hotspots[i].locName,
+                        lat: hotspots[i].lat,
+                        lng: hotspots[i].lng,
+                        locId: hotspots[i].locId,
+                        speciesCount: processed.speciesCount,
+                        birds: processed.birds,
+                        distance: calculateDistance(startCoords.lat, startCoords.lng, hotspots[i].lat, hotspots[i].lng)
+                    });
+                } catch (e) {
+                    console.warn(`Failed to get details for hotspot ${hotspots[i].locId}:`, e);
+                }
+            }
+
+            if (enrichedHotspots.length === 0) {
+                this.hideLoading();
+                this.showError('Could not load hotspot details. Please try again.');
+                this.isProcessing = false;
+                return;
+            }
+
+            this.updateLoading('Building your birding itinerary...', 75);
+
+            // Build itinerary from start to end through hotspots
+            const start = { lat: startCoords.lat, lng: startCoords.lng, address: startAddress };
+            const end = { lat: endCoords.lat, lng: endCoords.lng, address: endAddress };
+
+            const itinerary = await buildItinerary(start, end, enrichedHotspots, {
+                maxStops: Math.min(enrichedHotspots.length, 5),
+                priority: 'balanced',
+                onProgress: (msg, pct) => this.updateLoading(msg, 75 + pct * 0.2)
+            });
+
+            this.hideLoading();
+
+            // Store current location as the start for the results map
+            this.currentLocation = start;
+            this.currentItinerary = itinerary;
+
+            // Display the itinerary results
+            this.displayRouteItinerary(itinerary, start, end);
+
+        } catch (error) {
+            this.hideLoading();
+            this.showError(`Failed to plan route: ${error.message}`);
+        } finally {
+            this.isProcessing = false;
+        }
+    }
+
+    /**
+     * Display route itinerary results
+     * @param {Object} itinerary - Built itinerary data
+     * @param {Object} start - Start location
+     * @param {Object} end - End location
+     */
+    displayRouteItinerary(itinerary, start, end) {
+        // Clear previous results
+        this.elements.rareBirdAlert.classList.add('hidden');
+        this.elements.weatherSummary.classList.add('hidden');
+        clearElement(this.elements.hotspotCards);
+
+        // Hide sort buttons for route mode
+        this.elements.sortBySpecies.parentElement.classList.add('hidden');
+
+        // Update results header
+        const hotspotCount = itinerary.stops.filter(s => s.type === 'hotspot').length;
+        this.elements.resultsMeta.textContent = `${hotspotCount} birding stops along your route`;
+
+        // Create route summary header using safe DOM methods
+        const routeHeader = document.createElement('div');
+        routeHeader.className = 'route-itinerary-header';
+
+        const headerIcon = document.createElement('div');
+        headerIcon.className = 'route-header-icon';
+        headerIcon.appendChild(createSVGIcon('directions', 28));
+
+        const headerContent = document.createElement('div');
+        headerContent.className = 'route-header-content';
+
+        const headerTitle = document.createElement('h3');
+        headerTitle.textContent = 'Your Birding Route';
+
+        const endpoints = document.createElement('p');
+        endpoints.className = 'route-endpoints';
+        endpoints.textContent = `${start.address} → ${end.address}`;
+
+        headerContent.appendChild(headerTitle);
+        headerContent.appendChild(endpoints);
+        routeHeader.appendChild(headerIcon);
+        routeHeader.appendChild(headerContent);
+        this.elements.hotspotCards.appendChild(routeHeader);
+
+        // Create summary stats using safe DOM methods
+        const summaryDiv = document.createElement('div');
+        summaryDiv.className = 'route-summary-stats';
+
+        const stats = [
+            { value: formatDistance(itinerary.summary.totalDistance), label: 'Total Distance' },
+            { value: formatItineraryDuration(itinerary.summary.totalTravelTime), label: 'Driving Time' },
+            { value: formatItineraryDuration(itinerary.summary.totalVisitTime), label: 'Birding Time' },
+            { value: String(hotspotCount), label: 'Stops' }
+        ];
+
+        stats.forEach(stat => {
+            const item = document.createElement('div');
+            item.className = 'stat-item';
+
+            const value = document.createElement('span');
+            value.className = 'stat-value';
+            value.textContent = stat.value;
+
+            const label = document.createElement('span');
+            label.className = 'stat-label';
+            label.textContent = stat.label;
+
+            item.appendChild(value);
+            item.appendChild(label);
+            summaryDiv.appendChild(item);
+        });
+
+        this.elements.hotspotCards.appendChild(summaryDiv);
+
+        // Create stop cards
+        itinerary.stops.forEach((stop, index) => {
+            const stopCard = this.createRouteStopCard(stop, index, itinerary.stops.length);
+            this.elements.hotspotCards.appendChild(stopCard);
+        });
+
+        // Add export buttons using safe DOM methods
+        const exportSection = document.createElement('div');
+        exportSection.className = 'route-export-section';
+
+        const pdfBtn = document.createElement('button');
+        pdfBtn.type = 'button';
+        pdfBtn.className = 'btn btn-secondary';
+        pdfBtn.appendChild(createSVGIcon('pdf', 20));
+        pdfBtn.appendChild(document.createTextNode(' Export PDF'));
+        pdfBtn.addEventListener('click', () => this.handleExportItineraryPdf());
+
+        const gpxBtn = document.createElement('button');
+        gpxBtn.type = 'button';
+        gpxBtn.className = 'btn btn-secondary';
+        gpxBtn.appendChild(createSVGIcon('location', 20));
+        gpxBtn.appendChild(document.createTextNode(' Export GPX'));
+        gpxBtn.addEventListener('click', () => this.handleExportItineraryGpx());
+
+        exportSection.appendChild(pdfBtn);
+        exportSection.appendChild(gpxBtn);
+        this.elements.hotspotCards.appendChild(exportSection);
+
+        // Initialize results map with route
+        this.initRouteResultsMap(itinerary);
+
+        // Show results section
+        this.elements.resultsSection.classList.remove('hidden');
+        this.elements.resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    /**
+     * Create a stop card for route itinerary
+     * @param {Object} stop - Stop data
+     * @param {number} index - Stop index
+     * @param {number} totalStops - Total number of stops
+     * @returns {HTMLElement}
+     */
+    createRouteStopCard(stop, index, totalStops) {
+        const card = document.createElement('div');
+        card.className = `route-stop-card ${stop.type}`;
+
+        const isLast = index === totalStops - 1;
+
+        // Determine icon and label based on stop type
+        let iconName;
+        let stopLabel;
+
+        if (stop.type === 'start') {
+            iconName = 'location';
+            stopLabel = 'Start';
+        } else if (stop.type === 'end') {
+            iconName = 'home';
+            stopLabel = 'Destination';
+        } else {
+            iconName = 'check';
+            stopLabel = `Stop ${stop.stopNumber - 1}`;
+        }
+
+        // Calculate time info
+        const arrivalTime = stop.arrivalTime ? formatItineraryTime(stop.arrivalTime) : '';
+        const departureTime = stop.departureTime ? formatItineraryTime(stop.departureTime) : '';
+
+        let timeInfo = '';
+        if (stop.type === 'start') {
+            timeInfo = departureTime ? `Depart ${departureTime}` : '';
+        } else if (stop.type === 'end') {
+            timeInfo = arrivalTime ? `Arrive ${arrivalTime}` : '';
+        } else {
+            timeInfo = arrivalTime && departureTime ? `${arrivalTime} - ${departureTime}` : '';
+        }
+
+        // Build card using safe DOM methods
+        const stopMarker = document.createElement('div');
+        stopMarker.className = `stop-marker ${stop.type}`;
+        stopMarker.appendChild(createSVGIcon(iconName, 20));
+
+        const stopContent = document.createElement('div');
+        stopContent.className = 'stop-content';
+
+        const stopHeader = document.createElement('div');
+        stopHeader.className = 'stop-header';
+
+        const labelSpan = document.createElement('span');
+        labelSpan.className = 'stop-label';
+        labelSpan.textContent = stopLabel;
+        stopHeader.appendChild(labelSpan);
+
+        if (timeInfo) {
+            const timeSpan = document.createElement('span');
+            timeSpan.className = 'stop-time';
+            timeSpan.textContent = timeInfo;
+            stopHeader.appendChild(timeSpan);
+        }
+
+        const nameH4 = document.createElement('h4');
+        nameH4.className = 'stop-name';
+        nameH4.textContent = stop.name || stop.address || 'Location';
+
+        stopContent.appendChild(stopHeader);
+        stopContent.appendChild(nameH4);
+
+        // Add details for hotspots
+        if (stop.type === 'hotspot') {
+            const detailsDiv = document.createElement('div');
+            detailsDiv.className = 'stop-details';
+
+            const speciesSpan = document.createElement('span');
+            speciesSpan.className = 'species-count';
+            speciesSpan.textContent = `${stop.speciesCount} species`;
+
+            const visitSpan = document.createElement('span');
+            visitSpan.className = 'visit-time';
+            visitSpan.textContent = `${stop.suggestedVisitTime} min suggested`;
+
+            detailsDiv.appendChild(speciesSpan);
+            detailsDiv.appendChild(visitSpan);
+            stopContent.appendChild(detailsDiv);
+        }
+
+        card.appendChild(stopMarker);
+        card.appendChild(stopContent);
+
+        // Add leg connector if not last stop
+        if (stop.legToNext && !isLast) {
+            const legConnector = document.createElement('div');
+            legConnector.className = 'leg-connector';
+
+            const legLine = document.createElement('div');
+            legLine.className = 'leg-line';
+
+            const legInfo = document.createElement('div');
+            legInfo.className = 'leg-info';
+            legInfo.appendChild(createSVGIcon('car', 14));
+            legInfo.appendChild(document.createTextNode(` ${formatDistance(stop.legToNext.distance)} · ${formatItineraryDuration(stop.legToNext.duration / 60)}`));
+
+            legConnector.appendChild(legLine);
+            legConnector.appendChild(legInfo);
+            card.appendChild(legConnector);
+        }
+
+        return card;
+    }
+
+    /**
+     * Initialize results map with route line and stops
+     * @param {Object} itinerary - Itinerary data with geometry
+     */
+    initRouteResultsMap(itinerary) {
+        // Clean up existing map
+        if (this.resultsMapInstance) {
+            this.resultsMapInstance.remove();
+            this.resultsMapInstance = null;
+        }
+        this.resultsMarkers = [];
+
+        // Create map centered on first stop
+        const firstStop = itinerary.stops[0];
+        this.resultsMapInstance = L.map(this.elements.resultsMap).setView([firstStop.lat, firstStop.lng], 10);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(this.resultsMapInstance);
+
+        // Add route line if geometry available
+        if (itinerary.geometry && itinerary.geometry.coordinates) {
+            const routeCoords = itinerary.geometry.coordinates.map(c => [c[1], c[0]]);
+            this.itineraryRouteLine = L.polyline(routeCoords, {
+                color: '#2563eb',
+                weight: 4,
+                opacity: 0.8
+            }).addTo(this.resultsMapInstance);
+        }
+
+        // Add markers for each stop
+        itinerary.stops.forEach((stop, index) => {
+            const isHotspot = stop.type === 'hotspot';
+            const markerColor = stop.type === 'start' ? '#22c55e' :
+                stop.type === 'end' ? '#ef4444' : '#2563eb';
+
+            const icon = L.divIcon({
+                className: 'route-marker',
+                html: `<div style="background-color: ${markerColor}; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 12px;">${isHotspot ? index : ''}</div>`,
+                iconSize: [24, 24],
+                iconAnchor: [12, 12]
+            });
+
+            const marker = L.marker([stop.lat, stop.lng], { icon })
+                .bindPopup(`<strong>${stop.name || stop.address}</strong>${isHotspot ? `<br>${stop.speciesCount} species` : ''}`)
+                .addTo(this.resultsMapInstance);
+
+            this.resultsMarkers.push(marker);
+        });
+
+        // Fit bounds to show all stops
+        const bounds = L.latLngBounds(itinerary.stops.map(s => [s.lat, s.lng]));
+        this.resultsMapInstance.fitBounds(bounds, { padding: [30, 30] });
+
+        // Force recalculate size
+        setTimeout(() => {
+            if (this.resultsMapInstance) {
+                this.resultsMapInstance.invalidateSize();
+            }
+        }, 100);
     }
 
     /**
@@ -2249,6 +2757,124 @@ class BirdingHotspotsApp {
         this.elements.endAddressError.classList.add('hidden');
         this.elements.endAddressError.style.color = '';
         this.elements.endAddress.classList.remove('error');
+    }
+
+    /**
+     * Handle route start address input change - clear validation state
+     */
+    handleRouteStartInputChange() {
+        this.routeStartValidated = false;
+        this.validatedRouteStartCoords = null;
+        this.clearRouteStartError();
+    }
+
+    /**
+     * Handle route start address blur - validate and geocode
+     */
+    async handleRouteStartBlur() {
+        const address = this.elements.routeStartAddress.value.trim();
+
+        if (address.length < 3) {
+            this.routeStartValidated = false;
+            this.validatedRouteStartCoords = null;
+            return;
+        }
+
+        // Show verifying feedback
+        this.elements.routeStartError.textContent = 'Verifying address...';
+        this.elements.routeStartError.classList.remove('hidden');
+        this.elements.routeStartError.style.color = 'var(--text-secondary)';
+        this.elements.routeStartAddress.classList.remove('error');
+
+        try {
+            const result = await geocodeAddress(address);
+            this.routeStartValidated = true;
+            this.validatedRouteStartCoords = { lat: result.lat, lng: result.lng };
+            this.clearRouteStartError();
+        } catch (error) {
+            this.routeStartValidated = false;
+            this.validatedRouteStartCoords = null;
+            this.elements.routeStartError.style.color = '';
+            this.showRouteStartError('Could not find this address. Please check and try again.');
+        }
+    }
+
+    /**
+     * Show inline route start address error
+     */
+    showRouteStartError(message) {
+        this.elements.routeStartError.textContent = message;
+        this.elements.routeStartError.classList.remove('hidden');
+        this.elements.routeStartAddress.classList.add('error');
+    }
+
+    /**
+     * Clear inline route start address error
+     */
+    clearRouteStartError() {
+        this.elements.routeStartError.textContent = '';
+        this.elements.routeStartError.classList.add('hidden');
+        this.elements.routeStartError.style.color = '';
+        this.elements.routeStartAddress.classList.remove('error');
+    }
+
+    /**
+     * Handle route end address input change - clear validation state
+     */
+    handleRouteEndInputChange() {
+        this.routeEndValidated = false;
+        this.validatedRouteEndCoords = null;
+        this.clearRouteEndError();
+    }
+
+    /**
+     * Handle route end address blur - validate and geocode
+     */
+    async handleRouteEndBlur() {
+        const address = this.elements.routeEndAddress.value.trim();
+
+        if (address.length < 3) {
+            this.routeEndValidated = false;
+            this.validatedRouteEndCoords = null;
+            return;
+        }
+
+        // Show verifying feedback
+        this.elements.routeEndError.textContent = 'Verifying address...';
+        this.elements.routeEndError.classList.remove('hidden');
+        this.elements.routeEndError.style.color = 'var(--text-secondary)';
+        this.elements.routeEndAddress.classList.remove('error');
+
+        try {
+            const result = await geocodeAddress(address);
+            this.routeEndValidated = true;
+            this.validatedRouteEndCoords = { lat: result.lat, lng: result.lng };
+            this.clearRouteEndError();
+        } catch (error) {
+            this.routeEndValidated = false;
+            this.validatedRouteEndCoords = null;
+            this.elements.routeEndError.style.color = '';
+            this.showRouteEndError('Could not find this address. Please check and try again.');
+        }
+    }
+
+    /**
+     * Show inline route end address error
+     */
+    showRouteEndError(message) {
+        this.elements.routeEndError.textContent = message;
+        this.elements.routeEndError.classList.remove('hidden');
+        this.elements.routeEndAddress.classList.add('error');
+    }
+
+    /**
+     * Clear inline route end address error
+     */
+    clearRouteEndError() {
+        this.elements.routeEndError.textContent = '';
+        this.elements.routeEndError.classList.add('hidden');
+        this.elements.routeEndError.style.color = '';
+        this.elements.routeEndAddress.classList.remove('error');
     }
 
     /**

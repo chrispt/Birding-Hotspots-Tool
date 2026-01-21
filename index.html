@@ -159,6 +159,9 @@
                     <button type="button" class="search-mode-btn" id="speciesModeBtn" role="tab" aria-selected="false">
                         Find a Species
                     </button>
+                    <button type="button" class="search-mode-btn" id="routeModeBtn" role="tab" aria-selected="false">
+                        Plan a Route
+                    </button>
                 </div>
 
                 <!-- Species Search Panel (hidden by default) -->
@@ -180,6 +183,29 @@
                     </div>
                     <div id="selectedSpecies" class="selected-species hidden"></div>
                     <p class="help-text">Search by common or scientific name</p>
+                </div>
+
+                <!-- Route Planning Panel (hidden by default) -->
+                <div id="routePlanningPanel" class="hidden">
+                    <h2 class="section-title">
+                        <svg viewBox="0 0 24 24" width="20" height="20" style="fill: var(--primary-color); margin-right: 4px;">
+                            <path d="M21.71 11.29l-9-9c-.39-.39-1.02-.39-1.41 0l-9 9c-.39.39-.39 1.02 0 1.41l9 9c.39.39 1.02.39 1.41 0l9-9c.39-.38.39-1.01 0-1.41zM14 14.5V12h-4v3H8v-4c0-.55.45-1 1-1h5V7.5l3.5 3.5-3.5 3.5z"/>
+                        </svg>
+                        Plan Your Birding Route
+                    </h2>
+                    <div class="route-inputs">
+                        <div class="input-group">
+                            <label for="routeStartAddress" class="input-label">Start Location</label>
+                            <input type="text" id="routeStartAddress" class="text-input" placeholder="Enter starting address" aria-label="Route start address">
+                            <div id="routeStartError" class="input-error hidden"></div>
+                        </div>
+                        <div class="input-group">
+                            <label for="routeEndAddress" class="input-label">End Location</label>
+                            <input type="text" id="routeEndAddress" class="text-input" placeholder="Enter destination address" aria-label="Route end address">
+                            <div id="routeEndError" class="input-error hidden"></div>
+                        </div>
+                    </div>
+                    <p class="help-text">We'll find birding hotspots along your route</p>
                 </div>
             </section>
 

@@ -1833,6 +1833,17 @@ details.about-section[open] .about-chevron {
     color: var(--error);
 }
 
+/* Route Planning Panel */
+.route-inputs {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.route-inputs .input-group {
+    margin-bottom: 0;
+}
+
 /* Species Search Results */
 .species-results-header {
     display: flex;
@@ -2658,4 +2669,224 @@ details.about-section[open] .about-chevron {
     color: var(--text-secondary);
     font-size: 0.95rem;
     margin: 0;
+}
+
+/* Route Itinerary Results */
+.route-itinerary-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.route-header-icon {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    flex-shrink: 0;
+}
+
+.route-header-content h3 {
+    font-size: 1.2rem;
+    margin: 0 0 4px 0;
+    color: var(--text-primary);
+}
+
+.route-endpoints {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.route-summary-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+    padding: 16px;
+    background: var(--hover-bg);
+    border-radius: var(--radius);
+}
+
+.route-summary-stats .stat-item {
+    text-align: center;
+}
+
+.route-summary-stats .stat-value {
+    display: block;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.route-summary-stats .stat-label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-top: 4px;
+}
+
+/* Route Stop Cards */
+.route-stop-card {
+    display: flex;
+    gap: 12px;
+    padding: 16px;
+    margin-bottom: 0;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    position: relative;
+}
+
+.route-stop-card:not(:last-of-type) {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    margin-bottom: 0;
+}
+
+.route-stop-card + .route-stop-card {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    border-top: none;
+}
+
+.stop-marker {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: white;
+}
+
+.stop-marker.start {
+    background: #22c55e;
+}
+
+.stop-marker.end {
+    background: #ef4444;
+}
+
+.stop-marker.hotspot {
+    background: var(--primary-color);
+}
+
+.stop-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.stop-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.stop-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    letter-spacing: 0.5px;
+}
+
+.stop-time {
+    font-size: 0.85rem;
+    color: var(--primary-color);
+    font-weight: 500;
+}
+
+.stop-name {
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.stop-details {
+    display: flex;
+    gap: 16px;
+    margin-top: 8px;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.stop-details .species-count {
+    color: var(--primary-color);
+    font-weight: 500;
+}
+
+/* Leg connector between stops */
+.leg-connector {
+    position: absolute;
+    bottom: -28px;
+    left: 34px;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.leg-line {
+    width: 2px;
+    height: 20px;
+    background: var(--border-color);
+}
+
+.leg-info {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    color: var(--text-light);
+    background: var(--background);
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+.leg-info svg {
+    flex-shrink: 0;
+}
+
+/* Route Export Section */
+.route-export-section {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+}
+
+.route-export-section .btn {
+    flex: 1;
+}
+
+/* Responsive adjustments for route stats */
+@media (max-width: 480px) {
+    .route-summary-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .route-endpoints {
+        font-size: 0.8rem;
+    }
+
+    .stop-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
 }
