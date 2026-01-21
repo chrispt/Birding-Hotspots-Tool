@@ -654,6 +654,8 @@ class BirdingHotspotsApp {
             const result = await geocodeAddress(address);
             this.addressValidated = true;
             this.validatedCoords = { lat: result.lat, lng: result.lng };
+            // Show resolved address so user can verify correct location was found
+            this.elements.address.value = result.address;
             this.showValidationIndicator(this.elements.addressValidationIcon, this.elements.address, 'success');
             this.showMapPreview(result.lat, result.lng);
         } catch (error) {
@@ -3553,6 +3555,8 @@ class BirdingHotspotsApp {
             const result = await geocodeAddress(address);
             this.routeStartValidated = true;
             this.validatedRouteStartCoords = { lat: result.lat, lng: result.lng };
+            // Show resolved address so user can verify correct location was found
+            this.elements.routeStartAddress.value = result.address;
             this.showValidationIndicator(this.elements.routeStartValidationIcon, this.elements.routeStartAddress, 'success');
             // Try to show route preview if both addresses are validated
             this.tryShowRoutePreview();
@@ -3615,6 +3619,8 @@ class BirdingHotspotsApp {
             const result = await geocodeAddress(address);
             this.routeEndValidated = true;
             this.validatedRouteEndCoords = { lat: result.lat, lng: result.lng };
+            // Show resolved address so user can verify correct location was found
+            this.elements.routeEndAddress.value = result.address;
             this.showValidationIndicator(this.elements.routeEndValidationIcon, this.elements.routeEndAddress, 'success');
             // Try to show route preview if both addresses are validated
             this.tryShowRoutePreview();
