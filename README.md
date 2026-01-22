@@ -107,6 +107,10 @@ Requires JavaScript enabled and an internet connection for API calls.
 
 Bird observation data provided by [eBird](https://ebird.org), a project of the Cornell Lab of Ornithology. Maps and geocoding powered by [OpenStreetMap](https://www.openstreetmap.org) contributors.
 
+## Non-Commercial Use
+
+This is a free, open-source tool intended for personal, non-commercial use only. It is designed for educational purposes and personal birding trip planning. The application does not generate revenue and is not affiliated with or endorsed by Cornell Lab of Ornithology or eBird. Use of eBird data accessed through this tool is subject to the [eBird Data Access Terms of Use](https://www.birds.cornell.edu/home/ebird-data-access-terms-of-use/).
+
 ## License
 
 MIT License

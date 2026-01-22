@@ -80,6 +80,14 @@
                         <p>No, eBird API keys are for personal use only. Each user should request their own free API key from eBird. Sharing API keys violates eBird's terms of service and could result in the key being revoked.</p>
                     </div>
                 </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">What is this tool used for?</summary>
+                    <div class="faq-answer">
+                        <p>Birding Hotspots Finder is a free, non-commercial tool designed for educational purposes and personal birding trip planning. It helps birders discover nearby hotspots, plan birding routes, and generate reports for their personal use.</p>
+                        <p>This tool is not affiliated with or endorsed by Cornell Lab of Ornithology or eBird. All eBird data accessed through this tool is subject to the <a href="https://www.birds.cornell.edu/home/ebird-data-access-terms-of-use/" target="_blank" rel="noopener noreferrer">eBird Data Access Terms of Use</a>.</p>
+                    </div>
+                </details>
             </section>
 
             <!-- Search Options -->
@@ -129,6 +137,40 @@
                         </ul>
                     </div>
                 </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">Can I enter GPS coordinates instead of an address?</summary>
+                    <div class="faq-answer">
+                        <p>Yes. When using "Search a Location", you can toggle between "Address" and "GPS Coordinates" input modes. Enter your latitude and longitude values directly (e.g., 40.7128 for latitude and -74.0060 for longitude).</p>
+                        <p>You can also click "Use My Current Location" to automatically detect your position using your device's GPS.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">What are the search range and hotspot count options?</summary>
+                    <div class="faq-answer">
+                        <p><strong>Search Range</strong> controls how far from your location to search:</p>
+                        <ul>
+                            <li>10 miles - Focused search for nearby hotspots</li>
+                            <li>20 miles - Moderate range for more options</li>
+                            <li>31 miles - Maximum range (eBird API limit)</li>
+                        </ul>
+                        <p><strong>Number of Hotspots</strong> controls how many results to include:</p>
+                        <ul>
+                            <li>10 hotspots - Quick results, faster loading</li>
+                            <li>20 hotspots - Balanced option</li>
+                            <li>30 hotspots - Comprehensive results (may take longer to load)</li>
+                        </ul>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">What is the map preview for?</summary>
+                    <div class="faq-answer">
+                        <p>After entering a location, a map preview appears showing the exact coordinates that will be searched. This helps you verify the location is correct before generating results, especially useful when addresses might have multiple matches or when using GPS coordinates.</p>
+                        <p>You can click "Open in Google Maps" to view the location in more detail.</p>
+                    </div>
+                </details>
             </section>
 
             <!-- Understanding Results -->
@@ -168,6 +210,57 @@
                     <div class="faq-answer">
                         <p>Weather information is provided to help you plan your birding trip. The tool shows current conditions and provides a "birding conditions" score based on factors like temperature, wind, and precipitation.</p>
                         <p>Generally, calm, mild conditions with no rain are best for birding, though some species are more active in specific weather.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">What are Rare Bird Alerts and Migration Alerts?</summary>
+                    <div class="faq-answer">
+                        <p><strong>Rare Bird Alerts</strong> appear when notable or uncommon species have been recently observed in your search area. These highlight unusual sightings that birders often seek out.</p>
+                        <p><strong>Migration Alerts</strong> provide seasonal context based on the time of year, suggesting what types of birds might be moving through the area during spring or fall migration periods.</p>
+                    </div>
+                </details>
+            </section>
+
+            <!-- Itinerary Building -->
+            <section class="card">
+                <h2 class="section-title">Itinerary Building</h2>
+
+                <details class="faq-item">
+                    <summary class="faq-question">What is the Build Itinerary feature?</summary>
+                    <div class="faq-answer">
+                        <p>After finding hotspots, you can create an optimized birding itinerary that plans the best route to visit multiple hotspots in a single trip. The tool calculates driving distances and suggests an efficient order for your stops.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">What are the itinerary optimization options?</summary>
+                    <div class="faq-answer">
+                        <p>When building an itinerary, you can customize:</p>
+                        <ul>
+                            <li><strong>End Location</strong> - Return to your starting point (round trip) or end at a different location</li>
+                            <li><strong>Optimization Priority</strong>:
+                                <ul>
+                                    <li>Balanced - Considers both species diversity and travel time</li>
+                                    <li>Most Species - Prioritizes hotspots with highest bird diversity</li>
+                                    <li>Shortest Route - Minimizes total driving distance</li>
+                                </ul>
+                            </li>
+                            <li><strong>Maximum Stops</strong> - Limit how many hotspots to include (3-10 stops)</li>
+                        </ul>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">What does the route preview show?</summary>
+                    <div class="faq-answer">
+                        <p>When using "Plan a Route", the route preview displays:</p>
+                        <ul>
+                            <li>A map showing your driving path between start and end locations</li>
+                            <li>Total driving distance in miles</li>
+                            <li>Estimated drive time (without stops)</li>
+                        </ul>
+                        <p>This helps you understand the base route before adding birding stops.</p>
                     </div>
                 </details>
             </section>
@@ -226,6 +319,18 @@
                     <summary class="faq-question">Where are my saved locations stored?</summary>
                     <div class="faq-answer">
                         <p>Saved locations are stored in your browser's local storage. They're only available on the same device and browser where you saved them. Clearing your browser data will remove saved locations.</p>
+                    </div>
+                </details>
+            </section>
+
+            <!-- Preferences -->
+            <section class="card">
+                <h2 class="section-title">Preferences</h2>
+
+                <details class="faq-item">
+                    <summary class="faq-question">Can I change the temperature units?</summary>
+                    <div class="faq-answer">
+                        <p>Yes. The weather display supports both Fahrenheit and Celsius. Click on the temperature reading to toggle between units. Your preference is saved in your browser for future visits.</p>
                     </div>
                 </details>
             </section>
