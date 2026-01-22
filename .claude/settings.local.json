@@ -5,7 +5,9 @@
       "Bash(cd c:UserschrisOneDriveDocuments\"\"Birding Hotspots Tool\" && findstr /r \"touch|@media|matchMedia|resize\" js\\\\*.js js\\\\**\\\\*.js 2>nul || echo \"No touch/media queries found in JS \")",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(gh repo view:*)"
+      "Bash(gh repo view:*)",
+      "Bash(cd:*)",
+      "Bash(git push)"
     ]
   }
 }
