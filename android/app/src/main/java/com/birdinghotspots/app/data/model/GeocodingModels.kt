@@ -1,12 +1,10 @@
 package com.birdinghotspots.app.data.model
 
 import com.squareup.moshi.Json
-import com.squareup.moshi.JsonClass
 
 /**
  * LocationIQ forward geocoding response.
  */
-@JsonClass(generateAdapter = true)
 data class GeocodingResponse(
     @Json(name = "place_id") val placeId: String,
     @Json(name = "licence") val licence: String?,
@@ -21,7 +19,6 @@ data class GeocodingResponse(
 /**
  * LocationIQ reverse geocoding response.
  */
-@JsonClass(generateAdapter = true)
 data class ReverseGeocodingResponse(
     @Json(name = "place_id") val placeId: String,
     @Json(name = "licence") val licence: String?,
@@ -34,7 +31,6 @@ data class ReverseGeocodingResponse(
 /**
  * Address details from LocationIQ.
  */
-@JsonClass(generateAdapter = true)
 data class Address(
     @Json(name = "house_number") val houseNumber: String?,
     @Json(name = "road") val road: String?,

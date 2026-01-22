@@ -91,8 +91,7 @@ class ResultsViewModel @Inject constructor(
                     daysBack = 30,
                     maxHotspots = params.maxResults
                 ).collect { result ->
-                    if (result.isSuccess) {
-                        val hotspots = result.getOrNull()!!
+                    result.getOrNull()?.let { hotspots ->
                         val progress = if (hotspots.any { it.observations.isNotEmpty() }) 0.6f else 0.3f
 
                         _uiState.update {
@@ -102,7 +101,7 @@ class ResultsViewModel @Inject constructor(
                                 loadingProgress = progress
                             )
                         }
-                    } else {
+                    } ?: run {
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
@@ -162,9 +161,7 @@ class ResultsViewModel @Inject constructor(
             val destinations = hotspots.map { Location(it.latitude, it.longitude) }
 
             val routeResult = routingRepository.getDistancesToMany(origin, destinations)
-            if (routeResult.isSuccess) {
-                val routes = routeResult.getOrNull()!!
-
+            routeResult.getOrNull()?.let { routes ->
                 val enrichedHotspots = hotspots.mapIndexed { index, hotspot ->
                     val route = routes.getOrNull(index)
                     if (route != null) {
@@ -189,8 +186,7 @@ class ResultsViewModel @Inject constructor(
     private suspend fun getWeatherSummary(lat: Double, lng: Double) {
         try {
             val result = weatherRepository.getWeather(lat, lng)
-            if (result.isSuccess) {
-                val weather = result.getOrNull()!!
+            result.getOrNull()?.let { weather ->
                 _uiState.update {
                     it.copy(
                         weatherSummary = WeatherSummary(

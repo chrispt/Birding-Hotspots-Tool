@@ -35,11 +35,12 @@ class RoutingRepository @Inject constructor(
                 steps = false
             )
 
-            if (response.routes.isNullOrEmpty()) {
+            val routes = response.routes
+            if (routes.isNullOrEmpty()) {
                 return@withContext Result.failure(Exception("No route found"))
             }
 
-            val apiRoute = response.routes!!.first()
+            val apiRoute = routes.first()
             val geometry = apiRoute.geometry?.coordinates?.map { coord ->
                 Pair(coord[1], coord[0]) // GeoJSON is [lng, lat], we want [lat, lng]
             } ?: emptyList()
@@ -80,8 +81,7 @@ class RoutingRepository @Inject constructor(
                 for (destination in batch) {
                     try {
                         val routeResult = getRoute(origin, destination)
-                        if (routeResult.isSuccess) {
-                            val route = routeResult.getOrNull()!!
+                        routeResult.getOrNull()?.let { route ->
                             results.add(
                                 RouteLeg(
                                     startLocation = origin,
@@ -140,11 +140,12 @@ class RoutingRepository @Inject constructor(
                 geometries = "geojson"
             )
 
-            if (response.trips.isNullOrEmpty()) {
+            val trips = response.trips
+            if (trips.isNullOrEmpty()) {
                 return@withContext Result.failure(Exception("No optimized route found"))
             }
 
-            val trip = response.trips!!.first()
+            val trip = trips.first()
             val geometry = trip.geometry?.coordinates?.map { coord ->
                 Pair(coord[1], coord[0])
             } ?: emptyList()
@@ -183,9 +184,9 @@ class RoutingRepository @Inject constructor(
         destination: Location
     ): Result<List<Pair<Double, Double>>> = withContext(Dispatchers.IO) {
         val routeResult = getRoute(origin, destination)
-        if (routeResult.isFailure) {
-            return@withContext Result.failure(routeResult.exceptionOrNull()!!)
-        }
-        Result.success(routeResult.getOrNull()!!.geometry)
+        routeResult.fold(
+            onSuccess = { route -> Result.success(route.geometry) },
+            onFailure = { error -> Result.failure(error) }
+        )
     }
 }

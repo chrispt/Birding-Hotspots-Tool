@@ -29,7 +29,8 @@
         <!-- Header -->
         <header class="header">
             <div class="logo">
-                <svg class="logo-icon" viewBox="0 0 24 24" width="40" height="40">
+                <svg class="logo-icon" viewBox="0 0 24 24" width="40" height="40" aria-hidden="true">
+                    <title>Birding Hotspots Finder Logo</title>
                     <path fill="#2E7D32" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
                     <path fill="#FF5722" d="M12 4.5c-.8 1.2-1.5 2.3-2 3.5-.6 1.3-.5 2.5.2 3.5.5-.8 1.2-1.5 1.8-2.2.6.7 1.3 1.4 1.8 2.2.7-1 .8-2.2.2-3.5-.5-1.2-1.2-2.3-2-3.5z"/>
                     <path fill="#FFC107" d="M12 7c-.5.8-1 1.5-1 2.5 0 .8.5 1.5 1 1.5s1-.7 1-1.5c0-1-.5-1.7-1-2.5z"/>
@@ -42,7 +43,7 @@
                     <span class="tooltip-icon">?</span> Help & FAQ
                 </a>
                 <a href="https://github.com/chrispt/Birding-Hotspots-Tool/issues/new/choose" target="_blank" rel="noopener noreferrer" class="help-link feedback-link" aria-label="Send feedback">
-                    <svg viewBox="0 0 24 24" width="16" height="16">
+                    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
                         <path fill="currentColor" d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-7 12h-2v-2h2v2zm0-4h-2V6h2v4z"/>
                     </svg>
                     Feedback
@@ -54,7 +55,7 @@
         <details class="about-section card">
             <summary class="about-toggle">
                 <span class="about-title">What is this tool?</span>
-                <svg class="about-chevron" viewBox="0 0 24 24" width="20" height="20">
+                <svg class="about-chevron" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
                     <path fill="currentColor" d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
                 </svg>
             </summary>
@@ -77,16 +78,16 @@
             <section class="card">
                 <h2 class="section-title has-tooltip tooltip-left" data-tooltip="Your personal eBird API key is required to fetch bird sighting data. Get one free from eBird.">
                     eBird API Key
-                    <a href="https://ebird.org/api/keygen" target="_blank" rel="noopener noreferrer" class="help-link" title="Get your free API key">
-                        <svg viewBox="0 0 24 24" width="18" height="18">
+                    <a href="https://ebird.org/api/keygen" target="_blank" rel="noopener noreferrer" class="help-link" title="Get your free API key" aria-label="Get your free eBird API key">
+                        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
                             <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"/>
                         </svg>
                     </a>
                 </h2>
                 <div class="input-group">
                     <input type="password" id="apiKey" class="text-input" placeholder="Enter your eBird API key" aria-label="eBird API key">
-                    <button type="button" id="toggleApiKey" class="btn-icon" title="Show/hide API key">
-                        <svg id="eyeIcon" viewBox="0 0 24 24" width="20" height="20">
+                    <button type="button" id="toggleApiKey" class="btn-icon" title="Show/hide API key" aria-label="Toggle API key visibility">
+                        <svg id="eyeIcon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
                             <path fill="currentColor" d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
                         </svg>
                     </button>
@@ -104,7 +105,7 @@
                 <div class="search-type-cards">
                     <button type="button" class="search-type-card active" id="locationSearchBtn">
                         <div class="search-type-icon">
-                            <svg viewBox="0 0 24 24" width="32" height="32">
+                            <svg viewBox="0 0 24 24" width="32" height="32" aria-hidden="true">
                                 <path fill="currentColor" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
                             </svg>
                         </div>
@@ -115,7 +116,7 @@
                     </button>
                     <button type="button" class="search-type-card" id="routeSearchBtn">
                         <div class="search-type-icon">
-                            <svg viewBox="0 0 24 24" width="32" height="32">
+                            <svg viewBox="0 0 24 24" width="32" height="32" aria-hidden="true">
                                 <path fill="currentColor" d="M21.71 11.29l-9-9c-.39-.39-1.02-.39-1.41 0l-9 9c-.39.39-.39 1.02 0 1.41l9 9c.39.39 1.02.39 1.41 0l9-9c.39-.38.39-1.01 0-1.41zM14 14.5V12h-4v3H8v-4c0-.55.45-1 1-1h5V7.5l3.5 3.5-3.5 3.5z"/>
                             </svg>
                         </div>
@@ -131,8 +132,8 @@
             <section id="locationSearchSection" class="card">
                 <div class="section-header">
                     <h2 class="section-title">Location</h2>
-                    <button type="button" id="resetLocationSearch" class="btn-reset" title="Clear and start over">
-                        <svg viewBox="0 0 24 24" width="18" height="18">
+                    <button type="button" id="resetLocationSearch" class="btn-reset" title="Clear and start over" aria-label="Reset location search">
+                        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
                             <path fill="currentColor" d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
                         </svg>
                         Reset
@@ -177,7 +178,7 @@
                 </div>
 
                 <button type="button" id="useCurrentLocation" class="btn btn-secondary">
-                    <svg viewBox="0 0 24 24" width="18" height="18">
+                    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
                         <path fill="currentColor" d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0013 3.06V1h-2v2.06A8.994 8.994 0 003.06 11H1v2h2.06A8.994 8.994 0 0011 20.94V23h2v-2.06A8.994 8.994 0 0020.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/>
                     </svg>
                     Use My Current Location
@@ -188,7 +189,7 @@
                     <div class="map-preview-header">
                         <h3 class="map-preview-title">Verify Location</h3>
                         <a id="openInGoogleMaps" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-small">
-                            <svg viewBox="0 0 24 24" width="16" height="16">
+                            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
                                 <path fill="currentColor" d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/>
                             </svg>
                             Open in Google Maps
@@ -209,7 +210,7 @@
                 <!-- Species Search Panel (hidden by default) -->
                 <div id="speciesSearchPanel" class="hidden">
                     <div class="species-search-container">
-                        <span class="species-search-icon">
+                        <span class="species-search-icon" aria-hidden="true">
                             <svg viewBox="0 0 24 24" width="18" height="18">
                                 <path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
                             </svg>
@@ -226,14 +227,14 @@
             <section id="routeSearchSection" class="card hidden">
                 <div class="section-header">
                     <h2 class="section-title">
-                        <svg viewBox="0 0 24 24" width="20" height="20" style="fill: var(--primary-color); margin-right: 4px;">
+                        <svg viewBox="0 0 24 24" width="20" height="20" style="fill: var(--primary-color); margin-right: 4px;" aria-hidden="true">
                             <path d="M21.71 11.29l-9-9c-.39-.39-1.02-.39-1.41 0l-9 9c-.39.39-.39 1.02 0 1.41l9 9c.39.39 1.02.39 1.41 0l9-9c.39-.38.39-1.01 0-1.41zM14 14.5V12h-4v3H8v-4c0-.55.45-1 1-1h5V7.5l3.5 3.5-3.5 3.5z"/>
                         </svg>
                         Plan Your Birding Route
                         <span class="beta-tag">Beta</span>
                     </h2>
-                    <button type="button" id="resetRouteSearch" class="btn-reset" title="Clear and start over">
-                        <svg viewBox="0 0 24 24" width="18" height="18">
+                    <button type="button" id="resetRouteSearch" class="btn-reset" title="Clear and start over" aria-label="Reset route search">
+                        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
                             <path fill="currentColor" d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
                         </svg>
                         Reset
@@ -248,7 +249,7 @@
                                 <span id="routeStartValidationIcon" class="input-validation-indicator hidden"></span>
                             </div>
                             <button type="button" id="useCurrentLocationStart" class="location-btn" title="Use my current location" aria-label="Use current location for start">
-                                <svg viewBox="0 0 24 24" width="20" height="20">
+                                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
                                     <path fill="currentColor" d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0013 3.06V1h-2v2.06A8.994 8.994 0 003.06 11H1v2h2.06A8.994 8.994 0 0011 20.94V23h2v-2.06A8.994 8.994 0 0020.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/>
                                 </svg>
                             </button>
@@ -263,7 +264,7 @@
                                 <span id="routeEndValidationIcon" class="input-validation-indicator hidden"></span>
                             </div>
                             <button type="button" id="useCurrentLocationEnd" class="location-btn" title="Use my current location" aria-label="Use current location for end">
-                                <svg viewBox="0 0 24 24" width="20" height="20">
+                                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
                                     <path fill="currentColor" d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0013 3.06V1h-2v2.06A8.994 8.994 0 003.06 11H1v2h2.06A8.994 8.994 0 0011 20.94V23h2v-2.06A8.994 8.994 0 0020.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/>
                                 </svg>
                             </button>
@@ -284,7 +285,7 @@
                     <div class="route-preview-header">
                         <h3 class="route-preview-title">Route Preview</h3>
                         <a id="openRouteInGoogleMaps" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-small">
-                            <svg viewBox="0 0 24 24" width="16" height="16">
+                            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
                                 <path fill="currentColor" d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/>
                             </svg>
                             Open in Google Maps

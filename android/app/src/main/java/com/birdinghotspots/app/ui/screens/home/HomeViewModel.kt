@@ -259,7 +259,8 @@ class HomeViewModel @Inject constructor(
                     InputMode.ADDRESS -> {
                         // Geocode address
                         val geocodeResult = geocodingRepository.geocode(currentState.address)
-                        if (geocodeResult.isFailure) {
+                        val location = geocodeResult.getOrNull()
+                        if (location == null) {
                             _uiState.update {
                                 it.copy(
                                     isSearching = false,
@@ -268,8 +269,6 @@ class HomeViewModel @Inject constructor(
                             }
                             return@launch
                         }
-
-                        val location = geocodeResult.getOrNull()!!
                         lat = location.latitude
                         lng = location.longitude
                         resolvedAddress = location.address

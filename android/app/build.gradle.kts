@@ -18,6 +18,17 @@ android {
         versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // LocationIQ API key - can be overridden in local.properties
+        val localProperties = rootProject.file("local.properties")
+        val locationiqKey = if (localProperties.exists()) {
+            val props = java.util.Properties()
+            props.load(localProperties.inputStream())
+            props.getProperty("LOCATIONIQ_API_KEY", "pk.dde574cf08ddd6cd62d8f57dc614c587")
+        } else {
+            "pk.dde574cf08ddd6cd62d8f57dc614c587"
+        }
+        buildConfigField("String", "LOCATIONIQ_API_KEY", "\"$locationiqKey\"")
     }
 
     buildTypes {

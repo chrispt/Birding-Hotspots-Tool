@@ -1,12 +1,10 @@
 package com.birdinghotspots.app.data.model
 
 import com.squareup.moshi.Json
-import com.squareup.moshi.JsonClass
 
 /**
  * OSRM route response.
  */
-@JsonClass(generateAdapter = true)
 data class RouteResponse(
     @Json(name = "code") val code: String,
     @Json(name = "routes") val routes: List<Route>?,
@@ -16,7 +14,6 @@ data class RouteResponse(
 /**
  * OSRM trip (optimized route) response.
  */
-@JsonClass(generateAdapter = true)
 data class TripResponse(
     @Json(name = "code") val code: String,
     @Json(name = "trips") val trips: List<Trip>?,
@@ -26,7 +23,6 @@ data class TripResponse(
 /**
  * A single route from OSRM.
  */
-@JsonClass(generateAdapter = true)
 data class Route(
     @Json(name = "distance") val distance: Double, // meters
     @Json(name = "duration") val duration: Double, // seconds
@@ -37,7 +33,6 @@ data class Route(
 /**
  * A single trip (optimized route) from OSRM.
  */
-@JsonClass(generateAdapter = true)
 data class Trip(
     @Json(name = "distance") val distance: Double, // meters
     @Json(name = "duration") val duration: Double, // seconds
@@ -48,7 +43,6 @@ data class Trip(
 /**
  * A leg of a route (segment between two waypoints).
  */
-@JsonClass(generateAdapter = true)
 data class RouteLeg(
     @Json(name = "distance") val distance: Double, // meters
     @Json(name = "duration") val duration: Double, // seconds
@@ -58,7 +52,6 @@ data class RouteLeg(
 /**
  * GeoJSON geometry.
  */
-@JsonClass(generateAdapter = true)
 data class Geometry(
     @Json(name = "type") val type: String,
     @Json(name = "coordinates") val coordinates: List<List<Double>>
@@ -67,7 +60,6 @@ data class Geometry(
 /**
  * Waypoint from a route response.
  */
-@JsonClass(generateAdapter = true)
 data class Waypoint(
     @Json(name = "name") val name: String,
     @Json(name = "location") val location: List<Double>, // [lng, lat]
@@ -78,7 +70,6 @@ data class Waypoint(
  * Waypoint from a trip (optimized) response.
  * Includes the optimized order via waypoint_index.
  */
-@JsonClass(generateAdapter = true)
 data class TripWaypoint(
     @Json(name = "name") val name: String,
     @Json(name = "location") val location: List<Double>, // [lng, lat]

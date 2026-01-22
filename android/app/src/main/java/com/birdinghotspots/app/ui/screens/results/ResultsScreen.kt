@@ -122,7 +122,7 @@ fun ResultsScreen(
                 }
                 uiState.errorMessage != null -> {
                     ErrorContent(
-                        message = uiState.errorMessage!!,
+                        message = uiState.errorMessage ?: "Unknown error",
                         onRetry = viewModel::retry
                     )
                 }
@@ -207,7 +207,7 @@ private fun EmptyContent() {
     ) {
         Icon(
             imageVector = Icons.Default.LocationOn,
-            contentDescription = null,
+            contentDescription = "No hotspots found",
             modifier = Modifier.size(64.dp),
             tint = MaterialTheme.colorScheme.onSurfaceVariant
         )

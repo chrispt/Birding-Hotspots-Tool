@@ -11,11 +11,6 @@ import retrofit2.http.Query
  */
 interface GeocodingApi {
 
-    companion object {
-        // Public LocationIQ API key (same as web app, rate-limited)
-        const val API_KEY = "pk.dde574cf08ddd6cd62d8f57dc614c587"
-    }
-
     /**
      * Forward geocoding - convert address to coordinates.
      *
@@ -27,7 +22,7 @@ interface GeocodingApi {
     @GET("search")
     suspend fun geocode(
         @Query("q") query: String,
-        @Query("key") key: String = API_KEY,
+        @Query("key") key: String,
         @Query("format") format: String = "json",
         @Query("limit") limit: Int = 5
     ): List<GeocodingResponse>
@@ -44,7 +39,7 @@ interface GeocodingApi {
     suspend fun reverseGeocode(
         @Query("lat") lat: Double,
         @Query("lon") lon: Double,
-        @Query("key") key: String = API_KEY,
+        @Query("key") key: String,
         @Query("format") format: String = "json"
     ): ReverseGeocodingResponse
 }

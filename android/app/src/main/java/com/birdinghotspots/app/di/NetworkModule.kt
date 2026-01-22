@@ -1,5 +1,6 @@
 package com.birdinghotspots.app.di
 
+import com.birdinghotspots.app.BuildConfig
 import com.birdinghotspots.app.data.api.EBirdApi
 import com.birdinghotspots.app.data.api.GeocodingApi
 import com.birdinghotspots.app.data.api.RoutingApi
@@ -43,12 +44,17 @@ object NetworkModule {
 
     /**
      * Provides OkHttpClient with logging and timeouts.
+     * Logging is only enabled in debug builds for security.
      */
     @Provides
     @Singleton
     fun provideOkHttpClient(): OkHttpClient {
         val loggingInterceptor = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BODY
+            level = if (BuildConfig.DEBUG) {
+                HttpLoggingInterceptor.Level.BODY
+            } else {
+                HttpLoggingInterceptor.Level.NONE
+            }
         }
 
         return OkHttpClient.Builder()

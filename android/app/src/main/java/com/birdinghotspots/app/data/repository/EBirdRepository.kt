@@ -73,11 +73,11 @@ class EBirdRepository @Inject constructor(
             val hotspotsResult = getNearbyHotspots(apiKey, lat, lng, distanceKm, daysBack)
 
             if (hotspotsResult.isFailure) {
-                emit(Result.failure(hotspotsResult.exceptionOrNull()!!))
+                emit(Result.failure(hotspotsResult.exceptionOrNull() ?: Exception("Unknown error")))
                 return@flow
             }
 
-            val hotspots = hotspotsResult.getOrNull()!!.take(maxHotspots).toMutableList()
+            val hotspots = (hotspotsResult.getOrNull() ?: emptyList()).take(maxHotspots).toMutableList()
 
             // Emit initial results without observations
             emit(Result.success(hotspots.toList()))
@@ -88,8 +88,7 @@ class EBirdRepository @Inject constructor(
                     delay(200) // Rate limiting: 5 requests per second max
                     val observations = getRecentObservations(apiKey, hotspots[i].locId, daysBack)
 
-                    if (observations.isSuccess) {
-                        val obs = observations.getOrNull()!!
+                    observations.getOrNull()?.let { obs ->
                         hotspots[i] = hotspots[i].copy(
                             observations = obs,
                             recentSpeciesCount = obs.distinctBy { it.speciesCode }.size,

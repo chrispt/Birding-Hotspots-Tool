@@ -1,5 +1,6 @@
 package com.birdinghotspots.app.data.repository
 
+import com.birdinghotspots.app.BuildConfig
 import com.birdinghotspots.app.data.api.GeocodingApi
 import com.birdinghotspots.app.domain.model.Location
 import kotlinx.coroutines.Dispatchers
@@ -16,8 +17,8 @@ import javax.inject.Singleton
 class GeocodingRepository @Inject constructor(
     private val geocodingApi: GeocodingApi
 ) {
-    // LocationIQ public API key (rate-limited, same as web app)
-    private val apiKey = "pk.dde574cf08ddd6cd62d8f57dc614c587"
+    // API key loaded from BuildConfig (can be overridden in local.properties)
+    private val apiKey = BuildConfig.LOCATIONIQ_API_KEY
 
     // Simple in-memory cache for session
     private val geocodeCache = mutableMapOf<String, Location>()
@@ -108,8 +109,8 @@ class GeocodingRepository @Inject constructor(
             val (lat, lng) = location
             try {
                 val result = reverseGeocode(lat, lng)
-                if (result.isSuccess) {
-                    results[location] = result.getOrNull()!!
+                result.getOrNull()?.let { address ->
+                    results[location] = address
                 }
                 // Rate limit: 2 requests per second for LocationIQ free tier
                 kotlinx.coroutines.delay(500)

@@ -1,12 +1,10 @@
 package com.birdinghotspots.app.data.model
 
 import com.squareup.moshi.Json
-import com.squareup.moshi.JsonClass
 
 /**
  * eBird hotspot response.
  */
-@JsonClass(generateAdapter = true)
 data class HotspotResponse(
     @Json(name = "locId") val locId: String,
     @Json(name = "locName") val locName: String,
@@ -21,7 +19,6 @@ data class HotspotResponse(
 /**
  * eBird observation response.
  */
-@JsonClass(generateAdapter = true)
 data class ObservationResponse(
     @Json(name = "speciesCode") val speciesCode: String,
     @Json(name = "comName") val comName: String,
@@ -40,7 +37,6 @@ data class ObservationResponse(
 /**
  * eBird taxonomy response (species list).
  */
-@JsonClass(generateAdapter = true)
 data class TaxonomyResponse(
     @Json(name = "speciesCode") val speciesCode: String,
     @Json(name = "comName") val comName: String,

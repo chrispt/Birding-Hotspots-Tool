@@ -1,12 +1,10 @@
 package com.birdinghotspots.app.data.model
 
 import com.squareup.moshi.Json
-import com.squareup.moshi.JsonClass
 
 /**
  * Open-Meteo weather response.
  */
-@JsonClass(generateAdapter = true)
 data class WeatherResponse(
     @Json(name = "latitude") val latitude: Double,
     @Json(name = "longitude") val longitude: Double,
@@ -17,7 +15,6 @@ data class WeatherResponse(
 /**
  * Current weather conditions.
  */
-@JsonClass(generateAdapter = true)
 data class CurrentWeather(
     @Json(name = "time") val time: String,
     @Json(name = "temperature_2m") val temperature: Double?,

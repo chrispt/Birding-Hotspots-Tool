@@ -64,8 +64,8 @@ class WeatherRepository @Inject constructor(
         for (location in locations) {
             try {
                 val result = getWeather(location.first, location.second)
-                if (result.isSuccess) {
-                    results[location] = result.getOrNull()!!
+                result.getOrNull()?.let { weather ->
+                    results[location] = weather
                 }
             } catch (e: Exception) {
                 Timber.w(e, "Failed to get weather for ${location.first}, ${location.second}")
