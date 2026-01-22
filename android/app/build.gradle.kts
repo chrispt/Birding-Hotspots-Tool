@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -22,7 +24,7 @@ android {
         // LocationIQ API key - can be overridden in local.properties
         val localProperties = rootProject.file("local.properties")
         val locationiqKey = if (localProperties.exists()) {
-            val props = java.util.Properties()
+            val props = Properties()
             props.load(localProperties.inputStream())
             props.getProperty("LOCATIONIQ_API_KEY", "pk.dde574cf08ddd6cd62d8f57dc614c587")
         } else {
