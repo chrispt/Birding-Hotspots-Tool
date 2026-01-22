@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Primary colors (forest green theme matching web app) -->
+    <color name="green_primary">#2E7D32</color>
+    <color name="green_primary_dark">#1B5E20</color>
+    <color name="green_primary_light">#4CAF50</color>
+
+    <!-- Secondary/accent colors -->
+    <color name="teal_secondary">#00796B</color>
+    <color name="teal_secondary_light">#26A69A</color>
+
+    <!-- Background colors -->
+    <color name="background_light">#FAFAFA</color>
+    <color name="background_dark">#121212</color>
+    <color name="surface_light">#FFFFFF</color>
+    <color name="surface_dark">#1E1E1E</color>
+
+    <!-- Text colors -->
+    <color name="text_primary_light">#212121</color>
+    <color name="text_primary_dark">#FFFFFF</color>
+    <color name="text_secondary_light">#757575</color>
+    <color name="text_secondary_dark">#B0B0B0</color>
+
+    <!-- Status colors -->
+    <color name="error">#D32F2F</color>
+    <color name="warning">#FFA000</color>
+    <color name="success">#388E3C</color>
+    <color name="info">#1976D2</color>
+
+    <!-- Notable species highlight -->
+    <color name="notable_species">#FF6F00</color>
+
+    <!-- Map marker colors -->
+    <color name="marker_hotspot">#2E7D32</color>
+    <color name="marker_selected">#1565C0</color>
+</resources>

@@ -13,3 +13,9 @@ desktop.ini
 # OS files
 .DS_Store
 .claude/settings.local.json
+
+# Android (see android/.gitignore for detailed Android ignores)
+android/local.properties
+android/.gradle/
+android/app/build/
+android/build/

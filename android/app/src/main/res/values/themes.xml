@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Base application theme (placeholder - actual theming done in Compose) -->
+    <style name="Theme.BirdingHotspots" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@color/green_primary</item>
+        <item name="android:navigationBarColor">@color/green_primary</item>
+    </style>
+
+</resources>
