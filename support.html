@@ -216,8 +216,17 @@
                 <details class="faq-item">
                     <summary class="faq-question">What are Rare Bird Alerts and Migration Alerts?</summary>
                     <div class="faq-answer">
-                        <p><strong>Rare Bird Alerts</strong> appear when notable or uncommon species have been recently observed in your search area. These highlight unusual sightings that birders often seek out.</p>
+                        <p><strong>Rare Bird Alerts</strong> appear when notable or uncommon species have been recently observed in your search area. These highlight unusual sightings that birders often seek out. Rare birds are shown with orange highlighting.</p>
                         <p><strong>Migration Alerts</strong> provide seasonal context based on the time of year, suggesting what types of birds might be moving through the area during spring or fall migration periods.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">What are Potential Lifers?</summary>
+                    <div class="faq-answer">
+                        <p><strong>Potential Lifers</strong> are species that have been observed at a hotspot but are not on your personal life list. If you've imported your eBird life list, the tool will highlight species you haven't seen yet with purple text and a star icon.</p>
+                        <p>This feature helps you identify hotspots where you might add new species to your life list. A "Potential Lifers" alert appears when species you haven't seen are present nearby.</p>
+                        <p>Species that are both rare AND potential lifers get special combined highlighting, making them highest priority targets.</p>
                     </div>
                 </details>
             </section>
@@ -323,6 +332,63 @@
                 </details>
             </section>
 
+            <!-- My Life List -->
+            <section class="card">
+                <h2 class="section-title">My Life List</h2>
+
+                <details class="faq-item">
+                    <summary class="faq-question">What is the Life List feature?</summary>
+                    <div class="faq-answer">
+                        <p>The Life List feature lets you import your personal birding life list from eBird. Once imported, the tool compares species observed at hotspots against your list and highlights "potential lifers" - species you haven't seen yet.</p>
+                        <p>This helps you prioritize hotspots where you're most likely to add new species to your life list.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">How do I import my eBird life list?</summary>
+                    <div class="faq-answer">
+                        <p>To import your life list from eBird:</p>
+                        <ol>
+                            <li>Log in to <a href="https://ebird.org" target="_blank" rel="noopener noreferrer">eBird.org</a></li>
+                            <li>Go to "My eBird" and click "Download My Data"</li>
+                            <li>Download your Life List as a CSV file</li>
+                            <li>In this tool, expand the "My Life List" section</li>
+                            <li>Click "Import from eBird" and select your downloaded CSV file</li>
+                        </ol>
+                        <p>The tool will parse the CSV and extract all species from your life list. You'll see a confirmation showing how many species were imported.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">How are potential lifers displayed?</summary>
+                    <div class="faq-answer">
+                        <p>Once you've imported your life list:</p>
+                        <ul>
+                            <li><strong>Purple text with a star</strong> - Species you haven't seen (potential lifers)</li>
+                            <li><strong>Orange text</strong> - Rare/notable species in the area</li>
+                            <li><strong>Purple + Orange combined</strong> - Species that are BOTH rare AND a potential lifer (highest priority!)</li>
+                        </ul>
+                        <p>A "Potential Lifers" collapsible section appears when lifers are present in your search results, listing all species you could add to your life list.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">Where is my life list stored?</summary>
+                    <div class="faq-answer">
+                        <p>Your life list is stored in your browser's local storage, just like your saved locations and API key. It stays on your device and is never uploaded to any server.</p>
+                        <p>If you clear your browser data, you'll need to import your life list again.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">How do I clear or update my life list?</summary>
+                    <div class="faq-answer">
+                        <p>To clear your life list, expand the "My Life List" section and click the "Clear" button.</p>
+                        <p>To update your list with new species, simply import a fresh CSV export from eBird. The tool will add any new species and skip duplicates that are already in your list.</p>
+                    </div>
+                </details>
+            </section>
+
             <!-- Preferences -->
             <section class="card">
                 <h2 class="section-title">Preferences</h2>
@@ -400,6 +466,32 @@
                             <li>eBird API response times (can be slower during peak hours)</li>
                         </ul>
                         <p>Reducing the search range or "Days to Look Back" can speed up results. The tool shows progress as it loads each hotspot's details.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">Species showing as lifer when it's on my life list</summary>
+                    <div class="faq-answer">
+                        <p>If a species you've seen is incorrectly marked as a potential lifer:</p>
+                        <ul>
+                            <li><strong>Check spelling</strong> - The common name in eBird must match exactly. Some species have regional name variations.</li>
+                            <li><strong>Re-import your list</strong> - Download a fresh CSV from eBird and import it again. This ensures the latest taxonomy is used.</li>
+                            <li><strong>Taxonomy updates</strong> - eBird occasionally updates species names or codes. A recent import will have the latest names.</li>
+                        </ul>
+                        <p>The tool matches species by both species code and common name (case-insensitive) to maximize accuracy.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">Life list import shows "species not matched"</summary>
+                    <div class="faq-answer">
+                        <p>When importing a life list, some species may not match the eBird taxonomy. This can happen with:</p>
+                        <ul>
+                            <li>Subspecies or regional forms not in the main taxonomy</li>
+                            <li>Recently split or lumped species</li>
+                            <li>Hybrid species</li>
+                        </ul>
+                        <p>These species are still imported with a fallback code and will be matched by common name when possible. Check the browser console for details on which species weren't matched.</p>
                     </div>
                 </details>
             </section>
