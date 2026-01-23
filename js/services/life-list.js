@@ -10,6 +10,7 @@ export class LifeListService {
     constructor() {
         this.storageKey = STORAGE_KEYS.LIFE_LIST;
         this._cachedCodes = null;
+        this._cachedNames = null;
     }
 
     /**
@@ -33,10 +34,30 @@ export class LifeListService {
      */
     getLifeListCodes() {
         if (!this._cachedCodes) {
-            const list = this.getLifeList();
-            this._cachedCodes = new Set(list.map(s => s.speciesCode));
+            this._buildCache();
         }
         return this._cachedCodes;
+    }
+
+    /**
+     * Get a Set of common names (lowercase) for O(1) lookup
+     * Results are cached until the list changes
+     * @returns {Set<string>} Set of lowercase common names
+     */
+    getLifeListNames() {
+        if (!this._cachedNames) {
+            this._buildCache();
+        }
+        return this._cachedNames;
+    }
+
+    /**
+     * Build both code and name caches
+     */
+    _buildCache() {
+        const list = this.getLifeList();
+        this._cachedCodes = new Set(list.map(s => s.speciesCode));
+        this._cachedNames = new Set(list.map(s => s.comName?.toLowerCase()).filter(Boolean));
     }
 
     /**
@@ -44,6 +65,7 @@ export class LifeListService {
      */
     _invalidateCache() {
         this._cachedCodes = null;
+        this._cachedNames = null;
     }
 
     /**

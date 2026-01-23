@@ -1846,18 +1846,37 @@ details.about-section[open] .about-chevron {
     border-radius: 0;
 }
 
-.notable-highlight-title {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: #E65100;
-    margin: 0 0 8px 0;
+.notable-highlight-toggle {
+    width: 100%;
     display: flex;
     align-items: center;
     gap: 6px;
+    padding: 0;
+    background: none;
+    border: none;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #E65100;
+    cursor: pointer;
+    font-family: inherit;
 }
 
-.notable-highlight-title svg {
+.notable-highlight-toggle svg {
     color: #FF9800;
+    flex-shrink: 0;
+}
+
+.notable-highlight-toggle .chevron {
+    margin-left: auto;
+    transition: transform var(--transition);
+}
+
+.notable-highlight-toggle[aria-expanded="true"] .chevron {
+    transform: rotate(180deg);
+}
+
+.notable-highlight-content {
+    margin-top: 8px;
 }
 
 .notable-bird {
@@ -2040,18 +2059,37 @@ details.about-section[open] .about-chevron {
     border-radius: 0;
 }
 
-.lifer-highlight-title {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: #7B1FA2;
-    margin: 0 0 8px 0;
+.lifer-highlight-toggle {
+    width: 100%;
     display: flex;
     align-items: center;
     gap: 6px;
+    padding: 0;
+    background: none;
+    border: none;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #7B1FA2;
+    cursor: pointer;
+    font-family: inherit;
 }
 
-.lifer-highlight-title svg {
+.lifer-highlight-toggle svg {
     color: var(--lifer-highlight);
+    flex-shrink: 0;
+}
+
+.lifer-highlight-toggle .chevron {
+    margin-left: auto;
+    transition: transform var(--transition);
+}
+
+.lifer-highlight-toggle[aria-expanded="true"] .chevron {
+    transform: rotate(180deg);
+}
+
+.lifer-highlight-content {
+    margin-top: 8px;
 }
 
 .lifer-bird {

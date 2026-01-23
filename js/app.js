@@ -1344,15 +1344,16 @@ class BirdingHotspotsApp {
 
         this.updateLoading('Building hotspot details...', 92);
 
-        // Get life list codes for lifer detection
+        // Get life list codes and names for lifer detection
         const lifeListCodes = this.lifeListService.getLifeListCodes();
+        const lifeListNames = this.lifeListService.getLifeListNames();
 
         // Process results (fast, no waiting)
         return hotspots.map((hotspot, i) => {
             const observations = allObservations[i];
             const addrResult = allAddresses[i];
             const distance = calculateDistance(origin.lat, origin.lng, hotspot.lat, hotspot.lng);
-            const birds = processObservations(observations, notableSpecies, lifeListCodes);
+            const birds = processObservations(observations, notableSpecies, lifeListCodes, lifeListNames);
             const drivingRoute = drivingRoutes[i];
             const weather = weatherData[i] || null;
 
@@ -3529,18 +3530,24 @@ class BirdingHotspotsApp {
         speciesSection.appendChild(toggle);
         speciesSection.appendChild(speciesList);
 
-        // Notable species highlight section (if any)
+        // Notable species highlight section (if any) - collapsible
         let notableHighlight = null;
         if (hasNotable) {
             const notableSpecies = hotspot.birds.filter(b => b.isNotable);
             notableHighlight = document.createElement('div');
             notableHighlight.className = 'notable-highlight';
 
-            const highlightTitle = document.createElement('h4');
-            highlightTitle.className = 'notable-highlight-title';
-            highlightTitle.appendChild(createSVGIcon('alert', 16));
-            highlightTitle.appendChild(document.createTextNode(' Notable Sightings'));
-            notableHighlight.appendChild(highlightTitle);
+            const highlightToggle = document.createElement('button');
+            highlightToggle.type = 'button';
+            highlightToggle.className = 'notable-highlight-toggle';
+            highlightToggle.setAttribute('aria-expanded', 'false');
+            highlightToggle.appendChild(createSVGIcon('alert', 16));
+            highlightToggle.appendChild(document.createTextNode(` Notable Sightings (${notableSpecies.length})`));
+            highlightToggle.appendChild(createSVGIcon('chevron', 14, 'chevron'));
+            notableHighlight.appendChild(highlightToggle);
+
+            const highlightContent = document.createElement('div');
+            highlightContent.className = 'notable-highlight-content hidden';
 
             notableSpecies.forEach(bird => {
                 const birdDiv = document.createElement('div');
@@ -3556,19 +3563,29 @@ class BirdingHotspotsApp {
 
                 birdDiv.appendChild(nameSpan);
                 birdDiv.appendChild(dateSpan);
-                notableHighlight.appendChild(birdDiv);
+                highlightContent.appendChild(birdDiv);
+            });
+
+            notableHighlight.appendChild(highlightContent);
+
+            highlightToggle.addEventListener('click', () => {
+                const expanded = highlightToggle.getAttribute('aria-expanded') === 'true';
+                highlightToggle.setAttribute('aria-expanded', !expanded);
+                highlightContent.classList.toggle('hidden');
             });
         }
 
-        // Lifer species highlight section (if any)
+        // Lifer species highlight section (if any) - collapsible
         let liferHighlight = null;
         if (hasLifers) {
             const liferSpecies = hotspot.birds.filter(b => b.isLifer);
             liferHighlight = document.createElement('div');
             liferHighlight.className = 'lifer-highlight';
 
-            const highlightTitle = document.createElement('h4');
-            highlightTitle.className = 'lifer-highlight-title';
+            const highlightToggle = document.createElement('button');
+            highlightToggle.type = 'button';
+            highlightToggle.className = 'lifer-highlight-toggle';
+            highlightToggle.setAttribute('aria-expanded', 'false');
             // Star icon for lifers
             const starSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
             starSvg.setAttribute('viewBox', '0 0 24 24');
@@ -3578,9 +3595,13 @@ class BirdingHotspotsApp {
             starPath.setAttribute('fill', 'currentColor');
             starPath.setAttribute('d', 'M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z');
             starSvg.appendChild(starPath);
-            highlightTitle.appendChild(starSvg);
-            highlightTitle.appendChild(document.createTextNode(' Potential Lifers'));
-            liferHighlight.appendChild(highlightTitle);
+            highlightToggle.appendChild(starSvg);
+            highlightToggle.appendChild(document.createTextNode(` Potential Lifers (${liferSpecies.length})`));
+            highlightToggle.appendChild(createSVGIcon('chevron', 14, 'chevron'));
+            liferHighlight.appendChild(highlightToggle);
+
+            const highlightContent = document.createElement('div');
+            highlightContent.className = 'lifer-highlight-content hidden';
 
             liferSpecies.forEach(bird => {
                 const birdDiv = document.createElement('div');
@@ -3596,7 +3617,15 @@ class BirdingHotspotsApp {
 
                 birdDiv.appendChild(nameSpan);
                 birdDiv.appendChild(dateSpan);
-                liferHighlight.appendChild(birdDiv);
+                highlightContent.appendChild(birdDiv);
+            });
+
+            liferHighlight.appendChild(highlightContent);
+
+            highlightToggle.addEventListener('click', () => {
+                const expanded = highlightToggle.getAttribute('aria-expanded') === 'true';
+                highlightToggle.setAttribute('aria-expanded', !expanded);
+                highlightContent.classList.toggle('hidden');
             });
         }
 

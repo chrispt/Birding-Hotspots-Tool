@@ -228,14 +228,18 @@ export class EBirdAPI {
  * @param {Array} observations - Raw observation array from eBird
  * @param {Set} notableSpeciesCodes - Set of species codes that are notable
  * @param {Set} lifeListCodes - Set of species codes on user's life list
+ * @param {Set} lifeListNames - Set of lowercase common names on user's life list
  * @returns {Array} Processed bird list
  */
-export function processObservations(observations, notableSpeciesCodes = new Set(), lifeListCodes = new Set()) {
+export function processObservations(observations, notableSpeciesCodes = new Set(), lifeListCodes = new Set(), lifeListNames = new Set()) {
     const birdMap = new Map();
-    const hasLifeList = lifeListCodes.size > 0;
+    const hasLifeList = lifeListCodes.size > 0 || lifeListNames.size > 0;
 
     for (const obs of observations) {
         const code = obs.speciesCode;
+        // Check if species is on life list by code OR by common name
+        const onLifeList = lifeListCodes.has(code) ||
+            (obs.comName && lifeListNames.has(obs.comName.toLowerCase()));
 
         if (!birdMap.has(code)) {
             birdMap.set(code, {
@@ -245,7 +249,7 @@ export function processObservations(observations, notableSpeciesCodes = new Set(
                 count: obs.howMany || 1,
                 lastSeen: obs.obsDt,
                 isNotable: notableSpeciesCodes.has(code),
-                isLifer: hasLifeList && !lifeListCodes.has(code)
+                isLifer: hasLifeList && !onLifeList
             });
         } else {
             const existing = birdMap.get(code);
