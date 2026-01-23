@@ -25,6 +25,7 @@
     <script defer src="/_vercel/insights/script.js"></script>
 </head>
 <body>
+    <a href="#main-content" class="skip-link">Skip to main content</a>
     <div class="container">
         <!-- Header -->
         <header class="header">
@@ -73,7 +74,7 @@
         </details>
 
         <!-- Main Content -->
-        <main class="main-content">
+        <main id="main-content" class="main-content">
             <!-- API Key Section -->
             <section class="card">
                 <h2 class="section-title has-tooltip tooltip-left" data-tooltip="Your personal eBird API key is required to fetch bird sighting data. Get one free from eBird.">
@@ -479,7 +480,7 @@
             </button>
 
             <!-- Results Section (hidden by default) -->
-            <section id="resultsSection" class="results-section hidden">
+            <section id="resultsSection" class="results-section hidden" tabindex="-1" aria-label="Search results">
                 <!-- Results Header (sticky) -->
                 <div class="results-header">
                     <div class="results-summary">
@@ -687,7 +688,7 @@
     <!-- Leaflet JS for map preview -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
             integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-            crossorigin=""
+            crossorigin="anonymous"
             defer></script>
 
     <!-- Application Scripts -->

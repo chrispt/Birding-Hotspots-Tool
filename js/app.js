@@ -806,19 +806,66 @@ class BirdingHotspotsApp {
     }
 
     /**
-     * Show the save favorite modal
+     * Show the save favorite modal with focus trap
      */
     showSaveFavoriteModal() {
+        // Store previously focused element
+        this._previouslyFocusedElement = document.activeElement;
+
         this.elements.favoriteName.value = '';
         this.elements.saveFavoriteModal.classList.remove('hidden');
         this.elements.favoriteName.focus();
+
+        // Add focus trap handler
+        this._modalKeyHandler = (e) => this._handleModalKeydown(e);
+        document.addEventListener('keydown', this._modalKeyHandler);
     }
 
     /**
-     * Hide the save favorite modal
+     * Hide the save favorite modal and restore focus
      */
     hideSaveFavoriteModal() {
         this.elements.saveFavoriteModal.classList.add('hidden');
+
+        // Remove focus trap handler
+        if (this._modalKeyHandler) {
+            document.removeEventListener('keydown', this._modalKeyHandler);
+            this._modalKeyHandler = null;
+        }
+
+        // Restore focus to previously focused element
+        if (this._previouslyFocusedElement) {
+            this._previouslyFocusedElement.focus();
+            this._previouslyFocusedElement = null;
+        }
+    }
+
+    /**
+     * Handle keydown events for modal focus trap
+     * @param {KeyboardEvent} e - Keyboard event
+     */
+    _handleModalKeydown(e) {
+        if (e.key !== 'Tab') return;
+
+        const modal = this.elements.saveFavoriteModal;
+        const focusableElements = modal.querySelectorAll(
+            'input:not([disabled]), button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+
+        if (focusableElements.length === 0) return;
+
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        if (e.shiftKey && document.activeElement === firstElement) {
+            // Shift+Tab on first element: move to last
+            e.preventDefault();
+            lastElement.focus();
+        } else if (!e.shiftKey && document.activeElement === lastElement) {
+            // Tab on last element: move to first
+            e.preventDefault();
+            firstElement.focus();
+        }
     }
 
     /**
@@ -1100,6 +1147,9 @@ class BirdingHotspotsApp {
         this.searchCancelled = false;
         this.partialFailures = []; // Reset partial failures for new search
 
+        // Create AbortController for cancellable requests
+        this.abortController = new AbortController();
+
         try {
             // Validate API key
             const apiKeyValidation = validateApiKey(this.elements.apiKey.value);
@@ -1112,8 +1162,9 @@ class BirdingHotspotsApp {
                 storage.setApiKey(apiKeyValidation.apiKey);
             }
 
-            // Initialize eBird API
+            // Initialize eBird API with abort signal
             this.ebirdApi = new EBirdAPI(apiKeyValidation.apiKey);
+            this.ebirdApi.setAbortSignal(this.abortController.signal);
 
             // Delegate to route planning if in route mode
             if (this.searchType === 'route') {
@@ -1259,11 +1310,18 @@ class BirdingHotspotsApp {
             this.showPartialFailureWarning();
 
         } catch (error) {
+            // Don't show error if request was aborted by user
+            if (error.name === 'AbortError') {
+                console.log('Search cancelled by user');
+                return;
+            }
+
             console.error('Report generation error:', error);
             this.hideLoading();
             this.showError(error.message || 'An unexpected error occurred');
         } finally {
             this.isProcessing = false;
+            this.abortController = null;
         }
     }
 
@@ -1439,8 +1497,13 @@ class BirdingHotspotsApp {
         // Show results section
         this.elements.resultsSection.classList.remove('hidden');
 
-        // Scroll to results
+        // Scroll to results and set focus for accessibility
         this.elements.resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+        // Focus results section after scroll animation for screen reader users
+        setTimeout(() => {
+            this.elements.resultsSection.focus();
+        }, 500);
     }
 
     /**
@@ -4818,6 +4881,13 @@ class BirdingHotspotsApp {
      */
     handleCancelSearch() {
         this.searchCancelled = true;
+
+        // Abort in-flight fetch requests
+        if (this.abortController) {
+            this.abortController.abort();
+            this.abortController = null;
+        }
+
         this.hideLoading();
     }
 

@@ -14,6 +14,15 @@ export class EBirdAPI {
     constructor(apiKey) {
         this.apiKey = apiKey;
         this.baseUrl = CONFIG.EBIRD_API_BASE;
+        this.abortSignal = null;
+    }
+
+    /**
+     * Set the abort signal for cancellable requests
+     * @param {AbortSignal} signal - AbortController signal
+     */
+    setAbortSignal(signal) {
+        this.abortSignal = signal;
     }
 
     /**
@@ -36,11 +45,18 @@ export class EBirdAPI {
         let lastError;
         for (let attempt = 0; attempt < retries; attempt++) {
             try {
-                const response = await fetch(url, {
+                const fetchOptions = {
                     headers: {
                         'x-ebirdapitoken': this.apiKey
                     }
-                });
+                };
+
+                // Add abort signal if available
+                if (this.abortSignal) {
+                    fetchOptions.signal = this.abortSignal;
+                }
+
+                const response = await fetch(url, fetchOptions);
 
                 if (!response.ok) {
                     if (response.status === 403) {
@@ -61,6 +77,12 @@ export class EBirdAPI {
                 return response.json();
             } catch (error) {
                 lastError = error;
+
+                // Don't retry if request was aborted
+                if (error.name === 'AbortError') {
+                    throw error;
+                }
+
                 if (error.message.includes('fetch') || error.message.includes('network')) {
                     // Network error - retry with backoff
                     if (attempt < retries - 1) {

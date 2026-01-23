@@ -91,6 +91,21 @@ export class LifeListService {
     importFromCSV(csvContent, taxonomy = []) {
         const result = { imported: 0, errors: [], duplicates: 0, notMatched: [] };
 
+        // Validate file size (max 5MB)
+        const MAX_FILE_SIZE = 5 * 1024 * 1024;
+        if (csvContent.length > MAX_FILE_SIZE) {
+            result.errors.push('File too large (maximum 5MB)');
+            return result;
+        }
+
+        // Validate row count (max 50,000 species)
+        const MAX_ROWS = 50000;
+        const roughRowCount = (csvContent.match(/\n/g) || []).length;
+        if (roughRowCount > MAX_ROWS) {
+            result.errors.push(`Too many rows (maximum ${MAX_ROWS.toLocaleString()})`);
+            return result;
+        }
+
         console.log(`[LifeList] Importing CSV with taxonomy size: ${taxonomy.length}`);
 
         // Build taxonomy lookup maps
