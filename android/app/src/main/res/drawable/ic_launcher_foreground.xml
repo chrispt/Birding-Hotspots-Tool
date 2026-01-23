@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Bird silhouette icon -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,30
+                          C58,30 62,32 65,35
+                          L75,32 C76,32 77,33 76,34
+                          L68,40 C70,43 71,47 71,51
+                          C71,60 64,68 54,68
+                          C44,68 37,60 37,51
+                          C37,42 44,34 54,34
+                          C54,32 54,30 54,30Z
+                          M48,48 C46,48 45,49 45,51 C45,53 46,54 48,54 C50,54 51,53 51,51 C51,49 50,48 48,48Z
+                          M54,72 L54,78 L51,78 L51,72Z
+                          M57,72 L57,78 L54,78 L54,72Z" />
+    <!-- Location pin base -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,58 L48,68 L60,68 Z" />
+</vector>
