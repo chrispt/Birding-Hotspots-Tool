@@ -18,6 +18,7 @@ import { SpeciesSearch } from './services/species-search.js';
 import { getSeasonalInsights, getOptimalBirdingTimes, getCurrentSeason } from './services/seasonal-insights.js';
 import { buildItinerary, formatItineraryDuration, formatItineraryTime } from './services/itinerary-builder.js';
 import { generateGPX, downloadGPX } from './services/gpx-generator.js';
+import { LifeListService } from './services/life-list.js';
 
 /**
  * Main application class
@@ -27,6 +28,10 @@ class BirdingHotspotsApp {
         this.ebirdApi = null;
         this.currentLocation = null;
         this.isProcessing = false;
+
+        // Life list service for lifer detection
+        this.lifeListService = new LifeListService();
+        this.taxonomy = []; // Cached taxonomy for CSV import
 
         // Cache DOM elements
         this.elements = {
@@ -99,8 +104,15 @@ class BirdingHotspotsApp {
             sortByDriving: document.getElementById('sortByDriving'),
             resultsMap: document.getElementById('resultsMap'),
             rareBirdAlert: document.getElementById('rareBirdAlert'),
+            liferAlert: document.getElementById('liferAlert'),
             weatherSummary: document.getElementById('weatherSummary'),
             migrationAlert: document.getElementById('migrationAlert'),
+            // Life list elements
+            lifeListToggle: document.getElementById('lifeListToggle'),
+            lifeListContent: document.getElementById('lifeListContent'),
+            lifeListCount: document.getElementById('lifeListCount'),
+            importLifeList: document.getElementById('importLifeList'),
+            clearLifeList: document.getElementById('clearLifeList'),
             // Search type selection (Step 1)
             locationSearchBtn: document.getElementById('locationSearchBtn'),
             routeSearchBtn: document.getElementById('routeSearchBtn'),
@@ -281,6 +293,11 @@ class BirdingHotspotsApp {
         // Saved locations collapsible toggle
         this.elements.savedLocationsToggle.addEventListener('click', () => this.toggleSavedLocations());
 
+        // Life list collapsible toggle and actions
+        this.elements.lifeListToggle.addEventListener('click', () => this.toggleLifeList());
+        this.elements.importLifeList.addEventListener('change', (e) => this.handleLifeListImport(e));
+        this.elements.clearLifeList.addEventListener('click', () => this.handleClearLifeList());
+
         // Generate report
         this.elements.generateReport.addEventListener('click', () => this.handleGenerateReport());
 
@@ -403,6 +420,9 @@ class BirdingHotspotsApp {
 
         // Load favorites
         this.renderFavorites();
+
+        // Initialize life list count
+        this.updateLifeListCount();
     }
 
     /**
@@ -808,6 +828,80 @@ class BirdingHotspotsApp {
         const isExpanded = this.elements.savedLocationsToggle.getAttribute('aria-expanded') === 'true';
         this.elements.savedLocationsToggle.setAttribute('aria-expanded', !isExpanded);
         this.elements.savedLocationsContent.classList.toggle('collapsed');
+    }
+
+    /**
+     * Toggle the life list collapsible section
+     */
+    toggleLifeList() {
+        const isExpanded = this.elements.lifeListToggle.getAttribute('aria-expanded') === 'true';
+        this.elements.lifeListToggle.setAttribute('aria-expanded', !isExpanded);
+        this.elements.lifeListContent.classList.toggle('collapsed');
+    }
+
+    /**
+     * Handle life list CSV import
+     * @param {Event} e - File input change event
+     */
+    async handleLifeListImport(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        try {
+            const content = await file.text();
+
+            // Fetch taxonomy if not cached (needed to resolve species codes)
+            if (this.taxonomy.length === 0 && this.ebirdApi) {
+                this.showSuccessToast('Loading eBird taxonomy...');
+                try {
+                    this.taxonomy = await this.ebirdApi.getTaxonomy();
+                } catch (err) {
+                    console.warn('Could not fetch taxonomy:', err);
+                    this.showError('Could not load eBird taxonomy. Some species may not be matched.');
+                }
+            }
+
+            const result = this.lifeListService.importFromCSV(content, this.taxonomy);
+
+            if (result.imported > 0) {
+                this.updateLifeListCount();
+                this.showSuccessToast(`Imported ${result.imported} species to your life list`);
+            } else if (result.duplicates > 0) {
+                this.showSuccessToast(`All ${result.duplicates} species were already on your list`);
+            } else if (result.errors.length > 0) {
+                this.showError(result.errors.join('. '));
+            } else {
+                this.showError('No species found in the CSV file');
+            }
+        } catch (err) {
+            console.error('Life list import error:', err);
+            this.showError('Failed to read CSV file');
+        }
+
+        // Reset the file input so the same file can be selected again
+        e.target.value = '';
+    }
+
+    /**
+     * Handle clearing the life list
+     */
+    handleClearLifeList() {
+        if (!confirm('Are you sure you want to clear your life list? This cannot be undone.')) {
+            return;
+        }
+
+        this.lifeListService.clear();
+        this.updateLifeListCount();
+        this.showSuccessToast('Life list cleared');
+    }
+
+    /**
+     * Update the life list count badge in the UI
+     */
+    updateLifeListCount() {
+        const count = this.lifeListService.getCount();
+        this.elements.lifeListCount.textContent = `${count} species`;
+        this.elements.clearLifeList.disabled = count === 0;
     }
 
     /**
@@ -1247,12 +1341,15 @@ class BirdingHotspotsApp {
 
         this.updateLoading('Building hotspot details...', 92);
 
+        // Get life list codes for lifer detection
+        const lifeListCodes = this.lifeListService.getLifeListCodes();
+
         // Process results (fast, no waiting)
         return hotspots.map((hotspot, i) => {
             const observations = allObservations[i];
             const addrResult = allAddresses[i];
             const distance = calculateDistance(origin.lat, origin.lng, hotspot.lat, hotspot.lng);
-            const birds = processObservations(observations, notableSpecies);
+            const birds = processObservations(observations, notableSpecies, lifeListCodes);
             const drivingRoute = drivingRoutes[i];
             const weather = weatherData[i] || null;
 
@@ -1308,6 +1405,9 @@ class BirdingHotspotsApp {
 
         // Render rare bird alert banner if there are notable observations
         this.renderRareBirdAlert();
+
+        // Render lifer alert banner if user has a life list
+        this.renderLiferAlert(hotspots);
 
         // Render migration alert banner
         this.renderMigrationAlert();
@@ -1506,6 +1606,160 @@ class BirdingHotspotsApp {
                 hiddenList.classList.toggle('hidden');
                 toggleText.textContent = expanded
                     ? `View all ${sorted.length} sightings`
+                    : 'Show fewer';
+            });
+
+            alert.appendChild(hiddenList);
+            alert.appendChild(toggle);
+        }
+
+        container.appendChild(alert);
+        container.classList.remove('hidden');
+    }
+
+    /**
+     * Render the lifer alert banner showing potential lifers across all hotspots
+     * @param {Array} hotspots - Array of hotspot data with birds
+     */
+    renderLiferAlert(hotspots) {
+        const container = this.elements.liferAlert;
+        clearElement(container);
+
+        // Only show if user has a life list
+        if (!this.lifeListService.hasLifeList()) {
+            container.classList.add('hidden');
+            return;
+        }
+
+        // Collect all lifers across all hotspots (unique by species code)
+        const liferMap = new Map();
+        for (const hotspot of hotspots) {
+            for (const bird of hotspot.birds) {
+                if (bird.isLifer && !liferMap.has(bird.speciesCode)) {
+                    liferMap.set(bird.speciesCode, {
+                        comName: bird.comName,
+                        sciName: bird.sciName,
+                        speciesCode: bird.speciesCode,
+                        lastSeen: bird.lastSeen,
+                        hotspotName: hotspot.name
+                    });
+                }
+            }
+        }
+
+        const lifers = Array.from(liferMap.values());
+
+        if (lifers.length === 0) {
+            container.classList.add('hidden');
+            return;
+        }
+
+        // Sort alphabetically
+        lifers.sort((a, b) => a.comName.localeCompare(b.comName));
+
+        // Show first 5 in preview, rest hidden
+        const previewCount = 5;
+        const previewItems = lifers.slice(0, previewCount);
+        const hasMore = lifers.length > previewCount;
+
+        // Create alert element
+        const alert = document.createElement('div');
+        alert.className = 'lifer-alert';
+
+        // Header
+        const header = document.createElement('div');
+        header.className = 'lifer-alert-header';
+
+        const iconSpan = document.createElement('span');
+        iconSpan.className = 'lifer-alert-icon';
+        iconSpan.innerHTML = `<svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>`;
+
+        const title = document.createElement('h3');
+        title.className = 'lifer-alert-title';
+        title.textContent = 'POTENTIAL LIFERS';
+
+        const count = document.createElement('span');
+        count.className = 'lifer-alert-count';
+        count.textContent = `${lifers.length} ${lifers.length === 1 ? 'species' : 'species'} you haven't seen`;
+
+        header.appendChild(iconSpan);
+        header.appendChild(title);
+        header.appendChild(count);
+
+        // List
+        const list = document.createElement('ul');
+        list.className = 'lifer-alert-list';
+
+        previewItems.forEach(lifer => {
+            const li = document.createElement('li');
+            li.className = 'lifer-alert-item';
+
+            const strong = document.createElement('strong');
+            strong.textContent = lifer.comName;
+
+            const location = document.createElement('span');
+            location.className = 'lifer-alert-location';
+            location.textContent = ` at ${lifer.hotspotName}`;
+
+            const date = document.createElement('span');
+            date.className = 'lifer-alert-date';
+            date.textContent = `(${this.formatRelativeDate(lifer.lastSeen)})`;
+
+            li.appendChild(strong);
+            li.appendChild(location);
+            li.appendChild(date);
+            list.appendChild(li);
+        });
+
+        alert.appendChild(header);
+        alert.appendChild(list);
+
+        // "View all" toggle if there are more
+        if (hasMore) {
+            const hiddenList = document.createElement('ul');
+            hiddenList.className = 'lifer-alert-list hidden';
+            hiddenList.id = 'liferAlertMoreList';
+
+            lifers.slice(previewCount).forEach(lifer => {
+                const li = document.createElement('li');
+                li.className = 'lifer-alert-item';
+
+                const strong = document.createElement('strong');
+                strong.textContent = lifer.comName;
+
+                const location = document.createElement('span');
+                location.className = 'lifer-alert-location';
+                location.textContent = ` at ${lifer.hotspotName}`;
+
+                const date = document.createElement('span');
+                date.className = 'lifer-alert-date';
+                date.textContent = `(${this.formatRelativeDate(lifer.lastSeen)})`;
+
+                li.appendChild(strong);
+                li.appendChild(location);
+                li.appendChild(date);
+                hiddenList.appendChild(li);
+            });
+
+            const toggle = document.createElement('button');
+            toggle.type = 'button';
+            toggle.className = 'lifer-alert-toggle';
+            toggle.setAttribute('aria-expanded', 'false');
+
+            const toggleText = document.createElement('span');
+            toggleText.textContent = `View all ${lifers.length} potential lifers`;
+
+            const chevron = createSVGIcon('chevron', 16, 'chevron');
+
+            toggle.appendChild(toggleText);
+            toggle.appendChild(chevron);
+
+            toggle.addEventListener('click', () => {
+                const expanded = toggle.getAttribute('aria-expanded') === 'true';
+                toggle.setAttribute('aria-expanded', !expanded);
+                hiddenList.classList.toggle('hidden');
+                toggleText.textContent = expanded
+                    ? `View all ${lifers.length} potential lifers`
                     : 'Show fewer';
             });
 
@@ -3101,8 +3355,9 @@ class BirdingHotspotsApp {
         const directionsUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin.lat},${origin.lng}&destination=${hotspot.lat},${hotspot.lng}`;
         const ebirdUrl = `https://ebird.org/hotspot/${hotspot.locId}`;
 
-        // Check if there are notable species
+        // Check if there are notable species or lifers
         const hasNotable = hotspot.birds.some(b => b.isNotable);
+        const hasLifers = this.lifeListService.hasLifeList() && hotspot.birds.some(b => b.isLifer);
 
         // Build card using DOM methods
 
@@ -3164,6 +3419,24 @@ class BirdingHotspotsApp {
             header.appendChild(rareBadge);
         }
 
+        // Add lifer badge if hotspot has potential lifers
+        if (hasLifers) {
+            const liferBadge = document.createElement('span');
+            liferBadge.className = 'lifer-badge';
+            // Star icon for lifers
+            const starSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            starSvg.setAttribute('viewBox', '0 0 24 24');
+            starSvg.setAttribute('width', '14');
+            starSvg.setAttribute('height', '14');
+            const starPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            starPath.setAttribute('fill', 'currentColor');
+            starPath.setAttribute('d', 'M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z');
+            starSvg.appendChild(starPath);
+            liferBadge.appendChild(starSvg);
+            liferBadge.appendChild(document.createTextNode(' LIFER'));
+            header.appendChild(liferBadge);
+        }
+
         // Details section
         const details = document.createElement('div');
         details.className = 'hotspot-details';
@@ -3223,8 +3496,13 @@ class BirdingHotspotsApp {
 
         hotspot.birds.forEach(bird => {
             const li = document.createElement('li');
-            li.className = bird.isNotable ? 'species-item notable' : 'species-item';
-            li.textContent = bird.isNotable ? `* ${bird.comName}` : bird.comName;
+            // Build class list based on notable and lifer status
+            let className = 'species-item';
+            if (bird.isNotable) className += ' notable';
+            if (bird.isLifer) className += ' lifer';
+            li.className = className;
+            // Notable gets asterisk prefix, lifer gets star prefix (from CSS ::before)
+            li.textContent = bird.isNotable && !bird.isLifer ? `* ${bird.comName}` : bird.comName;
             speciesGrid.appendChild(li);
         });
 
@@ -3235,6 +3513,14 @@ class BirdingHotspotsApp {
             legend.className = 'notable-legend';
             legend.textContent = '* Notable/rare species for this area';
             speciesList.appendChild(legend);
+        }
+
+        if (hasLifers) {
+            const liferLegend = document.createElement('p');
+            liferLegend.className = 'notable-legend';
+            liferLegend.style.color = 'var(--lifer-highlight)';
+            liferLegend.textContent = '\u2605 Potential lifer (not on your life list)';
+            speciesList.appendChild(liferLegend);
         }
 
         speciesSection.appendChild(toggle);
@@ -3271,6 +3557,46 @@ class BirdingHotspotsApp {
             });
         }
 
+        // Lifer species highlight section (if any)
+        let liferHighlight = null;
+        if (hasLifers) {
+            const liferSpecies = hotspot.birds.filter(b => b.isLifer);
+            liferHighlight = document.createElement('div');
+            liferHighlight.className = 'lifer-highlight';
+
+            const highlightTitle = document.createElement('h4');
+            highlightTitle.className = 'lifer-highlight-title';
+            // Star icon for lifers
+            const starSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            starSvg.setAttribute('viewBox', '0 0 24 24');
+            starSvg.setAttribute('width', '16');
+            starSvg.setAttribute('height', '16');
+            const starPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            starPath.setAttribute('fill', 'currentColor');
+            starPath.setAttribute('d', 'M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z');
+            starSvg.appendChild(starPath);
+            highlightTitle.appendChild(starSvg);
+            highlightTitle.appendChild(document.createTextNode(' Potential Lifers'));
+            liferHighlight.appendChild(highlightTitle);
+
+            liferSpecies.forEach(bird => {
+                const birdDiv = document.createElement('div');
+                birdDiv.className = 'lifer-bird';
+
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'lifer-bird-name';
+                nameSpan.textContent = bird.comName;
+
+                const dateSpan = document.createElement('span');
+                dateSpan.className = 'lifer-bird-date';
+                dateSpan.textContent = `Last seen: ${this.formatRelativeDate(bird.lastSeen)}`;
+
+                birdDiv.appendChild(nameSpan);
+                birdDiv.appendChild(dateSpan);
+                liferHighlight.appendChild(birdDiv);
+            });
+        }
+
         // Create weather badge if weather data is available
         const weatherBadge = this.createWeatherBadge(hotspot.weather);
 
@@ -3281,6 +3607,9 @@ class BirdingHotspotsApp {
         card.appendChild(header);
         if (notableHighlight) {
             card.appendChild(notableHighlight);
+        }
+        if (liferHighlight) {
+            card.appendChild(liferHighlight);
         }
         if (weatherBadge) {
             card.appendChild(weatherBadge);

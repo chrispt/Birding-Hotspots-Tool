@@ -227,10 +227,12 @@ export class EBirdAPI {
  * Process observations to get unique species with counts
  * @param {Array} observations - Raw observation array from eBird
  * @param {Set} notableSpeciesCodes - Set of species codes that are notable
+ * @param {Set} lifeListCodes - Set of species codes on user's life list
  * @returns {Array} Processed bird list
  */
-export function processObservations(observations, notableSpeciesCodes = new Set()) {
+export function processObservations(observations, notableSpeciesCodes = new Set(), lifeListCodes = new Set()) {
     const birdMap = new Map();
+    const hasLifeList = lifeListCodes.size > 0;
 
     for (const obs of observations) {
         const code = obs.speciesCode;
@@ -242,7 +244,8 @@ export function processObservations(observations, notableSpeciesCodes = new Set(
                 sciName: obs.sciName,
                 count: obs.howMany || 1,
                 lastSeen: obs.obsDt,
-                isNotable: notableSpeciesCodes.has(code)
+                isNotable: notableSpeciesCodes.has(code),
+                isLifer: hasLifeList && !lifeListCodes.has(code)
             });
         } else {
             const existing = birdMap.get(code);
@@ -254,10 +257,12 @@ export function processObservations(observations, notableSpeciesCodes = new Set(
         }
     }
 
-    // Sort: notable species first, then alphabetically
+    // Sort: notable lifers first, then notable, then lifers, then alphabetically
     return Array.from(birdMap.values()).sort((a, b) => {
-        if (a.isNotable && !b.isNotable) return -1;
-        if (!a.isNotable && b.isNotable) return 1;
+        // Priority score: notable+lifer = 3, notable = 2, lifer = 1, normal = 0
+        const scoreA = (a.isNotable ? 2 : 0) + (a.isLifer ? 1 : 0);
+        const scoreB = (b.isNotable ? 2 : 0) + (b.isLifer ? 1 : 0);
+        if (scoreA !== scoreB) return scoreB - scoreA;
         return a.comName.localeCompare(b.comName);
     });
 }

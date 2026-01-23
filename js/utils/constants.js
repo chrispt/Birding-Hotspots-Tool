@@ -23,7 +23,8 @@ export const CONFIG = {
     STORAGE_KEYS: {
         API_KEY: 'birding_ebird_api_key',
         FAVORITES: 'birding_favorite_locations',
-        GEOAPIFY_KEY: 'birding_geoapify_key'
+        GEOAPIFY_KEY: 'birding_geoapify_key',
+        LIFE_LIST: 'birding_life_list'
     }
 };
 

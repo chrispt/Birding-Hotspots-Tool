@@ -440,6 +440,36 @@
                 </div>
             </section>
 
+            <!-- Life List Section (Collapsible) -->
+            <section class="card collapsible-section">
+                <button type="button" class="collapsible-header" id="lifeListToggle" aria-expanded="false">
+                    <h2 class="section-title has-tooltip tooltip-left" data-tooltip="Import your eBird life list to highlight species you haven't seen yet (lifers).">My Life List</h2>
+                    <span id="lifeListCount" class="life-list-badge">0 species</span>
+                    <svg class="collapse-icon" viewBox="0 0 24 24" width="20" height="20">
+                        <path fill="currentColor" d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
+                    </svg>
+                </button>
+                <div id="lifeListContent" class="collapsible-content collapsed">
+                    <p class="help-text">Import your eBird life list to highlight potential lifers at hotspots.</p>
+                    <div class="life-list-actions">
+                        <label class="btn btn-secondary btn-small life-list-import-btn">
+                            <svg viewBox="0 0 24 24" width="16" height="16">
+                                <path fill="currentColor" d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/>
+                            </svg>
+                            Import from eBird
+                            <input type="file" id="importLifeList" accept=".csv" hidden>
+                        </label>
+                        <button type="button" id="clearLifeList" class="btn btn-secondary btn-small" disabled>
+                            <svg viewBox="0 0 24 24" width="16" height="16">
+                                <path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                            </svg>
+                            Clear
+                        </button>
+                    </div>
+                    <p id="lifeListHelp" class="help-text-small">Go to <a href="https://ebird.org/downloadMyData" target="_blank" rel="noopener">My eBird &gt; Download My Data</a> to export your life list as CSV.</p>
+                </div>
+            </section>
+
             <!-- Generate Button -->
             <button type="button" id="generateReport" class="btn btn-primary btn-large">
                 <svg viewBox="0 0 24 24" width="24" height="24">
@@ -586,6 +616,9 @@
 
                 <!-- Rare Bird Alert Container (dynamically populated) -->
                 <div id="rareBirdAlert" class="hidden"></div>
+
+                <!-- Lifer Alert Container (dynamically populated) -->
+                <div id="liferAlert" class="hidden"></div>
 
                 <!-- Migration Alert Container (dynamically populated) -->
                 <div id="migrationAlert" class="hidden"></div>
