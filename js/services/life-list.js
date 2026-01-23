@@ -67,7 +67,9 @@ export class LifeListService {
      * @returns {Object} Result with count and any errors
      */
     importFromCSV(csvContent, taxonomy = []) {
-        const result = { imported: 0, errors: [], duplicates: 0 };
+        const result = { imported: 0, errors: [], duplicates: 0, notMatched: [] };
+
+        console.log(`[LifeList] Importing CSV with taxonomy size: ${taxonomy.length}`);
 
         // Build taxonomy lookup maps
         const taxonomyByCommonName = new Map();
@@ -80,6 +82,8 @@ export class LifeListService {
                 taxonomyBySciName.set(species.sciName.toLowerCase(), species);
             }
         }
+
+        console.log(`[LifeList] Built lookup maps - Common names: ${taxonomyByCommonName.size}, Scientific names: ${taxonomyBySciName.size}`);
 
         // Parse CSV
         const lines = csvContent.split(/\r?\n/);
@@ -101,6 +105,9 @@ export class LifeListService {
             result.errors.push('Could not find species name columns in CSV');
             return result;
         }
+
+        console.log(`[LifeList] CSV columns detected - Header: ${JSON.stringify(header)}`);
+        console.log(`[LifeList] Common name column index: ${commonNameIdx}, Scientific name column index: ${sciNameIdx}`);
 
         // Get existing life list to check for duplicates
         const existingCodes = this.getLifeListCodes();
@@ -138,6 +145,8 @@ export class LifeListService {
             } else if (commonName || sciName) {
                 // Species not found in taxonomy - store with name only
                 const fallbackCode = this._generateFallbackCode(commonName || sciName);
+                console.warn(`[LifeList] Species not found in taxonomy: "${commonName}" / "${sciName}" - using fallback code: ${fallbackCode}`);
+                result.notMatched.push(commonName || sciName);
                 if (!existingCodes.has(fallbackCode) && !newSpecies.some(s => s.speciesCode === fallbackCode)) {
                     newSpecies.push({
                         speciesCode: fallbackCode,
@@ -148,6 +157,10 @@ export class LifeListService {
                     result.imported++;
                 }
             }
+        }
+
+        if (result.notMatched.length > 0) {
+            console.warn(`[LifeList] ${result.notMatched.length} species not matched to taxonomy:`, result.notMatched.slice(0, 10));
         }
 
         // Merge with existing list and save
@@ -280,5 +293,26 @@ export class LifeListService {
      */
     hasLifeList() {
         return this.getCount() > 0;
+    }
+
+    /**
+     * Debug: Print life list contents to console
+     */
+    debug() {
+        const list = this.getLifeList();
+        console.log(`[LifeList Debug] Total species: ${list.length}`);
+        console.log('[LifeList Debug] First 20 entries:');
+        list.slice(0, 20).forEach((s, i) => {
+            console.log(`  ${i + 1}. ${s.comName} (code: ${s.speciesCode})`);
+        });
+        // Check for any user_ prefixed codes (fallback codes)
+        const fallbackCodes = list.filter(s => s.speciesCode.startsWith('user_'));
+        if (fallbackCodes.length > 0) {
+            console.warn(`[LifeList Debug] ${fallbackCodes.length} species with fallback codes (not matched to taxonomy):`);
+            fallbackCodes.slice(0, 10).forEach(s => {
+                console.warn(`  - ${s.comName} (code: ${s.speciesCode})`);
+            });
+        }
+        return { total: list.length, fallbackCount: fallbackCodes.length };
     }
 }

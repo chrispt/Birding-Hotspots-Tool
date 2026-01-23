@@ -886,13 +886,16 @@ class BirdingHotspotsApp {
      * Handle clearing the life list
      */
     handleClearLifeList() {
-        if (!confirm('Are you sure you want to clear your life list? This cannot be undone.')) {
-            return;
-        }
+        // Use setTimeout to avoid blocking UI during confirm dialog
+        setTimeout(() => {
+            if (!confirm('Are you sure you want to clear your life list? This cannot be undone.')) {
+                return;
+            }
 
-        this.lifeListService.clear();
-        this.updateLifeListCount();
-        this.showSuccessToast('Life list cleared');
+            this.lifeListService.clear();
+            this.updateLifeListCount();
+            this.showSuccessToast('Life list cleared');
+        }, 0);
     }
 
     /**
@@ -4997,5 +5000,6 @@ class BirdingHotspotsApp {
 
 // Initialize app when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-    new BirdingHotspotsApp();
+    // Store app instance for debugging (accessible via window.app)
+    window.app = new BirdingHotspotsApp();
 });
