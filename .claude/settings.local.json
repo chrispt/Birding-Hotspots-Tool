@@ -8,7 +8,8 @@
       "Bash(gh repo view:*)",
       "Bash(cd:*)",
       "Bash(git push)",
-      "Bash(./gradlew assembleDebug:*)"
+      "Bash(./gradlew assembleDebug:*)",
+      "Bash(node:*)"
     ]
   }
 }
