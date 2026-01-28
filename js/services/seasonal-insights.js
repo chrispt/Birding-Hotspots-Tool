@@ -178,14 +178,25 @@ export function getSeasonalInsights(date = new Date()) {
     // Format season name
     const seasonName = season.charAt(0).toUpperCase() + season.slice(1);
 
-    // Get best time recommendation
-    let bestTimeRecommendation;
+    // Get best time recommendation - collect all high-activity periods
     const times = optimalTimes;
+    const highActivityPeriods = [];
+
     if (times.morning.activity === 'high') {
-        bestTimeRecommendation = `Best time: ${times.morning.start}AM - ${times.morning.end}AM`;
-    } else if (times.evening.activity === 'high') {
-        bestTimeRecommendation = `Best time: ${times.evening.start > 12 ? times.evening.start - 12 : times.evening.start}PM - ${times.evening.end > 12 ? times.evening.end - 12 : times.evening.end}PM`;
+        highActivityPeriods.push(`${times.morning.start}AM - ${times.morning.end}AM`);
+    }
+    if (times.midday.activity === 'high') {
+        highActivityPeriods.push(`${times.midday.start}AM - ${times.midday.end > 12 ? times.midday.end - 12 : times.midday.end}PM`);
+    }
+    if (times.evening.activity === 'high') {
+        highActivityPeriods.push(`${times.evening.start > 12 ? times.evening.start - 12 : times.evening.start}PM - ${times.evening.end > 12 ? times.evening.end - 12 : times.evening.end}PM`);
+    }
+
+    let bestTimeRecommendation;
+    if (highActivityPeriods.length > 0) {
+        bestTimeRecommendation = `Best time: ${highActivityPeriods.join(' or ')}`;
     } else {
+        // Fallback to midday if no high activity periods (shouldn't happen with current data)
         bestTimeRecommendation = `Best time: ${times.midday.start}AM - ${times.midday.end > 12 ? times.midday.end - 12 : times.midday.end}PM`;
     }
 
