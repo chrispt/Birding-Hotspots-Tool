@@ -1,10 +1,10 @@
 /**
  * Static map generation service for PDF reports
- * Fetches real OpenStreetMap tiles and overlays markers
+ * Fetches CartoDB Positron tiles (clean 2D style) and overlays markers
  */
 
 /**
- * Generate a map image with real OpenStreetMap tiles
+ * Generate a map image with CartoDB Positron tiles
  * @param {number} centerLat - Center latitude
  * @param {number} centerLng - Center longitude
  * @param {Array} hotspots - Array of hotspot objects
@@ -170,7 +170,7 @@ async function drawOSMTiles(ctx, bounds, zoom, width, height, scale = 1) {
 }
 
 /**
- * Fetch a single OSM tile
+ * Fetch a single map tile (CartoDB Positron - clean 2D style)
  */
 function fetchTile(x, y, zoom) {
     return new Promise((resolve, reject) => {
@@ -178,9 +178,9 @@ function fetchTile(x, y, zoom) {
         img.crossOrigin = 'anonymous';
 
         // Use multiple tile servers for better performance
-        const servers = ['a', 'b', 'c'];
+        const servers = ['a', 'b', 'c', 'd'];
         const server = servers[Math.floor(Math.random() * servers.length)];
-        img.src = `https://${server}.tile.openstreetmap.org/${zoom}/${x}/${y}.png`;
+        img.src = `https://${server}.basemaps.cartocdn.com/light_all/${zoom}/${x}/${y}.png`;
 
         img.onload = () => resolve(img);
         img.onerror = () => reject(new Error('Failed to load tile'));
