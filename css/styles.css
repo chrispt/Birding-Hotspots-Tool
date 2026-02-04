@@ -146,21 +146,25 @@ body {
     font-size: 0.95rem;
 }
 
-/* Main Content */
+/* Main Content - Single column centered by default */
 .main-content {
     flex: 1;
     display: flex;
     flex-direction: column;
     gap: 16px;
+    max-width: 600px;
+    margin: 0 auto;
+    width: 100%;
 }
 
-/* Two-column desktop layout */
+/* Two-column desktop layout - only when results are showing */
 @media (min-width: 1024px) {
-    .main-content {
+    .main-content.has-results {
         display: grid;
         grid-template-columns: 340px 1fr;
         gap: var(--spacing-md);
         align-items: start;
+        max-width: 1200px;
     }
 }
 
@@ -172,7 +176,7 @@ body {
 }
 
 @media (min-width: 1024px) {
-    .settings-sidebar {
+    .main-content.has-results .settings-sidebar {
         position: sticky;
         top: var(--spacing-md);
         max-height: calc(100vh - var(--spacing-lg));

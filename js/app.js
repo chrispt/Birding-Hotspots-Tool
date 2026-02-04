@@ -1746,6 +1746,9 @@ class BirdingHotspotsApp {
     displayResults(data) {
         const { origin, hotspots, sortMethod, generatedDate } = data;
 
+        // Switch to two-column layout
+        document.querySelector('.main-content').classList.add('has-results');
+
         // Sync sort toggle buttons with current sort method
         this.elements.sortBySpecies.classList.toggle('active', sortMethod === 'species');
         this.elements.sortByDistance.classList.toggle('active', sortMethod === 'distance');
@@ -5342,6 +5345,9 @@ class BirdingHotspotsApp {
      * Handle "New Search" button click
      */
     handleNewSearch() {
+        // Switch back to single-column layout
+        document.querySelector('.main-content').classList.remove('has-results');
+
         // Clean up all maps
         this.cleanupMaps();
 
