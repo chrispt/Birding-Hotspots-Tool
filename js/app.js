@@ -1807,6 +1807,9 @@ class BirdingHotspotsApp {
         this.elements.sortByDistance.classList.toggle('active', sortMethod === 'distance');
         this.elements.sortByDriving.classList.toggle('active', sortMethod === 'driving');
 
+        // Ensure export PDF button is visible (may have been hidden in route mode)
+        this.elements.exportPdfBtn.classList.remove('hidden');
+
         // Update meta information (sort is now shown in toggle, so removed from text)
         this.elements.resultsMeta.textContent = `${hotspots.length} hotspots found | ${generatedDate}`;
 
@@ -3839,6 +3842,9 @@ class BirdingHotspotsApp {
 
         // Hide sort buttons for route mode
         this.elements.sortBySpecies.parentElement.classList.add('hidden');
+
+        // Hide export PDF button (route has its own export button)
+        this.elements.exportPdfBtn.classList.add('hidden');
 
         // Update results header
         const hotspotCount = itinerary.stops.filter(s => s.type === 'hotspot').length;
@@ -5931,6 +5937,9 @@ class BirdingHotspotsApp {
 
         // Show sort buttons again (may have been hidden for species search)
         this.elements.sortBySpecies.parentElement.classList.remove('hidden');
+
+        // Show export PDF button again (may have been hidden for route mode)
+        this.elements.exportPdfBtn.classList.remove('hidden');
 
         // Scroll to top of form
         document.querySelector('.header').scrollIntoView({ behavior: 'smooth', block: 'start' });
