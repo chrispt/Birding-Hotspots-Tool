@@ -59,6 +59,10 @@ class BirdingHotspotsApp {
             // Hotspots count
             hotspotsCountRadios: document.querySelectorAll('[name="hotspotsCount"]'),
 
+            // Advanced Options
+            advancedOptionsToggle: document.getElementById('advancedOptionsToggle'),
+            advancedOptionsContent: document.getElementById('advancedOptionsContent'),
+
             // Favorites
             favoritesList: document.getElementById('favoritesList'),
             saveFavorite: document.getElementById('saveFavorite'),
@@ -291,6 +295,9 @@ class BirdingHotspotsApp {
         this.elements.cancelSaveFavorite.addEventListener('click', () => this.hideSaveFavoriteModal());
         this.elements.confirmSaveFavorite.addEventListener('click', () => this.handleSaveFavorite());
         this.elements.saveFavoriteModal.querySelector('.modal-backdrop').addEventListener('click', () => this.hideSaveFavoriteModal());
+
+        // Advanced options collapsible toggle
+        this.elements.advancedOptionsToggle.addEventListener('click', () => this.toggleAdvancedOptions());
 
         // Saved locations collapsible toggle
         this.elements.savedLocationsToggle.addEventListener('click', () => this.toggleSavedLocations());
@@ -868,6 +875,15 @@ class BirdingHotspotsApp {
             e.preventDefault();
             firstElement.focus();
         }
+    }
+
+    /**
+     * Toggle the advanced options collapsible section
+     */
+    toggleAdvancedOptions() {
+        const isExpanded = this.elements.advancedOptionsToggle.getAttribute('aria-expanded') === 'true';
+        this.elements.advancedOptionsToggle.setAttribute('aria-expanded', !isExpanded);
+        this.elements.advancedOptionsContent.classList.toggle('collapsed');
     }
 
     /**

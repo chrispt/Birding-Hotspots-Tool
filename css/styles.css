@@ -24,6 +24,11 @@
     --radius-large: 12px;
     --transition: 0.2s ease;
     --hover-bg: #E8F5E9;
+    /* Spacing scale */
+    --spacing-xs: 8px;
+    --spacing-sm: 16px;
+    --spacing-md: 24px;
+    --spacing-lg: 32px;
 }
 
 /* Reset and Base Styles */
@@ -91,12 +96,24 @@ body {
 
 /* Container */
 .container {
-    max-width: 600px;
+    max-width: 100%;
     margin: 0 auto;
-    padding: 20px;
+    padding: var(--spacing-md);
     min-height: 100vh;
     display: flex;
     flex-direction: column;
+}
+
+@media (min-width: 600px) {
+    .container {
+        max-width: 720px;
+    }
+}
+
+@media (min-width: 1024px) {
+    .container {
+        max-width: 1200px;
+    }
 }
 
 /* Header */
@@ -132,6 +149,39 @@ body {
 /* Main Content */
 .main-content {
     flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* Two-column desktop layout */
+@media (min-width: 1024px) {
+    .main-content {
+        display: grid;
+        grid-template-columns: 340px 1fr;
+        gap: var(--spacing-md);
+        align-items: start;
+    }
+}
+
+/* Settings Sidebar */
+.settings-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+@media (min-width: 1024px) {
+    .settings-sidebar {
+        position: sticky;
+        top: var(--spacing-md);
+        max-height: calc(100vh - var(--spacing-lg));
+        overflow-y: auto;
+    }
+}
+
+/* Results Area */
+.results-area {
     display: flex;
     flex-direction: column;
     gap: 16px;
@@ -1123,11 +1173,7 @@ body {
 /* Tablet breakpoint */
 @media (max-width: 768px) {
     .container {
-        padding: 16px;
-    }
-
-    .card {
-        padding: 18px;
+        padding: var(--spacing-sm);
     }
 
     .sort-options {
@@ -1138,15 +1184,11 @@ body {
 /* Mobile breakpoint */
 @media (max-width: 480px) {
     .container {
-        padding: 14px;
+        padding: var(--spacing-sm);
     }
 
     .header h1 {
         font-size: 1.5rem;
-    }
-
-    .card {
-        padding: 16px;
     }
 
     .gps-fields {
@@ -1167,15 +1209,11 @@ body {
 /* Small phone breakpoint */
 @media (max-width: 360px) {
     .container {
-        padding: 12px;
+        padding: var(--spacing-xs);
     }
 
     .header h1 {
         font-size: 1.35rem;
-    }
-
-    .card {
-        padding: 14px;
     }
 
     .map-preview-container {
@@ -3947,6 +3985,61 @@ details.about-section[open] .about-chevron {
 }
 
 /* ========================================
+   Table of Contents (Support Page)
+   ======================================== */
+
+.toc-card {
+    margin-bottom: var(--spacing-sm);
+}
+
+.toc-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-xs);
+}
+
+.toc-list li {
+    flex: 1 1 auto;
+    min-width: 120px;
+}
+
+.toc-list a {
+    display: block;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    background: var(--hover-bg);
+    border-radius: var(--radius);
+    color: var(--primary-color);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: background var(--transition), color var(--transition);
+    text-align: center;
+    white-space: nowrap;
+}
+
+.toc-list a:hover {
+    background: var(--primary-color);
+    color: white;
+}
+
+@media (max-width: 600px) {
+    .toc-list {
+        flex-direction: column;
+    }
+
+    .toc-list li {
+        min-width: auto;
+    }
+
+    .toc-list a {
+        text-align: left;
+    }
+}
+
+/* ========================================
    FAQ / Support Page Styles
    ======================================== */
 
@@ -4400,4 +4493,27 @@ details.about-section[open] .about-chevron {
     padding-top: 0;
     padding-bottom: 0;
     opacity: 0;
+}
+
+/* Advanced Options Styling */
+.advanced-option-group {
+    padding: var(--spacing-sm) 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.advanced-option-group:first-child {
+    padding-top: 0;
+}
+
+.advanced-option-group:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.advanced-option-label {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-xs);
+    display: block;
 }
