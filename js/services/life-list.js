@@ -91,10 +91,10 @@ export class LifeListService {
     importFromCSV(csvContent, taxonomy = []) {
         const result = { imported: 0, errors: [], duplicates: 0, notMatched: [] };
 
-        // Validate file size (max 5MB)
-        const MAX_FILE_SIZE = 5 * 1024 * 1024;
+        // Validate file size (max 1MB - life lists shouldn't exceed this)
+        const MAX_FILE_SIZE = 1 * 1024 * 1024;
         if (csvContent.length > MAX_FILE_SIZE) {
-            result.errors.push('File too large (maximum 5MB)');
+            result.errors.push('File too large (maximum 1MB). Export only your life list, not full checklists.');
             return result;
         }
 

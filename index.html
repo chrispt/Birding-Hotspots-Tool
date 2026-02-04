@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Find nearby birding hotspots and generate PDF reports with species lists">
     <!-- Security headers -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-6+AmyFiEFMAU4fbYkttRRlWQ23FuyaT1Cx9YOz4CSCw=' https://unpkg.com https://cdnjs.cloudflare.com https://vercel.live; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' https: data:; connect-src 'self' https://api.ebird.org https://us1.locationiq.com https://*.tile.openstreetmap.org https://router.project-osrm.org https://api.open-meteo.com https://unpkg.com https://cdnjs.cloudflare.com; frame-src https://vercel.live; font-src 'self';">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-6+AmyFiEFMAU4fbYkttRRlWQ23FuyaT1Cx9YOz4CSCw=' https://unpkg.com/leaflet@1.9.4/ https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/ https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/ https://vercel.live; style-src 'self' 'unsafe-inline' https://unpkg.com/leaflet@1.9.4/; img-src 'self' https: data:; connect-src 'self' https://api.ebird.org https://us1.locationiq.com https://*.tile.openstreetmap.org https://router.project-osrm.org https://api.open-meteo.com; frame-src https://vercel.live; font-src 'self';">
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <title>Birding Hotspots Finder</title>
@@ -141,7 +141,8 @@
                     </button>
                 </div>
 
-                <div class="input-mode-toggle">
+                <fieldset class="fieldset-reset input-mode-toggle">
+                    <legend class="visually-hidden">Input mode</legend>
                     <label class="radio-label">
                         <input type="radio" name="inputMode" value="address" checked>
                         <span class="radio-custom"></span>
@@ -152,16 +153,16 @@
                         <span class="radio-custom"></span>
                         GPS Coordinates
                     </label>
-                </div>
+                </fieldset>
 
                 <!-- Address Input -->
                 <div id="addressInput" class="input-group">
                     <label for="address" class="input-label">Enter Address</label>
                     <div class="input-with-validation">
-                        <input type="text" id="address" class="text-input" placeholder="123 Main St, City, State" aria-label="Enter your address">
+                        <input type="text" id="address" class="text-input" placeholder="123 Main St, City, State" aria-label="Enter your address" aria-describedby="addressError">
                         <span id="addressValidationIcon" class="input-validation-indicator hidden"></span>
                     </div>
-                    <div id="addressError" class="input-error hidden"></div>
+                    <div id="addressError" class="input-error hidden" role="alert"></div>
                 </div>
 
                 <!-- GPS Input -->
@@ -246,7 +247,7 @@
                         <label for="routeStartAddress" class="input-label">Start Location</label>
                         <div class="input-with-button">
                             <div class="input-with-validation" style="flex: 1;">
-                                <input type="text" id="routeStartAddress" class="text-input" placeholder="Enter starting address" aria-label="Route start address">
+                                <input type="text" id="routeStartAddress" class="text-input" placeholder="Enter starting address" aria-label="Route start address" aria-describedby="routeStartError">
                                 <span id="routeStartValidationIcon" class="input-validation-indicator hidden"></span>
                             </div>
                             <button type="button" id="useCurrentLocationStart" class="location-btn" title="Use my current location" aria-label="Use current location for start">
@@ -255,13 +256,13 @@
                                 </svg>
                             </button>
                         </div>
-                        <div id="routeStartError" class="input-error hidden"></div>
+                        <div id="routeStartError" class="input-error hidden" role="alert"></div>
                     </div>
                     <div class="input-group">
                         <label for="routeEndAddress" class="input-label">End Location</label>
                         <div class="input-with-button">
                             <div class="input-with-validation" style="flex: 1;">
-                                <input type="text" id="routeEndAddress" class="text-input" placeholder="Enter destination address" aria-label="Route end address">
+                                <input type="text" id="routeEndAddress" class="text-input" placeholder="Enter destination address" aria-label="Route end address" aria-describedby="routeEndError">
                                 <span id="routeEndValidationIcon" class="input-validation-indicator hidden"></span>
                             </div>
                             <button type="button" id="useCurrentLocationEnd" class="location-btn" title="Use my current location" aria-label="Use current location for end">
@@ -270,7 +271,7 @@
                                 </svg>
                             </button>
                         </div>
-                        <div id="routeEndError" class="input-error hidden"></div>
+                        <div id="routeEndError" class="input-error hidden" role="alert"></div>
                     </div>
                 </div>
                 <div class="input-group route-option">
@@ -544,14 +545,14 @@
                         <div id="endLocationInputs" class="itinerary-option hidden">
                             <label for="endAddress" class="input-label">End Address</label>
                             <div class="input-with-validation">
-                                <input type="text" id="endAddress" class="text-input" placeholder="Enter end address" aria-label="End location address">
+                                <input type="text" id="endAddress" class="text-input" placeholder="Enter end address" aria-label="End location address" aria-describedby="endAddressError">
                                 <span id="endAddressValidationIcon" class="input-validation-indicator hidden"></span>
                             </div>
-                            <div id="endAddressError" class="input-error hidden"></div>
+                            <div id="endAddressError" class="input-error hidden" role="alert"></div>
                         </div>
 
-                        <div class="itinerary-option">
-                            <label class="input-label">Optimization Priority</label>
+                        <fieldset class="fieldset-reset itinerary-option">
+                            <legend class="input-label">Optimization Priority</legend>
                             <div class="radio-group">
                                 <label class="radio-label">
                                     <input type="radio" name="itineraryPriority" value="balanced" checked>
@@ -569,7 +570,7 @@
                                     Shortest Route
                                 </label>
                             </div>
-                        </div>
+                        </fieldset>
 
                         <div class="itinerary-option">
                             <label for="maxStops" class="input-label">Maximum Stops: <span id="maxStopsValue">5</span></label>

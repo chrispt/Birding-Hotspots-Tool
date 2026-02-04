@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+    <a href="#main-content" class="skip-link">Skip to main content</a>
     <div class="container">
         <!-- Header -->
         <header class="header">
@@ -26,7 +27,7 @@
         </header>
 
         <!-- Main Content -->
-        <main class="main-content">
+        <main id="main-content" class="main-content">
             <a href="index.html" class="btn btn-secondary back-link">
                 <svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align: middle; margin-right: 4px;">
                     <path fill="currentColor" d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
@@ -537,6 +538,63 @@
                             <li>Hybrid species</li>
                         </ul>
                         <p>These species are still imported with a fallback code and will be matched by common name when possible. Check the browser console for details on which species weren't matched.</p>
+                    </div>
+                </details>
+            </section>
+
+            <!-- Privacy & Data -->
+            <section class="card">
+                <h2 class="section-title">Privacy & Data</h2>
+
+                <details class="faq-item">
+                    <summary class="faq-question">What data does this tool collect?</summary>
+                    <div class="faq-answer">
+                        <p>This tool is designed with privacy in mind. Here's what happens with your data:</p>
+                        <ul>
+                            <li><strong>Location data</strong> - Your coordinates are sent only to eBird (for hotspot data), LocationIQ (for address lookup), and OpenStreetMap (for maps and routing). No location data is stored on any server.</li>
+                            <li><strong>API key</strong> - Your eBird API key is stored only in your browser's local storage if you choose "Remember". It is lightly obfuscated but not encrypted (client-side security limitation).</li>
+                            <li><strong>Life list</strong> - Your imported life list is stored only in your browser's local storage. It never leaves your device.</li>
+                            <li><strong>Saved locations</strong> - Stored only in your browser's local storage.</li>
+                        </ul>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">What third-party services receive my data?</summary>
+                    <div class="faq-answer">
+                        <p>To function, this tool sends data to the following services:</p>
+                        <ul>
+                            <li><strong>eBird API</strong> (Cornell Lab) - Receives your coordinates to return nearby hotspots and bird observations</li>
+                            <li><strong>LocationIQ</strong> - Receives addresses for geocoding (converting to coordinates)</li>
+                            <li><strong>OpenStreetMap</strong> - Receives coordinates to display map tiles</li>
+                            <li><strong>OSRM</strong> (Open Source Routing Machine) - Receives coordinates for driving route calculations</li>
+                            <li><strong>Open-Meteo</strong> - Receives coordinates for weather data</li>
+                        </ul>
+                        <p>Each service has its own privacy policy. No data is sent to any other servers.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">Is my eBird API key secure?</summary>
+                    <div class="faq-answer">
+                        <p>Your API key is stored in your browser's local storage with basic obfuscation, but it's not fully encrypted. This is a limitation of client-side web applications. For better security:</p>
+                        <ul>
+                            <li>Don't share your browser's local storage or developer console output</li>
+                            <li>Use "Remember" only on private devices you trust</li>
+                            <li>Your API key is only sent to eBird's servers, never to any other destination</li>
+                        </ul>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">How do I delete my data?</summary>
+                    <div class="faq-answer">
+                        <p>To remove all stored data:</p>
+                        <ul>
+                            <li><strong>Quick method</strong> - Clear your browser's local storage for this site</li>
+                            <li><strong>Manual method</strong> - Clear saved locations, life list, and uncheck "Remember" for your API key</li>
+                        </ul>
+                        <p>Data sent to third-party APIs (like search queries) follows each service's data retention policies.</p>
                     </div>
                 </details>
             </section>

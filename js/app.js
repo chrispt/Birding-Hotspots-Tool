@@ -896,6 +896,15 @@ class BirdingHotspotsApp {
         const file = e.target.files[0];
         if (!file) return;
 
+        // Validate file type (must be CSV or plain text)
+        const validTypes = ['text/csv', 'text/plain', 'application/csv', 'application/vnd.ms-excel'];
+        const extension = file.name.toLowerCase().endsWith('.csv');
+        if (!validTypes.includes(file.type) && !extension) {
+            this.showError('Please select a CSV file');
+            e.target.value = '';
+            return;
+        }
+
         try {
             const content = await file.text();
 
@@ -1041,6 +1050,9 @@ class BirdingHotspotsApp {
             return;
         }
 
+        // Use DocumentFragment for batch append (reduces reflows)
+        const fragment = document.createDocumentFragment();
+
         favorites.forEach(fav => {
             const item = document.createElement('div');
             item.className = 'favorite-item';
@@ -1079,8 +1091,10 @@ class BirdingHotspotsApp {
 
             item.appendChild(info);
             item.appendChild(deleteBtn);
-            container.appendChild(item);
+            fragment.appendChild(item);
         });
+
+        container.appendChild(fragment);
     }
 
     /**
@@ -1510,11 +1524,13 @@ class BirdingHotspotsApp {
         if (hotspots.length === 0) {
             this.renderEmptyState();
         } else {
-            // Generate hotspot cards
+            // Generate hotspot cards using DocumentFragment for batch append (reduces reflows)
+            const fragment = document.createDocumentFragment();
             hotspots.forEach((hotspot, index) => {
                 const card = this.createHotspotCard(hotspot, index + 1, origin);
-                this.elements.hotspotCards.appendChild(card);
+                fragment.appendChild(card);
             });
+            this.elements.hotspotCards.appendChild(fragment);
         }
 
         // Show results section
@@ -1662,7 +1678,16 @@ class BirdingHotspotsApp {
 
         const headerText = document.createElement('span');
         headerText.className = 'regional-activity-title';
-        headerText.innerHTML = `<svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/></svg> Regional Activity`;
+        const trendIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        trendIcon.setAttribute('viewBox', '0 0 24 24');
+        trendIcon.setAttribute('width', '18');
+        trendIcon.setAttribute('height', '18');
+        const trendPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        trendPath.setAttribute('fill', 'currentColor');
+        trendPath.setAttribute('d', 'M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z');
+        trendIcon.appendChild(trendPath);
+        headerText.appendChild(trendIcon);
+        headerText.appendChild(document.createTextNode(' Regional Activity'));
 
         const chevron = createSVGIcon('chevron', 20, 'chevron');
         header.appendChild(headerText);
@@ -1675,14 +1700,23 @@ class BirdingHotspotsApp {
         // Stats summary
         const stats = document.createElement('div');
         stats.className = 'regional-stats';
-        stats.innerHTML = `
-            <span class="regional-stat">
-                <strong>${recentChecklists.length}</strong> checklists in last 24h
-            </span>
-            <span class="regional-stat">
-                <strong>${checklists.length}</strong> total this week
-            </span>
-        `;
+
+        const stat1 = document.createElement('span');
+        stat1.className = 'regional-stat';
+        const stat1Strong = document.createElement('strong');
+        stat1Strong.textContent = recentChecklists.length;
+        stat1.appendChild(stat1Strong);
+        stat1.appendChild(document.createTextNode(' checklists in last 24h'));
+
+        const stat2 = document.createElement('span');
+        stat2.className = 'regional-stat';
+        const stat2Strong = document.createElement('strong');
+        stat2Strong.textContent = checklists.length;
+        stat2.appendChild(stat2Strong);
+        stat2.appendChild(document.createTextNode(' total this week'));
+
+        stats.appendChild(stat1);
+        stats.appendChild(stat2);
         content.appendChild(stats);
 
         // Trending hotspots
@@ -1767,7 +1801,16 @@ class BirdingHotspotsApp {
 
         const headerText = document.createElement('span');
         headerText.className = 'top-birders-title';
-        headerText.innerHTML = `<svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg> Top Local Birders Today`;
+        const starIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        starIcon.setAttribute('viewBox', '0 0 24 24');
+        starIcon.setAttribute('width', '18');
+        starIcon.setAttribute('height', '18');
+        const starPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        starPath.setAttribute('fill', 'currentColor');
+        starPath.setAttribute('d', 'M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z');
+        starIcon.appendChild(starPath);
+        headerText.appendChild(starIcon);
+        headerText.appendChild(document.createTextNode(' Top Local Birders Today'));
 
         const chevron = createSVGIcon('chevron', 20, 'chevron');
         header.appendChild(headerText);
@@ -1810,7 +1853,16 @@ class BirdingHotspotsApp {
         link.target = '_blank';
         link.rel = 'noopener noreferrer';
         link.className = 'top-birders-link';
-        link.innerHTML = `View full leaderboard on eBird <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>`;
+        link.appendChild(document.createTextNode('View full leaderboard on eBird '));
+        const extLinkIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        extLinkIcon.setAttribute('viewBox', '0 0 24 24');
+        extLinkIcon.setAttribute('width', '14');
+        extLinkIcon.setAttribute('height', '14');
+        const extLinkPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        extLinkPath.setAttribute('fill', 'currentColor');
+        extLinkPath.setAttribute('d', 'M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z');
+        extLinkIcon.appendChild(extLinkPath);
+        link.appendChild(extLinkIcon);
         content.appendChild(link);
 
         // Toggle functionality
@@ -5425,10 +5477,11 @@ class BirdingHotspotsApp {
         });
 
         // Remove after delay
+        // 4s duration for accessibility - allows time to read
         setTimeout(() => {
             toast.classList.remove('show');
             setTimeout(() => toast.remove(), 300);
-        }, 2500);
+        }, 4000);
     }
 
     /**
