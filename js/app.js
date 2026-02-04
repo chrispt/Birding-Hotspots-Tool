@@ -3338,13 +3338,22 @@ class BirdingHotspotsApp {
 
             // Add markers for found hotspots with species count
             hotspots.forEach((h, index) => {
+                // Check if hotspot has target species
+                const targetSpeciesCodes = this.routeTargetSpeciesCodes || [];
+                const hasTargetSpecies = h.birds && h.birds.some(bird =>
+                    targetSpeciesCodes.includes(bird.speciesCode)
+                );
+
                 const marker = L.circleMarker([h.lat, h.lng], {
-                    radius: 10,
+                    radius: hasTargetSpecies ? 12 : 10,
                     fillColor: '#FF9800', // Orange = unselected (none selected by default)
-                    color: '#fff',
-                    weight: 2,
+                    color: hasTargetSpecies ? '#1976D2' : '#fff', // Blue border if has target species
+                    weight: hasTargetSpecies ? 3 : 2,
                     fillOpacity: 0.85
                 }).addTo(this.routePreviewMapInstance);
+
+                // Store target species flag for later reference
+                marker.hasTargetSpecies = hasTargetSpecies;
 
                 // Store index for click handler
                 marker.hotspotIndex = index;
@@ -3358,6 +3367,15 @@ class BirdingHotspotsApp {
                 popupContent.appendChild(nameStrong);
                 popupContent.appendChild(document.createElement('br'));
                 popupContent.appendChild(document.createTextNode(`${h.speciesCount} species`));
+
+                // Show target species indicator in popup if applicable
+                if (hasTargetSpecies) {
+                    popupContent.appendChild(document.createElement('br'));
+                    const targetIndicator = document.createElement('span');
+                    targetIndicator.style.cssText = 'color: #1976D2; font-weight: 600; font-size: 0.85em;';
+                    targetIndicator.textContent = '\u2691 Has target species';
+                    popupContent.appendChild(targetIndicator);
+                }
                 popupContent.appendChild(document.createElement('br'));
 
                 const toggleBtn = document.createElement('button');
@@ -3700,9 +3718,13 @@ class BirdingHotspotsApp {
     updateMapMarkerStyle(index, selected) {
         if (this.routeHotspotMarkers && this.routeHotspotMarkers[index]) {
             const marker = this.routeHotspotMarkers[index];
+            const hasTarget = marker.hasTargetSpecies;
             marker.setStyle({
                 fillColor: selected ? '#2E7D32' : '#FF9800', // Green if selected, orange if not
-                fillOpacity: selected ? 0.9 : 0.85
+                fillOpacity: selected ? 0.9 : 0.85,
+                // Preserve blue border for target species, otherwise white
+                color: hasTarget ? '#1976D2' : '#fff',
+                weight: hasTarget ? 3 : 2
             });
 
             // Update popup button class if popup is open
