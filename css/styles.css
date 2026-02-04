@@ -2966,6 +2966,13 @@ details.about-section[open] .about-chevron {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    text-decoration: none;
+    transition: color var(--transition);
+}
+
+.trending-label:hover {
+    color: #0D47A1;
+    text-decoration: underline;
 }
 
 .trending-bar-container {
@@ -2987,135 +2994,6 @@ details.about-section[open] .about-chevron {
     font-weight: 600;
     color: #0D47A1;
     text-align: right;
-}
-
-/* Top Birders Leaderboard */
-.top-birders-section {
-    background: linear-gradient(135deg, #F3E5F5, #E1BEE7);
-    border-radius: 12px;
-    margin-top: 16px;
-    overflow: hidden;
-}
-
-.top-birders-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-    background: none;
-    border: none;
-    padding: 14px 16px;
-    cursor: pointer;
-    color: #7B1FA2;
-    font-size: 0.95rem;
-    font-weight: 600;
-    transition: background var(--transition);
-}
-
-.top-birders-header:hover {
-    background: rgba(255, 255, 255, 0.3);
-}
-
-.top-birders-title {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.top-birders-title svg {
-    color: #9C27B0;
-}
-
-.top-birders-header .chevron {
-    transition: transform var(--transition);
-    color: #9C27B0;
-}
-
-.top-birders-content {
-    padding: 0 16px 16px;
-}
-
-.top-birders-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    background: rgba(255, 255, 255, 0.5);
-    border-radius: 8px;
-    overflow: hidden;
-}
-
-.birder-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 12px;
-    border-bottom: 1px solid rgba(123, 31, 162, 0.1);
-}
-
-.birder-item:last-child {
-    border-bottom: none;
-}
-
-.birder-rank {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 24px;
-    height: 24px;
-    background: #9C27B0;
-    color: white;
-    border-radius: 50%;
-    font-size: 0.75rem;
-    font-weight: 700;
-    flex-shrink: 0;
-}
-
-.birder-item:nth-child(1) .birder-rank {
-    background: linear-gradient(135deg, #FFD700, #FFA000);
-}
-
-.birder-item:nth-child(2) .birder-rank {
-    background: linear-gradient(135deg, #C0C0C0, #9E9E9E);
-}
-
-.birder-item:nth-child(3) .birder-rank {
-    background: linear-gradient(135deg, #CD7F32, #8D6E63);
-}
-
-.birder-name {
-    flex: 1;
-    font-size: 0.9rem;
-    color: #4A148C;
-    font-weight: 500;
-}
-
-.birder-species {
-    font-size: 0.8rem;
-    color: #7B1FA2;
-    font-weight: 600;
-    white-space: nowrap;
-}
-
-.top-birders-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    margin-top: 12px;
-    padding: 8px 12px;
-    background: rgba(156, 39, 176, 0.1);
-    border-radius: 6px;
-    color: #7B1FA2;
-    font-size: 0.85rem;
-    text-decoration: none;
-    transition: background var(--transition);
-}
-
-.top-birders-link:hover {
-    background: rgba(156, 39, 176, 0.2);
-}
-
-.top-birders-link svg {
-    flex-shrink: 0;
 }
 
 /* Seasonal Insights Section (collapsible on hotspot cards) */

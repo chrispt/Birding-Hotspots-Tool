@@ -112,7 +112,6 @@ class BirdingHotspotsApp {
             weatherSummary: document.getElementById('weatherSummary'),
             migrationAlert: document.getElementById('migrationAlert'),
             regionalActivity: document.getElementById('regionalActivity'),
-            topBirders: document.getElementById('topBirders'),
             // Life list elements
             lifeListToggle: document.getElementById('lifeListToggle'),
             lifeListContent: document.getElementById('lifeListContent'),
@@ -1579,17 +1578,11 @@ class BirdingHotspotsApp {
                 return;
             }
 
-            // Fetch regional activity and top birders in parallel
-            const [checklists, topObservers] = await Promise.all([
-                this.ebirdApi.getRecentChecklists(regionCode, 200),
-                this.ebirdApi.getTopObservers(regionCode)
-            ]);
+            // Fetch regional activity
+            const checklists = await this.ebirdApi.getRecentChecklists(regionCode, 200);
 
             // Render regional activity
             this.renderRegionalActivity(checklists, regionCode);
-
-            // Render top birders
-            this.renderTopBirders(topObservers, regionCode);
 
         } catch (error) {
             console.warn('Could not load regional data:', error);
@@ -1668,19 +1661,23 @@ class BirdingHotspotsApp {
             return checklistDate >= yesterday;
         });
 
-        // Group by hotspot to find trending locations
-        const hotspotCounts = {};
+        // Group by hotspot to find trending locations (store locId for linking)
+        const hotspotData = {};
         checklists.forEach(c => {
-            const locName = c.loc?.name || c.locId;
-            hotspotCounts[locName] = (hotspotCounts[locName] || 0) + 1;
+            const locId = c.locId;
+            const locName = c.loc?.name || locId;
+            if (!hotspotData[locId]) {
+                hotspotData[locId] = { name: locName, locId: locId, count: 0 };
+            }
+            hotspotData[locId].count++;
         });
 
         // Sort by count and take top 5
-        const trendingHotspots = Object.entries(hotspotCounts)
-            .sort((a, b) => b[1] - a[1])
+        const trendingHotspots = Object.values(hotspotData)
+            .sort((a, b) => b.count - a.count)
             .slice(0, 5);
 
-        const maxCount = trendingHotspots[0]?.[1] || 1;
+        const maxCount = trendingHotspots[0]?.count || 1;
 
         // Build the UI
         const section = document.createElement('div');
@@ -1745,7 +1742,7 @@ class BirdingHotspotsApp {
             trendingTitle.textContent = 'Most Active Hotspots';
             trendingSection.appendChild(trendingTitle);
 
-            trendingHotspots.forEach(([name, count]) => {
+            trendingHotspots.forEach(hotspot => {
                 const item = document.createElement('div');
                 item.className = 'trending-item';
 
@@ -1754,15 +1751,20 @@ class BirdingHotspotsApp {
 
                 const bar = document.createElement('div');
                 bar.className = 'trending-bar';
-                bar.style.width = `${(count / maxCount) * 100}%`;
+                bar.style.width = `${(hotspot.count / maxCount) * 100}%`;
 
-                const label = document.createElement('span');
+                // Create clickable link to eBird hotspot page
+                const label = document.createElement('a');
                 label.className = 'trending-label';
-                label.textContent = name.length > 30 ? name.substring(0, 30) + '...' : name;
+                label.href = `https://ebird.org/hotspot/${hotspot.locId}`;
+                label.target = '_blank';
+                label.rel = 'noopener noreferrer';
+                label.textContent = hotspot.name.length > 30 ? hotspot.name.substring(0, 30) + '...' : hotspot.name;
+                label.title = hotspot.name;
 
                 const countSpan = document.createElement('span');
                 countSpan.className = 'trending-count';
-                countSpan.textContent = `${count}`;
+                countSpan.textContent = `${hotspot.count}`;
 
                 barContainer.appendChild(bar);
                 item.appendChild(label);
@@ -1780,113 +1782,6 @@ class BirdingHotspotsApp {
             header.setAttribute('aria-expanded', !expanded);
             content.classList.toggle('hidden', expanded);
             chevron.style.transform = expanded ? '' : 'rotate(180deg)';
-        });
-
-        section.appendChild(header);
-        section.appendChild(content);
-        container.appendChild(section);
-        container.classList.remove('hidden');
-    }
-
-    /**
-     * Render top birders leaderboard
-     * @param {Array} observers - Top observers from eBird
-     * @param {string} regionCode - eBird region code
-     */
-    renderTopBirders(observers, regionCode) {
-        const container = this.elements.topBirders;
-        if (!container || !observers || observers.length === 0) {
-            container?.classList.add('hidden');
-            return;
-        }
-
-        clearElement(container);
-
-        // Take top 10
-        const topObservers = observers.slice(0, 10);
-
-        // Build the UI
-        const section = document.createElement('div');
-        section.className = 'top-birders-section';
-
-        // Header with toggle
-        const header = document.createElement('button');
-        header.type = 'button';
-        header.className = 'top-birders-header';
-        header.setAttribute('aria-expanded', 'false');
-
-        const headerText = document.createElement('span');
-        headerText.className = 'top-birders-title';
-        const starIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        starIcon.setAttribute('viewBox', '0 0 24 24');
-        starIcon.setAttribute('width', '18');
-        starIcon.setAttribute('height', '18');
-        const starPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        starPath.setAttribute('fill', 'currentColor');
-        starPath.setAttribute('d', 'M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z');
-        starIcon.appendChild(starPath);
-        headerText.appendChild(starIcon);
-        headerText.appendChild(document.createTextNode(' Top Local Birders Today'));
-
-        const chevron = createSVGIcon('chevron', 20, 'chevron');
-        header.appendChild(headerText);
-        header.appendChild(chevron);
-
-        // Content (initially hidden)
-        const content = document.createElement('div');
-        content.className = 'top-birders-content hidden';
-
-        const list = document.createElement('ol');
-        list.className = 'top-birders-list';
-
-        topObservers.forEach((observer, index) => {
-            const li = document.createElement('li');
-            li.className = 'birder-item';
-
-            const rank = document.createElement('span');
-            rank.className = 'birder-rank';
-            rank.textContent = index + 1;
-
-            const name = document.createElement('span');
-            name.className = 'birder-name';
-            name.textContent = observer.userDisplayName || 'Anonymous';
-
-            const speciesCount = document.createElement('span');
-            speciesCount.className = 'birder-species';
-            speciesCount.textContent = `${observer.numSpecies || 0} species`;
-
-            li.appendChild(rank);
-            li.appendChild(name);
-            li.appendChild(speciesCount);
-            list.appendChild(li);
-        });
-
-        content.appendChild(list);
-
-        // Link to eBird leaderboard
-        const link = document.createElement('a');
-        link.href = `https://ebird.org/region/${regionCode}/activity`;
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
-        link.className = 'top-birders-link';
-        link.appendChild(document.createTextNode('View full leaderboard on eBird '));
-        const extLinkIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        extLinkIcon.setAttribute('viewBox', '0 0 24 24');
-        extLinkIcon.setAttribute('width', '14');
-        extLinkIcon.setAttribute('height', '14');
-        const extLinkPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        extLinkPath.setAttribute('fill', 'currentColor');
-        extLinkPath.setAttribute('d', 'M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z');
-        extLinkIcon.appendChild(extLinkPath);
-        link.appendChild(extLinkIcon);
-        content.appendChild(link);
-
-        // Toggle functionality
-        header.addEventListener('click', () => {
-            const expanded = header.getAttribute('aria-expanded') === 'true';
-            header.setAttribute('aria-expanded', !expanded);
-            content.classList.toggle('hidden', expanded);
-            chevron.style.transform = expanded ? 'rotate(180deg)' : '';
         });
 
         section.appendChild(header);
@@ -5348,10 +5243,6 @@ class BirdingHotspotsApp {
         // Hide and clear regional activity
         this.elements.regionalActivity.classList.add('hidden');
         clearElement(this.elements.regionalActivity);
-
-        // Hide and clear top birders
-        this.elements.topBirders.classList.add('hidden');
-        clearElement(this.elements.topBirders);
 
         // Clear stored results
         this.currentResults = null;

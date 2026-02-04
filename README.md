@@ -9,7 +9,6 @@ A web-based tool to discover the best birding locations near any address. Enter 
 - **Flexible Sorting**: Sort hotspots by most species observed, closest distance, or shortest drive time
 - **Hotspot Quality Indicators**: See total species ever recorded, visit counts, and quality badges (Well-Established/Active/New) for each hotspot
 - **Regional Activity Dashboard**: View recent checklist activity and trending hotspots in your search area
-- **Top Birders Leaderboard**: See the top 10 local observers and their species counts for the day
 - **Route Planning**: Find birding hotspots along a driving route between two locations
 - **Itinerary Builder**: Create optimized multi-stop birding itineraries
 - **Life List Integration**: Import your eBird life list to highlight potential lifers at each hotspot
@@ -88,7 +87,7 @@ Then visit `http://localhost:8000`
 
 ### APIs Used
 
-- **eBird API v2**: Bird observation data, hotspot info, regional activity, and leaderboards from Cornell Lab of Ornithology
+- **eBird API v2**: Bird observation data, hotspot info, and regional activity from Cornell Lab of Ornithology
 - **LocationIQ**: Address geocoding and reverse geocoding
 - **OSRM (Open Source Routing Machine)**: Driving routes and distance calculations
 - **Open-Meteo**: Weather data and conditions
