@@ -832,11 +832,10 @@ class BirdingHotspotsApp {
             // Create new map instance
             this.previewMap = L.map(this.elements.mapPreviewContainer).setView([lat, lng], 15);
 
-            // Add CartoDB Positron tiles (clean 2D style)
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-                subdomains: 'abcd',
-                maxZoom: 20
+            // Add OpenStreetMap tiles (flat top-down style)
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                maxZoom: 19
             }).addTo(this.previewMap);
 
             // Add marker
@@ -4061,10 +4060,9 @@ class BirdingHotspotsApp {
         const firstStop = itinerary.stops[0];
         this.resultsMapInstance = L.map(this.elements.resultsMap).setView([firstStop.lat, firstStop.lng], 10);
 
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-            subdomains: 'abcd',
-            maxZoom: 20
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            maxZoom: 19
         }).addTo(this.resultsMapInstance);
 
         // Build bounds from all stops
@@ -5123,10 +5121,9 @@ class BirdingHotspotsApp {
         // Initialize or update map
         if (!this.routePreviewMapInstance) {
             this.routePreviewMapInstance = L.map(this.elements.routePreviewMap);
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-                subdomains: 'abcd',
-                maxZoom: 20
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                maxZoom: 19
             }).addTo(this.routePreviewMapInstance);
         }
 
@@ -5806,11 +5803,10 @@ class BirdingHotspotsApp {
             scrollWheelZoom: false  // Prevent accidental zooming while scrolling page
         });
 
-        // Add CartoDB Positron tiles (clean 2D style)
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-            subdomains: 'abcd',
-            maxZoom: 20
+        // Add OpenStreetMap tiles (flat top-down style)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            maxZoom: 19
         }).addTo(this.resultsMapInstance);
 
         // Clear existing markers
