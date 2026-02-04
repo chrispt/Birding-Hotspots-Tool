@@ -282,6 +282,62 @@ body {
     font-style: italic;
 }
 
+/* Recent Searches */
+.recent-searches {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.recent-searches.hidden {
+    display: none;
+}
+
+.recent-search-chip {
+    padding: 6px 12px;
+    background: var(--hover-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all var(--transition);
+    color: var(--text-primary);
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.recent-search-chip:hover {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.recent-searches-header {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+}
+
+.recent-searches-clear {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.75rem;
+    padding: 2px 6px;
+}
+
+.recent-searches-clear:hover {
+    color: var(--danger-color);
+}
+
 .text-input {
     width: 100%;
     padding: 12px 16px;
@@ -1778,6 +1834,156 @@ details.about-section[open] .about-chevron {
     font-size: 0.8rem;
     color: var(--notable-highlight);
     font-style: italic;
+}
+
+/* Copy Species List Button */
+.copy-species-container {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 12px;
+}
+
+.copy-species-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    background: var(--hover-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    cursor: pointer;
+    color: var(--text-primary);
+    transition: all var(--transition);
+}
+
+.copy-species-btn:hover {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.copy-species-btn svg {
+    flex-shrink: 0;
+}
+
+/* Toast Notification */
+.toast-notification {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    padding: 12px 24px;
+    background: var(--text-primary);
+    color: white;
+    border-radius: var(--radius);
+    font-size: 0.9rem;
+    z-index: 10000;
+    opacity: 0;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    box-shadow: var(--shadow-hover);
+}
+
+.toast-notification.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+}
+
+.toast-notification.toast-success {
+    background: var(--success);
+}
+
+.toast-notification.toast-error {
+    background: var(--error);
+}
+
+/* Favorite Hotspot Button on Cards */
+.favorite-hotspot-btn {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition);
+    z-index: 1;
+}
+
+.favorite-hotspot-btn:hover {
+    border-color: var(--accent-color);
+    background: #FFF8E1;
+}
+
+.favorite-hotspot-btn svg {
+    width: 18px;
+    height: 18px;
+    fill: var(--border-color);
+    transition: fill var(--transition);
+}
+
+.favorite-hotspot-btn:hover svg {
+    fill: var(--accent-color);
+}
+
+.favorite-hotspot-btn.is-favorite svg {
+    fill: var(--accent-color);
+}
+
+/* Favorite Hotspots Section */
+.favorite-hotspots-section {
+    margin-top: 16px;
+}
+
+.favorite-hotspot-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: var(--radius);
+    background: var(--hover-bg);
+    margin-bottom: 8px;
+}
+
+.favorite-hotspot-info {
+    color: var(--text-primary);
+    text-decoration: none;
+    flex: 1;
+    min-width: 0;
+}
+
+.favorite-hotspot-info:hover {
+    color: var(--primary-color);
+}
+
+.favorite-hotspot-name {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.favorite-hotspot-delete {
+    background: none;
+    border: none;
+    padding: 4px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+}
+
+.favorite-hotspot-delete:hover {
+    color: var(--error);
 }
 
 /* Results Section Mobile Responsive */

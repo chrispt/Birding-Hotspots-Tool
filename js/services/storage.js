@@ -190,5 +190,150 @@ export const storage = {
         } catch (e) {
             console.warn('Could not save temperature unit:', e);
         }
+    },
+
+    // ==================== Recent Searches ====================
+
+    /**
+     * Get recent searches
+     * @returns {Array} Array of recent search objects
+     */
+    getRecentSearches() {
+        try {
+            const stored = localStorage.getItem(STORAGE_KEYS.RECENT_SEARCHES);
+            return stored ? JSON.parse(stored) : [];
+        } catch (e) {
+            console.warn('Could not read recent searches from localStorage:', e);
+            return [];
+        }
+    },
+
+    /**
+     * Add a recent search (maintains max 5, dedupes by coordinates)
+     * @param {Object} search - Search object with displayName, lat, lng
+     */
+    addRecentSearch(search) {
+        try {
+            let searches = this.getRecentSearches();
+
+            // Remove duplicate (same coordinates within 0.001 degrees)
+            searches = searches.filter(s =>
+                Math.abs(s.lat - search.lat) > 0.001 ||
+                Math.abs(s.lng - search.lng) > 0.001
+            );
+
+            // Add new search at the beginning
+            searches.unshift({
+                displayName: search.displayName,
+                lat: search.lat,
+                lng: search.lng,
+                timestamp: Date.now()
+            });
+
+            // Keep only last 5
+            searches = searches.slice(0, 5);
+
+            localStorage.setItem(STORAGE_KEYS.RECENT_SEARCHES, JSON.stringify(searches));
+        } catch (e) {
+            console.warn('Could not save recent search to localStorage:', e);
+        }
+    },
+
+    /**
+     * Clear all recent searches
+     */
+    clearRecentSearches() {
+        try {
+            localStorage.removeItem(STORAGE_KEYS.RECENT_SEARCHES);
+        } catch (e) {
+            console.warn('Could not clear recent searches:', e);
+        }
+    },
+
+    // ==================== Favorite Hotspots ====================
+
+    /**
+     * Get all favorite hotspots
+     * @returns {Array} Array of favorite hotspot objects
+     */
+    getFavoriteHotspots() {
+        try {
+            const stored = localStorage.getItem(STORAGE_KEYS.FAVORITE_HOTSPOTS);
+            return stored ? JSON.parse(stored) : [];
+        } catch (e) {
+            console.warn('Could not read favorite hotspots from localStorage:', e);
+            return [];
+        }
+    },
+
+    /**
+     * Check if a hotspot is favorited
+     * @param {string} locId - eBird location ID
+     * @returns {boolean}
+     */
+    isFavoriteHotspot(locId) {
+        const favorites = this.getFavoriteHotspots();
+        return favorites.some(f => f.locId === locId);
+    },
+
+    /**
+     * Add a hotspot to favorites
+     * @param {Object} hotspot - Hotspot object with locId, name, lat, lng
+     * @returns {boolean} Success
+     */
+    addFavoriteHotspot(hotspot) {
+        try {
+            const favorites = this.getFavoriteHotspots();
+
+            // Don't add if already exists
+            if (favorites.some(f => f.locId === hotspot.locId)) {
+                return false;
+            }
+
+            favorites.push({
+                locId: hotspot.locId,
+                name: hotspot.name || hotspot.locName,
+                lat: hotspot.lat,
+                lng: hotspot.lng,
+                addedAt: Date.now()
+            });
+
+            localStorage.setItem(STORAGE_KEYS.FAVORITE_HOTSPOTS, JSON.stringify(favorites));
+            return true;
+        } catch (e) {
+            console.warn('Could not save favorite hotspot to localStorage:', e);
+            return false;
+        }
+    },
+
+    /**
+     * Remove a hotspot from favorites
+     * @param {string} locId - eBird location ID
+     * @returns {boolean} Success
+     */
+    removeFavoriteHotspot(locId) {
+        try {
+            const favorites = this.getFavoriteHotspots().filter(f => f.locId !== locId);
+            localStorage.setItem(STORAGE_KEYS.FAVORITE_HOTSPOTS, JSON.stringify(favorites));
+            return true;
+        } catch (e) {
+            console.warn('Could not remove favorite hotspot from localStorage:', e);
+            return false;
+        }
+    },
+
+    /**
+     * Toggle a hotspot's favorite status
+     * @param {Object} hotspot - Hotspot object
+     * @returns {boolean} New favorite state (true if now favorited)
+     */
+    toggleFavoriteHotspot(hotspot) {
+        if (this.isFavoriteHotspot(hotspot.locId)) {
+            this.removeFavoriteHotspot(hotspot.locId);
+            return false;
+        } else {
+            this.addFavoriteHotspot(hotspot);
+            return true;
+        }
     }
 };

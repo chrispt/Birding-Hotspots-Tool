@@ -188,6 +188,9 @@
                     Use My Current Location
                 </button>
 
+                <!-- Recent Searches -->
+                <div id="recentSearches" class="recent-searches hidden" aria-label="Recent searches"></div>
+
                 <!-- Map Preview Section -->
                 <div id="mapPreviewSection" class="map-preview-section hidden">
                     <div class="map-preview-header">
@@ -457,6 +460,20 @@
                         </svg>
                         Save Current Location
                     </button>
+                </div>
+            </section>
+
+            <!-- Favorite Hotspots Section (Collapsible) - Hidden until hotspots are favorited -->
+            <section id="favoriteHotspotsSection" class="card collapsible-section hidden">
+                <button type="button" class="collapsible-header" id="favoriteHotspotsToggle" aria-expanded="false">
+                    <h2 class="section-title has-tooltip tooltip-left" data-tooltip="Hotspots you've starred for quick reference. Click to view on eBird.">Favorite Hotspots</h2>
+                    <svg class="collapse-icon" viewBox="0 0 24 24" width="20" height="20">
+                        <path fill="currentColor" d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
+                    </svg>
+                </button>
+                <div id="favoriteHotspotsContent" class="collapsible-content collapsed">
+                    <div id="favoriteHotspotsList" class="favorite-hotspots-list">
+                    </div>
                 </div>
             </section>
 

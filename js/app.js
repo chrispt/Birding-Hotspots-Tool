@@ -177,7 +177,14 @@ class BirdingHotspotsApp {
             itineraryStops: document.getElementById('itineraryStops'),
             exportItineraryPdf: document.getElementById('exportItineraryPdf'),
             exportItineraryGpx: document.getElementById('exportItineraryGpx'),
-            backToResults: document.getElementById('backToResults')
+            backToResults: document.getElementById('backToResults'),
+            // Recent searches
+            recentSearches: document.getElementById('recentSearches'),
+            // Favorite hotspots section
+            favoriteHotspotsSection: document.getElementById('favoriteHotspotsSection'),
+            favoriteHotspotsList: document.getElementById('favoriteHotspotsList'),
+            favoriteHotspotsToggle: document.getElementById('favoriteHotspotsToggle'),
+            favoriteHotspotsContent: document.getElementById('favoriteHotspotsContent')
         };
 
         // Temperature unit preference (true = Fahrenheit, false = Celsius)
@@ -305,6 +312,11 @@ class BirdingHotspotsApp {
         this.elements.importLifeList.addEventListener('change', (e) => this.handleLifeListImport(e));
         this.elements.clearLifeList.addEventListener('click', () => this.handleClearLifeList());
 
+        // Favorite hotspots collapsible toggle
+        if (this.elements.favoriteHotspotsToggle) {
+            this.elements.favoriteHotspotsToggle.addEventListener('click', () => this.toggleFavoriteHotspots());
+        }
+
         // Generate report
         this.elements.generateReport.addEventListener('click', () => this.handleGenerateReport());
 
@@ -427,6 +439,12 @@ class BirdingHotspotsApp {
 
         // Load favorites
         this.renderFavorites();
+
+        // Load recent searches
+        this.renderRecentSearches();
+
+        // Load favorite hotspots
+        this.renderFavoriteHotspots();
 
         // Initialize life list count
         this.updateLifeListCount();
@@ -903,6 +921,16 @@ class BirdingHotspotsApp {
     }
 
     /**
+     * Toggle the favorite hotspots collapsible section
+     */
+    toggleFavoriteHotspots() {
+        if (!this.elements.favoriteHotspotsToggle || !this.elements.favoriteHotspotsContent) return;
+        const isExpanded = this.elements.favoriteHotspotsToggle.getAttribute('aria-expanded') === 'true';
+        this.elements.favoriteHotspotsToggle.setAttribute('aria-expanded', !isExpanded);
+        this.elements.favoriteHotspotsContent.classList.toggle('collapsed');
+    }
+
+    /**
      * Handle life list CSV import
      * @param {Event} e - File input change event
      */
@@ -1109,6 +1137,213 @@ class BirdingHotspotsApp {
         });
 
         container.appendChild(fragment);
+    }
+
+    /**
+     * Render recent searches as clickable chips
+     */
+    renderRecentSearches() {
+        const searches = storage.getRecentSearches();
+        const container = this.elements.recentSearches;
+
+        if (!container) return;
+
+        // Clear existing content
+        clearElement(container);
+
+        if (searches.length === 0) {
+            container.classList.add('hidden');
+            return;
+        }
+
+        container.classList.remove('hidden');
+
+        // Add header with clear button
+        const header = document.createElement('div');
+        header.className = 'recent-searches-header';
+
+        const label = document.createElement('span');
+        label.textContent = 'Recent searches:';
+
+        const clearBtn = document.createElement('button');
+        clearBtn.className = 'recent-searches-clear';
+        clearBtn.textContent = 'Clear';
+        clearBtn.addEventListener('click', () => {
+            storage.clearRecentSearches();
+            this.renderRecentSearches();
+        });
+
+        header.appendChild(label);
+        header.appendChild(clearBtn);
+        container.appendChild(header);
+
+        // Add chips
+        searches.forEach(search => {
+            const chip = document.createElement('button');
+            chip.className = 'recent-search-chip';
+            chip.textContent = search.displayName;
+            chip.title = search.displayName;
+            chip.addEventListener('click', () => this.useRecentSearch(search));
+            container.appendChild(chip);
+        });
+    }
+
+    /**
+     * Use a recent search to populate the form and run search
+     */
+    useRecentSearch(search) {
+        // Switch to GPS mode and populate coordinates
+        const gpsRadio = document.querySelector('[name="inputMode"][value="gps"]');
+        if (gpsRadio) {
+            gpsRadio.checked = true;
+            this.toggleInputMode('gps');
+        }
+
+        this.elements.latitude.value = search.lat;
+        this.elements.longitude.value = search.lng;
+
+        // Trigger validation and search
+        this.handleGenerateReport();
+    }
+
+    /**
+     * Save a successful search to recent searches
+     */
+    saveRecentSearch(location) {
+        if (!location || !location.lat || !location.lng) return;
+
+        storage.addRecentSearch({
+            displayName: location.address || `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`,
+            lat: location.lat,
+            lng: location.lng
+        });
+
+        // Update the UI
+        this.renderRecentSearches();
+    }
+
+    /**
+     * Copy species list to clipboard
+     */
+    async copySpeciesList(hotspotName, birds) {
+        // Format the species list as a checklist
+        const header = `Species Checklist - ${hotspotName}`;
+        const separator = '='.repeat(Math.min(header.length, 40));
+        const speciesList = birds.map(bird => `[ ] ${bird.comName}`).join('\n');
+        const footer = `\n(${birds.length} species)`;
+
+        const text = `${header}\n${separator}\n${speciesList}${footer}`;
+
+        try {
+            await navigator.clipboard.writeText(text);
+            this.showToast(`${birds.length} species copied to clipboard`);
+        } catch (error) {
+            // Fallback for older browsers
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-9999px';
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                this.showToast(`${birds.length} species copied to clipboard`);
+            } catch (e) {
+                this.showToast('Could not copy to clipboard', 'error');
+            }
+            document.body.removeChild(textArea);
+        }
+    }
+
+    /**
+     * Show a toast notification
+     */
+    showToast(message, type = 'success') {
+        // Remove any existing toasts
+        const existing = document.querySelector('.toast-notification');
+        if (existing) existing.remove();
+
+        const toast = document.createElement('div');
+        toast.className = `toast-notification toast-${type}`;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+
+        // Trigger animation
+        requestAnimationFrame(() => {
+            toast.classList.add('show');
+        });
+
+        // Remove after 3 seconds
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    /**
+     * Render favorite hotspots section
+     */
+    renderFavoriteHotspots() {
+        const favorites = storage.getFavoriteHotspots();
+        const container = this.elements.favoriteHotspotsList;
+        const section = this.elements.favoriteHotspotsSection;
+
+        if (!container || !section) return;
+
+        // Clear existing content
+        clearElement(container);
+
+        if (favorites.length === 0) {
+            section.classList.add('hidden');
+            return;
+        }
+
+        section.classList.remove('hidden');
+
+        // Create list items
+        favorites.forEach(fav => {
+            const item = document.createElement('div');
+            item.className = 'favorite-hotspot-item';
+            item.dataset.locId = fav.locId;
+
+            const info = document.createElement('a');
+            info.className = 'favorite-hotspot-info';
+            info.href = `https://ebird.org/hotspot/${fav.locId}`;
+            info.target = '_blank';
+            info.rel = 'noopener noreferrer';
+
+            const name = document.createElement('span');
+            name.className = 'favorite-hotspot-name';
+            name.textContent = fav.name;
+
+            info.appendChild(name);
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'favorite-hotspot-delete';
+            deleteBtn.title = 'Remove from favorites';
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                storage.removeFavoriteHotspot(fav.locId);
+                this.renderFavoriteHotspots();
+                // Update any visible hotspot cards
+                const starBtn = document.querySelector(`.favorite-hotspot-btn[data-loc-id="${fav.locId}"]`);
+                if (starBtn) starBtn.classList.remove('is-favorite');
+            });
+
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.setAttribute('viewBox', '0 0 24 24');
+            svg.setAttribute('width', '16');
+            svg.setAttribute('height', '16');
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('fill', 'currentColor');
+            path.setAttribute('d', 'M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z');
+            svg.appendChild(path);
+            deleteBtn.appendChild(svg);
+
+            item.appendChild(info);
+            item.appendChild(deleteBtn);
+            container.appendChild(item);
+        });
     }
 
     /**
@@ -1333,6 +1568,9 @@ class BirdingHotspotsApp {
             // Display results on screen
             this.updateLoading('Preparing results display...', 90);
             this.displayResults(this.currentResults);
+
+            // Save to recent searches
+            this.saveRecentSearch(origin);
 
             this.hideLoading();
 
@@ -3519,6 +3757,40 @@ class BirdingHotspotsApp {
     createHotspotCard(hotspot, number, origin) {
         const card = document.createElement('article');
         card.className = 'hotspot-card';
+        card.style.position = 'relative'; // For absolute positioning of star button
+
+        // Favorite/Star button
+        const favoriteBtn = document.createElement('button');
+        favoriteBtn.className = 'favorite-hotspot-btn';
+        favoriteBtn.dataset.locId = hotspot.locId;
+        favoriteBtn.setAttribute('aria-label', 'Add to favorites');
+        if (storage.isFavoriteHotspot(hotspot.locId)) {
+            favoriteBtn.classList.add('is-favorite');
+            favoriteBtn.setAttribute('aria-label', 'Remove from favorites');
+        }
+
+        const starSvgBtn = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        starSvgBtn.setAttribute('viewBox', '0 0 24 24');
+        const starPathBtn = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        starPathBtn.setAttribute('d', 'M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z');
+        starSvgBtn.appendChild(starPathBtn);
+        favoriteBtn.appendChild(starSvgBtn);
+
+        favoriteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isFavorite = storage.toggleFavoriteHotspot({
+                locId: hotspot.locId,
+                name: hotspot.locName || hotspot.name,
+                lat: hotspot.lat,
+                lng: hotspot.lng
+            });
+            favoriteBtn.classList.toggle('is-favorite', isFavorite);
+            favoriteBtn.setAttribute('aria-label', isFavorite ? 'Remove from favorites' : 'Add to favorites');
+            this.renderFavoriteHotspots();
+            this.showToast(isFavorite ? 'Added to favorites' : 'Removed from favorites');
+        });
+
+        card.appendChild(favoriteBtn);
 
         const distanceText = formatDistance(hotspot.distance);
         const directionsUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin.lat},${origin.lng}&destination=${hotspot.lat},${hotspot.lng}`;
@@ -3702,6 +3974,36 @@ class BirdingHotspotsApp {
 
         const speciesList = document.createElement('div');
         speciesList.className = 'species-list hidden';
+
+        // Copy button for species list
+        const copyBtnContainer = document.createElement('div');
+        copyBtnContainer.className = 'copy-species-container';
+
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'copy-species-btn';
+        copyBtn.dataset.hotspotId = hotspot.locId;
+        copyBtn.dataset.hotspotName = hotspot.locName;
+
+        const copyIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        copyIcon.setAttribute('viewBox', '0 0 24 24');
+        copyIcon.setAttribute('width', '14');
+        copyIcon.setAttribute('height', '14');
+        const copyPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        copyPath.setAttribute('fill', 'currentColor');
+        copyPath.setAttribute('d', 'M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z');
+        copyIcon.appendChild(copyPath);
+
+        const copyText = document.createElement('span');
+        copyText.textContent = 'Copy List';
+
+        copyBtn.appendChild(copyIcon);
+        copyBtn.appendChild(copyText);
+        copyBtnContainer.appendChild(copyBtn);
+
+        // Store birds data for copy function
+        copyBtn.addEventListener('click', () => this.copySpeciesList(hotspot.locName, hotspot.birds));
+
+        speciesList.appendChild(copyBtnContainer);
 
         const speciesGrid = document.createElement('ul');
         speciesGrid.className = 'species-grid';
