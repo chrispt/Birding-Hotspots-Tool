@@ -144,7 +144,8 @@ class BirdingHotspotsApp {
             useCurrentLocationEnd: document.getElementById('useCurrentLocationEnd'),
             routeMaxDetour: document.getElementById('routeMaxDetour'),
             routeMaxDetourValue: document.getElementById('routeMaxDetourValue'),
-            routeTargetSpecies: document.getElementById('routeTargetSpecies'),
+            routeTargetSpeciesInput: document.getElementById('routeTargetSpeciesInput'),
+            routeTargetSpeciesDropdown: document.getElementById('routeTargetSpeciesDropdown'),
             routeTargetSpeciesTags: document.getElementById('routeTargetSpeciesTags'),
             liferOptimizeSection: document.getElementById('liferOptimizeSection'),
             liferOptimizeMode: document.getElementById('liferOptimizeMode'),
@@ -384,6 +385,36 @@ class BirdingHotspotsApp {
         this.elements.routeMaxDetour.addEventListener('input', () => {
             this.elements.routeMaxDetourValue.textContent = this.elements.routeMaxDetour.value;
         });
+
+        // Route target species autocomplete
+        if (this.elements.routeTargetSpeciesInput) {
+            this.elements.routeTargetSpeciesInput.addEventListener('input', () => this.handleRouteTargetSpeciesInput());
+            this.elements.routeTargetSpeciesInput.addEventListener('focus', () => this.handleRouteTargetSpeciesFocus());
+            this.elements.routeTargetSpeciesInput.addEventListener('keydown', (e) => this.handleRouteTargetSpeciesKeyboard(e));
+
+            // Click outside to close dropdown
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.target-species-input-container')) {
+                    this.hideRouteTargetSpeciesDropdown();
+                }
+            });
+
+            // Event delegation for dropdown items
+            this.elements.routeTargetSpeciesDropdown.addEventListener('click', (e) => {
+                const option = e.target.closest('.species-option');
+                if (option) {
+                    const species = {
+                        speciesCode: option.dataset.code,
+                        commonName: option.dataset.name,
+                        scientificName: option.dataset.scientific
+                    };
+                    this.selectRouteTargetSpecies(species);
+                }
+            });
+        }
+
+        // Initialize route target species storage
+        this.routeTargetSpeciesList = [];
 
         // Species search input
         this.elements.speciesSearchInput.addEventListener('input', () => this.handleSpeciesSearchInput());
@@ -657,6 +688,13 @@ class BirdingHotspotsApp {
         this.routeStartAddress = null;
         this.routeEndAddressText = null;
         this.currentRouteHotspots = [];
+
+        // Clear target species
+        this.routeTargetSpeciesList = [];
+        this.renderRouteTargetSpeciesTags();
+        if (this.elements.routeTargetSpeciesInput) {
+            this.elements.routeTargetSpeciesInput.value = '';
+        }
 
         // Hide results section
         this.elements.resultsSection.classList.add('hidden');
@@ -2707,6 +2745,275 @@ class BirdingHotspotsApp {
         this.elements.speciesSearchInput.focus();
     }
 
+    // ==========================================
+    // Route Target Species Autocomplete Methods
+    // ==========================================
+
+    /**
+     * Handle route target species input change
+     */
+    handleRouteTargetSpeciesInput() {
+        clearTimeout(this.routeTargetSpeciesDebounceTimer);
+
+        const query = this.elements.routeTargetSpeciesInput.value.trim();
+
+        if (query.length < 2) {
+            this.hideRouteTargetSpeciesDropdown();
+            return;
+        }
+
+        // Debounce search
+        this.routeTargetSpeciesDebounceTimer = setTimeout(() => {
+            this.performRouteTargetSpeciesSearch(query);
+        }, 200);
+    }
+
+    /**
+     * Handle route target species input focus
+     */
+    async handleRouteTargetSpeciesFocus() {
+        // Initialize species search if not already done
+        if (!this.speciesSearch) {
+            const apiKey = this.elements.apiKey.value.trim();
+            if (!apiKey) {
+                this.showError('Please enter your eBird API key first');
+                return;
+            }
+            this.speciesSearch = new SpeciesSearch(new EBirdAPI(apiKey));
+            this.elements.routeTargetSpeciesInput.placeholder = 'Loading species data...';
+            try {
+                await this.speciesSearch.loadTaxonomy();
+                this.elements.routeTargetSpeciesInput.placeholder = 'Start typing a bird name...';
+            } catch (e) {
+                console.error('Failed to load taxonomy:', e);
+                this.elements.routeTargetSpeciesInput.placeholder = 'Failed to load species data';
+                return;
+            }
+        }
+
+        const query = this.elements.routeTargetSpeciesInput.value.trim();
+        if (query.length >= 2 && this.speciesSearch?.isReady()) {
+            this.performRouteTargetSpeciesSearch(query);
+        }
+    }
+
+    /**
+     * Perform species search for route target species
+     * @param {string} query - Search query
+     */
+    performRouteTargetSpeciesSearch(query) {
+        if (!this.speciesSearch?.isReady()) {
+            this.showRouteTargetSpeciesDropdownMessage('Loading species data...');
+            return;
+        }
+
+        const results = this.speciesSearch.searchSpecies(query, 8);
+
+        // Filter out already selected species
+        const filteredResults = results.filter(species =>
+            !this.routeTargetSpeciesList.some(s => s.speciesCode === species.speciesCode)
+        );
+
+        if (filteredResults.length === 0) {
+            this.showRouteTargetSpeciesDropdownMessage(
+                results.length > 0 ? 'Species already selected' : 'No species found'
+            );
+            return;
+        }
+
+        this.renderRouteTargetSpeciesDropdown(filteredResults);
+    }
+
+    /**
+     * Render route target species dropdown
+     * @param {Array} results - Search results
+     */
+    renderRouteTargetSpeciesDropdown(results) {
+        const dropdown = this.elements.routeTargetSpeciesDropdown;
+        clearElement(dropdown);
+
+        results.forEach(species => {
+            const option = document.createElement('div');
+            option.className = 'species-option';
+            option.dataset.code = species.speciesCode;
+            option.dataset.name = species.commonName;
+            option.dataset.scientific = species.scientificName;
+
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'species-option-name';
+            nameSpan.textContent = species.commonName;
+
+            const scientificSpan = document.createElement('span');
+            scientificSpan.className = 'species-option-scientific';
+            scientificSpan.textContent = species.scientificName;
+
+            option.appendChild(nameSpan);
+            option.appendChild(scientificSpan);
+
+            dropdown.appendChild(option);
+        });
+
+        dropdown.classList.remove('hidden');
+        this.routeTargetSpeciesHighlightIndex = -1;
+    }
+
+    /**
+     * Show message in route target species dropdown
+     * @param {string} message - Message to show
+     */
+    showRouteTargetSpeciesDropdownMessage(message) {
+        const dropdown = this.elements.routeTargetSpeciesDropdown;
+        clearElement(dropdown);
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'species-dropdown-empty';
+        messageDiv.textContent = message;
+        dropdown.appendChild(messageDiv);
+        dropdown.classList.remove('hidden');
+    }
+
+    /**
+     * Hide route target species dropdown
+     */
+    hideRouteTargetSpeciesDropdown() {
+        if (this.elements.routeTargetSpeciesDropdown) {
+            this.elements.routeTargetSpeciesDropdown.classList.add('hidden');
+        }
+        this.routeTargetSpeciesHighlightIndex = -1;
+    }
+
+    /**
+     * Handle keyboard navigation for route target species dropdown
+     * @param {KeyboardEvent} e - Keyboard event
+     */
+    handleRouteTargetSpeciesKeyboard(e) {
+        const dropdown = this.elements.routeTargetSpeciesDropdown;
+        if (!dropdown || dropdown.classList.contains('hidden')) return;
+
+        const options = dropdown.querySelectorAll('.species-option');
+        if (options.length === 0) return;
+
+        switch (e.key) {
+            case 'ArrowDown':
+                e.preventDefault();
+                this.routeTargetSpeciesHighlightIndex = Math.min(
+                    (this.routeTargetSpeciesHighlightIndex ?? -1) + 1,
+                    options.length - 1
+                );
+                this.updateRouteTargetSpeciesDropdownHighlight(options);
+                break;
+
+            case 'ArrowUp':
+                e.preventDefault();
+                this.routeTargetSpeciesHighlightIndex = Math.max(
+                    (this.routeTargetSpeciesHighlightIndex ?? 0) - 1,
+                    0
+                );
+                this.updateRouteTargetSpeciesDropdownHighlight(options);
+                break;
+
+            case 'Enter':
+                e.preventDefault();
+                if (this.routeTargetSpeciesHighlightIndex >= 0 && this.routeTargetSpeciesHighlightIndex < options.length) {
+                    const option = options[this.routeTargetSpeciesHighlightIndex];
+                    const species = {
+                        speciesCode: option.dataset.code,
+                        commonName: option.dataset.name,
+                        scientificName: option.dataset.scientific
+                    };
+                    this.selectRouteTargetSpecies(species);
+                }
+                break;
+
+            case 'Escape':
+                e.preventDefault();
+                this.hideRouteTargetSpeciesDropdown();
+                break;
+        }
+    }
+
+    /**
+     * Update visual highlight for route target species dropdown
+     * @param {NodeList} options - Dropdown option elements
+     */
+    updateRouteTargetSpeciesDropdownHighlight(options) {
+        options.forEach((opt, i) => {
+            if (i === this.routeTargetSpeciesHighlightIndex) {
+                opt.classList.add('highlighted');
+                opt.scrollIntoView({ block: 'nearest' });
+            } else {
+                opt.classList.remove('highlighted');
+            }
+        });
+    }
+
+    /**
+     * Select a route target species and add as tag
+     * @param {Object} species - Selected species data
+     */
+    selectRouteTargetSpecies(species) {
+        // Add to list if not already present
+        if (!this.routeTargetSpeciesList.some(s => s.speciesCode === species.speciesCode)) {
+            this.routeTargetSpeciesList.push(species);
+            this.renderRouteTargetSpeciesTags();
+        }
+
+        // Clear input and hide dropdown
+        this.elements.routeTargetSpeciesInput.value = '';
+        this.hideRouteTargetSpeciesDropdown();
+        this.elements.routeTargetSpeciesInput.focus();
+    }
+
+    /**
+     * Remove a route target species tag
+     * @param {string} speciesCode - Species code to remove
+     */
+    removeRouteTargetSpecies(speciesCode) {
+        this.routeTargetSpeciesList = this.routeTargetSpeciesList.filter(
+            s => s.speciesCode !== speciesCode
+        );
+        this.renderRouteTargetSpeciesTags();
+    }
+
+    /**
+     * Render route target species tags
+     */
+    renderRouteTargetSpeciesTags() {
+        const container = this.elements.routeTargetSpeciesTags;
+        clearElement(container);
+
+        this.routeTargetSpeciesList.forEach(species => {
+            const tag = document.createElement('span');
+            tag.className = 'target-species-tag';
+            tag.dataset.code = species.speciesCode;
+
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'target-species-tag-name';
+            nameSpan.textContent = species.commonName;
+
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'target-species-tag-remove';
+            removeBtn.setAttribute('aria-label', `Remove ${species.commonName}`);
+            removeBtn.textContent = '\u00D7'; // × symbol
+            removeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.removeRouteTargetSpecies(species.speciesCode);
+            });
+
+            tag.appendChild(nameSpan);
+            tag.appendChild(removeBtn);
+            container.appendChild(tag);
+        });
+    }
+
+    /**
+     * Clear all route target species
+     */
+    clearRouteTargetSpecies() {
+        this.routeTargetSpeciesList = [];
+        this.renderRouteTargetSpeciesTags();
+    }
+
     /**
      * Get search origin coordinates (shared by hotspot and species search)
      * @returns {Promise<Object|null>} Origin object with lat, lng, address or null if failed
@@ -2888,11 +3195,10 @@ class BirdingHotspotsApp {
             const lifeListCodes = this.lifeListService.getLifeListCodes();
             const lifeListNames = this.lifeListService.getLifeListNames();
 
-            // Parse target species from input
-            const targetSpeciesInput = this.elements.routeTargetSpecies?.value?.trim() || '';
-            this.routeTargetSpecies = targetSpeciesInput
-                ? targetSpeciesInput.split(',').map(s => s.trim().toLowerCase()).filter(s => s.length > 0)
-                : [];
+            // Get target species codes from validated list
+            this.routeTargetSpeciesCodes = this.routeTargetSpeciesList?.map(s => s.speciesCode) || [];
+            // Also keep names for display purposes
+            this.routeTargetSpeciesNames = this.routeTargetSpeciesList?.map(s => s.commonName.toLowerCase()) || [];
 
             this.updateLoading('Finding hotspots along route...', 30);
 
@@ -3180,11 +3486,10 @@ class BirdingHotspotsApp {
         const hasNotable = notableBirds.length > 0;
         const hasLifers = this.lifeListService.hasLifeList() && liferBirds.length > 0;
 
-        // Check for target species matches
-        const targetSpecies = this.routeTargetSpecies || [];
+        // Check for target species matches (by species code for reliable matching)
+        const targetSpeciesCodes = this.routeTargetSpeciesCodes || [];
         const matchedTargets = hotspot.birds ? hotspot.birds.filter(bird => {
-            const birdName = bird.comName.toLowerCase();
-            return targetSpecies.some(target => birdName.includes(target));
+            return targetSpeciesCodes.includes(bird.speciesCode);
         }) : [];
         const hasTargets = matchedTargets.length > 0;
 

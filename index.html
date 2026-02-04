@@ -288,10 +288,13 @@
 
                 <!-- Target Species Filter -->
                 <div class="input-group route-option">
-                    <label for="routeTargetSpecies" class="input-label has-tooltip tooltip-left" data-tooltip="Enter species names you want to find. Stops with these species will be highlighted.">
+                    <label for="routeTargetSpeciesInput" class="input-label has-tooltip tooltip-left" data-tooltip="Search for species you want to find along your route. Stops with these species will be highlighted.">
                         Target Species (optional)
                     </label>
-                    <input type="text" id="routeTargetSpecies" class="text-input" placeholder="e.g., Painted Bunting, Wood Stork" aria-label="Target species to search for">
+                    <div class="target-species-input-container">
+                        <input type="text" id="routeTargetSpeciesInput" class="text-input" placeholder="Start typing a bird name..." autocomplete="off" aria-label="Search for target species">
+                        <div id="routeTargetSpeciesDropdown" class="species-dropdown hidden"></div>
+                    </div>
                     <div id="routeTargetSpeciesTags" class="target-species-tags"></div>
                 </div>
 

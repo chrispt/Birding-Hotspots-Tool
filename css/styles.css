@@ -2977,6 +2977,26 @@ details.about-section[open] .about-chevron {
     border-top: 1px solid var(--border-color);
 }
 
+/* Target Species Input Container */
+.target-species-input-container {
+    position: relative;
+}
+
+.target-species-input-container .species-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 200;
+    max-height: 250px;
+    overflow-y: auto;
+    background: var(--card-bg);
+    border: 2px solid var(--border-color);
+    border-top: none;
+    border-radius: 0 0 var(--radius) var(--radius);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
 /* Target Species Tags */
 .target-species-tags {
     display: flex;
@@ -2987,6 +3007,46 @@ details.about-section[open] .about-chevron {
 
 .target-species-tags:empty {
     display: none;
+}
+
+.target-species-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px 4px 12px;
+    background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+    color: white;
+    border-radius: 16px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.target-species-tag-name {
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.target-species-tag-remove {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    border: none;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    transition: background-color var(--transition);
+}
+
+.target-species-tag-remove:hover {
+    background: rgba(255, 255, 255, 0.4);
 }
 
 /* Species Search Results */
