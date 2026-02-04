@@ -4484,7 +4484,7 @@ details.about-section[open] .about-chevron {
     padding: 0 20px 16px;
     overflow: hidden;
     transition: max-height 0.3s ease, padding 0.3s ease, opacity 0.2s ease;
-    max-height: 500px;
+    max-height: 1500px;
     opacity: 1;
 }
 
