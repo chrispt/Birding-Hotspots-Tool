@@ -3760,7 +3760,6 @@ class BirdingHotspotsApp {
     createHotspotCard(hotspot, number, origin) {
         const card = document.createElement('article');
         card.className = 'hotspot-card';
-        card.style.position = 'relative'; // For absolute positioning of star button
 
         // Favorite/Star button
         const favoriteBtn = document.createElement('button');

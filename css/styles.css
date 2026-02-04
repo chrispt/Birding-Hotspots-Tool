@@ -1604,6 +1604,7 @@ details.about-section[open] .about-chevron {
 }
 
 .hotspot-card {
+    position: relative;
     background: var(--card-bg);
     border-radius: var(--radius-large);
     box-shadow: var(--shadow);
@@ -2024,12 +2025,25 @@ details.about-section[open] .about-chevron {
     .hotspot-header {
         flex-direction: column;
         gap: 12px;
+        padding-right: 48px; /* Less padding needed on mobile column layout */
     }
 
     .hotspot-number {
         width: 32px;
         height: 32px;
         font-size: 0.9rem;
+    }
+
+    .favorite-hotspot-btn {
+        top: 12px;
+        right: 12px;
+        width: 26px;
+        height: 26px;
+    }
+
+    .favorite-hotspot-btn svg {
+        width: 14px;
+        height: 14px;
     }
 
     .species-grid {
