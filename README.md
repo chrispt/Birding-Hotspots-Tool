@@ -8,7 +8,6 @@ A web-based tool to discover the best birding locations near any address. Enter 
 - **Current Location**: Use your device's GPS to automatically detect your location
 - **Flexible Sorting**: Sort hotspots by most species observed, closest distance, or shortest drive time
 - **Hotspot Quality Indicators**: See total species ever recorded, visit counts, and quality badges (Well-Established/Active/New) for each hotspot
-- **Regional Activity Dashboard**: View recent checklist activity and trending hotspots in your search area
 - **Route Planning**: Find birding hotspots along a driving route between two locations
 - **Itinerary Builder**: Create optimized multi-stop birding itineraries
 - **Life List Integration**: Import your eBird life list to highlight potential lifers at each hotspot
