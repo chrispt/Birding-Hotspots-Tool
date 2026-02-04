@@ -6,7 +6,13 @@ A web-based tool to discover the best birding locations near any address. Enter 
 
 - **Address or GPS Input**: Enter any address or GPS coordinates to find birding hotspots within 31 miles
 - **Current Location**: Use your device's GPS to automatically detect your location
-- **Flexible Sorting**: Sort hotspots by most species observed or by closest distance
+- **Flexible Sorting**: Sort hotspots by most species observed, closest distance, or shortest drive time
+- **Hotspot Quality Indicators**: See total species ever recorded, visit counts, and quality badges (Well-Established/Active/New) for each hotspot
+- **Regional Activity Dashboard**: View recent checklist activity and trending hotspots in your search area
+- **Top Birders Leaderboard**: See the top 10 local observers and their species counts for the day
+- **Route Planning**: Find birding hotspots along a driving route between two locations
+- **Itinerary Builder**: Create optimized multi-stop birding itineraries
+- **Life List Integration**: Import your eBird life list to highlight potential lifers at each hotspot
 - **PDF Report Generation**: Download a comprehensive PDF report including:
   - Visual map showing all hotspot locations
   - Species count for each hotspot (last 30 days)
@@ -14,8 +20,11 @@ A web-based tool to discover the best birding locations near any address. Enter 
   - Google Maps directions links
   - QR codes linking to eBird hotspot pages
   - Complete bird species lists with rare/notable species highlighted
+- **GPX Export**: Export waypoints for use in GPS devices
 - **Saved Locations**: Save frequently-used starting locations for quick access
 - **Notable Species**: Rare and uncommon species are automatically highlighted
+- **Migration Alerts**: Seasonal migration information based on time of year
+- **Weather Integration**: Current conditions and birding weather scores for each hotspot
 
 ## Getting Started
 
@@ -79,8 +88,10 @@ Then visit `http://localhost:8000`
 
 ### APIs Used
 
-- **eBird API v2**: Bird observation data from Cornell Lab of Ornithology
-- **Google Maps Geocoding API**: Address geocoding and reverse geocoding for accurate location resolution
+- **eBird API v2**: Bird observation data, hotspot info, regional activity, and leaderboards from Cornell Lab of Ornithology
+- **LocationIQ**: Address geocoding and reverse geocoding
+- **OSRM (Open Source Routing Machine)**: Driving routes and distance calculations
+- **Open-Meteo**: Weather data and conditions
 
 ### Libraries
 
