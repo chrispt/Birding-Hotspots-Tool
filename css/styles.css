@@ -1621,6 +1621,7 @@ details.about-section[open] .about-chevron {
     align-items: flex-start;
     gap: 16px;
     padding: 20px;
+    padding-right: 52px; /* Space for star button */
     background: linear-gradient(135deg, rgba(46, 125, 50, 0.05) 0%, rgba(139, 195, 74, 0.05) 100%);
     border-bottom: 1px solid var(--border-color);
 }
@@ -1904,32 +1905,33 @@ details.about-section[open] .about-chevron {
 /* Favorite Hotspot Button on Cards */
 .favorite-hotspot-btn {
     position: absolute;
-    top: 12px;
-    right: 12px;
+    top: 16px;
+    right: 16px;
     background: white;
     border: 1px solid var(--border-color);
     border-radius: 50%;
-    width: 32px;
-    height: 32px;
+    width: 28px;
+    height: 28px;
     padding: 0;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all var(--transition);
-    z-index: 1;
+    z-index: 2;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.favorite-hotspot-btn svg {
+    width: 16px;
+    height: 16px;
+    fill: var(--border-color);
+    transition: fill var(--transition);
 }
 
 .favorite-hotspot-btn:hover {
     border-color: var(--accent-color);
     background: #FFF8E1;
-}
-
-.favorite-hotspot-btn svg {
-    width: 18px;
-    height: 18px;
-    fill: var(--border-color);
-    transition: fill var(--transition);
 }
 
 .favorite-hotspot-btn:hover svg {
