@@ -16,7 +16,7 @@ import { getDrivingRoutes, getRouteThrough } from './api/routing.js';
 import { getWeatherForLocations, getOverallBirdingConditions, getBirdingConditionScore } from './api/weather.js';
 import { SpeciesSearch } from './services/species-search.js';
 import { getSeasonalInsights, getOptimalBirdingTimes, getCurrentSeason } from './services/seasonal-insights.js';
-import { buildItinerary, formatItineraryDuration, formatItineraryTime } from './services/itinerary-builder.js';
+import { buildItinerary, formatItineraryDuration, formatItineraryTime, calculateUniquenessScore, getSeenSpeciesFromHotspots } from './services/itinerary-builder.js';
 import { generateGPX, downloadGPX } from './services/gpx-generator.js';
 import { LifeListService } from './services/life-list.js';
 
@@ -144,6 +144,10 @@ class BirdingHotspotsApp {
             useCurrentLocationEnd: document.getElementById('useCurrentLocationEnd'),
             routeMaxDetour: document.getElementById('routeMaxDetour'),
             routeMaxDetourValue: document.getElementById('routeMaxDetourValue'),
+            routeTargetSpecies: document.getElementById('routeTargetSpecies'),
+            routeTargetSpeciesTags: document.getElementById('routeTargetSpeciesTags'),
+            liferOptimizeSection: document.getElementById('liferOptimizeSection'),
+            liferOptimizeMode: document.getElementById('liferOptimizeMode'),
             // Route preview elements
             routePreviewSection: document.getElementById('routePreviewSection'),
             routePreviewMap: document.getElementById('routePreviewMap'),
@@ -1005,6 +1009,15 @@ class BirdingHotspotsApp {
         const count = this.lifeListService.getCount();
         this.elements.lifeListCount.textContent = `${count} species`;
         this.elements.clearLifeList.disabled = count === 0;
+
+        // Show/hide lifer optimize section based on life list
+        if (this.elements.liferOptimizeSection) {
+            if (count > 0) {
+                this.elements.liferOptimizeSection.classList.remove('hidden');
+            } else {
+                this.elements.liferOptimizeSection.classList.add('hidden');
+            }
+        }
     }
 
     /**
@@ -2856,6 +2869,33 @@ class BirdingHotspotsApp {
             // Search radius should cover the route - use half the distance plus a buffer
             const searchRadius = Math.min(Math.max(routeDistance / 2 + 10, 20), 50); // Between 20-50 km
 
+            // Fetch notable species in the route area for key bird highlighting
+            this.updateLoading('Fetching notable species...', 25);
+            let notableSpecies = new Set();
+            try {
+                const notable = await this.ebirdApi.getNotableObservationsNearby(
+                    midLat,
+                    midLng,
+                    searchRadius,
+                    CONFIG.DEFAULT_DAYS_BACK
+                );
+                notableSpecies = new Set(notable.map(o => o.speciesCode));
+            } catch (e) {
+                console.warn('Could not fetch notable species for route:', e);
+            }
+
+            // Get life list codes for lifer detection
+            const lifeListCodes = this.lifeListService.getLifeListCodes();
+            const lifeListNames = this.lifeListService.getLifeListNames();
+
+            // Parse target species from input
+            const targetSpeciesInput = this.elements.routeTargetSpecies?.value?.trim() || '';
+            this.routeTargetSpecies = targetSpeciesInput
+                ? targetSpeciesInput.split(',').map(s => s.trim().toLowerCase()).filter(s => s.length > 0)
+                : [];
+
+            this.updateLoading('Finding hotspots along route...', 30);
+
             // Fetch hotspots near the midpoint
             let hotspots = await this.ebirdApi.getNearbyHotspots(
                 midLat,
@@ -2914,7 +2954,7 @@ class BirdingHotspotsApp {
                         hotspots[i].locId,
                         CONFIG.DEFAULT_DAYS_BACK
                     );
-                    const birds = processObservations(observations);
+                    const birds = processObservations(observations, notableSpecies, lifeListCodes, lifeListNames);
 
                     enrichedHotspots.push({
                         ...hotspots[i],
@@ -3064,8 +3104,28 @@ class BirdingHotspotsApp {
         // Show the section
         this.elements.routeHotspotsSection.classList.remove('hidden');
 
+        // Auto-select stops with lifers if lifer optimize mode is enabled
+        if (this.elements.liferOptimizeMode?.checked && this.lifeListService.hasLifeList()) {
+            const cards = this.elements.routeHotspotsList.querySelectorAll('.route-hotspot-card');
+            cards.forEach((card, index) => {
+                const hotspot = hotspots[index];
+                const hasLifers = hotspot.birds && hotspot.birds.some(b => b.isLifer);
+                if (hasLifers) {
+                    const input = card.querySelector('input');
+                    if (input && !input.checked) {
+                        input.checked = true;
+                        card.classList.add('selected');
+                        this.updateMapMarkerStyle(index, true);
+                    }
+                }
+            });
+        }
+
         // Update selected count
         this.updateRouteHotspotsCount();
+
+        // Update diversity scores after any auto-selection
+        this.updateRouteDiversityScores();
 
         // Scroll to section
         this.elements.routeHotspotsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -3114,6 +3174,107 @@ class BirdingHotspotsApp {
         info.appendChild(name);
         info.appendChild(details);
 
+        // Check for key birds (notable + lifers)
+        const notableBirds = hotspot.birds ? hotspot.birds.filter(b => b.isNotable) : [];
+        const liferBirds = hotspot.birds ? hotspot.birds.filter(b => b.isLifer) : [];
+        const hasNotable = notableBirds.length > 0;
+        const hasLifers = this.lifeListService.hasLifeList() && liferBirds.length > 0;
+
+        // Check for target species matches
+        const targetSpecies = this.routeTargetSpecies || [];
+        const matchedTargets = hotspot.birds ? hotspot.birds.filter(bird => {
+            const birdName = bird.comName.toLowerCase();
+            return targetSpecies.some(target => birdName.includes(target));
+        }) : [];
+        const hasTargets = matchedTargets.length > 0;
+
+        // Add badges to card if applicable
+        if (hasNotable || hasLifers || hasTargets) {
+            const badges = document.createElement('div');
+            badges.className = 'route-hotspot-badges';
+
+            if (hasTargets) {
+                const targetBadge = document.createElement('span');
+                targetBadge.className = 'route-target-badge';
+                targetBadge.setAttribute('aria-label', `${matchedTargets.length} target species found`);
+                targetBadge.textContent = '\u2691 TARGET';
+                badges.appendChild(targetBadge);
+            }
+
+            if (hasNotable) {
+                const rareBadge = document.createElement('span');
+                rareBadge.className = 'route-rare-badge';
+                rareBadge.setAttribute('aria-label', `${notableBirds.length} rare species`);
+                rareBadge.appendChild(createSVGIcon('fire', 12));
+                rareBadge.appendChild(document.createTextNode(` RARE`));
+                badges.appendChild(rareBadge);
+            }
+
+            if (hasLifers) {
+                const liferBadge = document.createElement('span');
+                liferBadge.className = 'route-lifer-badge';
+                liferBadge.setAttribute('aria-label', `${liferBirds.length} potential lifers`);
+                liferBadge.textContent = '\u2605 LIFER';
+                badges.appendChild(liferBadge);
+            }
+
+            info.appendChild(badges);
+        }
+
+        // Add key birds section (targets first, then notable, then lifers)
+        // Mark matched targets for styling
+        const targetsForDisplay = matchedTargets.map(b => ({ ...b, isTarget: true }));
+        const notableNotTarget = notableBirds.filter(b => !matchedTargets.some(t => t.speciesCode === b.speciesCode));
+        const liferNotOther = liferBirds.filter(b =>
+            !b.isNotable && !matchedTargets.some(t => t.speciesCode === b.speciesCode)
+        );
+        const keyBirds = [...targetsForDisplay, ...notableNotTarget, ...liferNotOther];
+
+        if (keyBirds.length > 0) {
+            const keyBirdsSection = document.createElement('div');
+            keyBirdsSection.className = 'route-key-birds';
+
+            const label = document.createElement('span');
+            label.className = 'route-key-birds-label';
+            label.textContent = 'Key Birds:';
+            keyBirdsSection.appendChild(label);
+
+            const birdsList = document.createElement('ul');
+            birdsList.className = 'route-key-birds-list';
+
+            // Show first 3 key birds
+            const displayBirds = keyBirds.slice(0, 3);
+            displayBirds.forEach(bird => {
+                const li = document.createElement('li');
+                li.className = 'route-key-bird';
+                if (bird.isTarget) li.classList.add('target');
+                if (bird.isNotable) li.classList.add('notable');
+                if (bird.isLifer) li.classList.add('lifer');
+
+                const prefix = bird.isTarget ? '\u2691 ' : (bird.isNotable ? '* ' : (bird.isLifer ? '\u2605 ' : ''));
+                const suffix = bird.isNotable && bird.lastSeen ? ` (${this.formatRelativeDate(bird.lastSeen)})` : '';
+                li.textContent = prefix + bird.comName + suffix;
+                birdsList.appendChild(li);
+            });
+
+            keyBirdsSection.appendChild(birdsList);
+
+            // Show "more" indicator if needed
+            if (keyBirds.length > 3) {
+                const more = document.createElement('span');
+                more.className = 'route-key-birds-more';
+                more.textContent = `+${keyBirds.length - 3} more key birds`;
+                keyBirdsSection.appendChild(more);
+            }
+
+            info.appendChild(keyBirdsSection);
+        }
+
+        // Add diversity indicator (will be populated when selections change)
+        const diversityIndicator = document.createElement('div');
+        diversityIndicator.className = 'route-diversity-indicator';
+        info.appendChild(diversityIndicator);
+
         card.appendChild(checkbox);
         card.appendChild(info);
 
@@ -3150,6 +3311,57 @@ class BirdingHotspotsApp {
         // Sync with map marker
         this.updateMapMarkerStyle(index, input.checked);
         this.updateRouteHotspotsCount();
+        // Update diversity scores on all cards
+        this.updateRouteDiversityScores();
+    }
+
+    /**
+     * Update diversity scores on all route hotspot cards
+     */
+    updateRouteDiversityScores() {
+        if (!this.routeHotspots || this.routeHotspots.length === 0) return;
+
+        // Get selected hotspots
+        const selectedIndices = [];
+        const cards = this.elements.routeHotspotsList.querySelectorAll('.route-hotspot-card');
+        cards.forEach((card, index) => {
+            const input = card.querySelector('input');
+            if (input && input.checked) {
+                selectedIndices.push(index);
+            }
+        });
+
+        // Get seen species from selected hotspots
+        const selectedHotspots = selectedIndices.map(i => this.routeHotspots[i]);
+        const seenSpecies = getSeenSpeciesFromHotspots(selectedHotspots);
+
+        // Update diversity indicator on each card
+        cards.forEach((card, index) => {
+            const hotspot = this.routeHotspots[index];
+            const diversityEl = card.querySelector('.route-diversity-indicator');
+            const input = card.querySelector('input');
+
+            if (!diversityEl) return;
+
+            if (input && input.checked) {
+                // Selected cards don't show diversity (they contribute to it)
+                diversityEl.textContent = '';
+                diversityEl.className = 'route-diversity-indicator';
+            } else {
+                // Calculate uniqueness score
+                const score = calculateUniquenessScore(hotspot, seenSpecies);
+                if (selectedIndices.length > 0 && score.uniqueCount > 0) {
+                    diversityEl.textContent = `+${score.uniqueCount} unique species`;
+                    diversityEl.className = 'route-diversity-indicator has-unique';
+                } else if (selectedIndices.length > 0 && score.overlapPercent >= 80) {
+                    diversityEl.textContent = `${score.overlapPercent}% overlap`;
+                    diversityEl.className = 'route-diversity-indicator high-overlap';
+                } else {
+                    diversityEl.textContent = '';
+                    diversityEl.className = 'route-diversity-indicator';
+                }
+            }
+        });
     }
 
     /**

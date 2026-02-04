@@ -286,6 +286,25 @@
                 </div>
                 <p class="help-text">We'll find birding hotspots within your detour distance from the driving route</p>
 
+                <!-- Target Species Filter -->
+                <div class="input-group route-option">
+                    <label for="routeTargetSpecies" class="input-label has-tooltip tooltip-left" data-tooltip="Enter species names you want to find. Stops with these species will be highlighted.">
+                        Target Species (optional)
+                    </label>
+                    <input type="text" id="routeTargetSpecies" class="text-input" placeholder="e.g., Painted Bunting, Wood Stork" aria-label="Target species to search for">
+                    <div id="routeTargetSpeciesTags" class="target-species-tags"></div>
+                </div>
+
+                <!-- Lifer Optimization Mode (only shown if life list exists) -->
+                <div id="liferOptimizeSection" class="input-group route-option hidden">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="liferOptimizeMode">
+                        <span class="checkbox-custom"></span>
+                        Optimize for Lifers
+                    </label>
+                    <p class="help-text">Auto-select stops with species not on your life list</p>
+                </div>
+
                 <!-- Route Preview Map (hidden until both addresses validated) -->
                 <div id="routePreviewSection" class="route-preview-section hidden">
                     <div class="route-preview-header">

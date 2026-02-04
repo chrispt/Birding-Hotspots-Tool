@@ -334,6 +334,7 @@
                             <li>Calculates the actual driving route between your locations</li>
                             <li>Searches for eBird hotspots along the entire route corridor</li>
                             <li>Filters hotspots based on your "Max Detour" setting</li>
+                            <li>Displays key birds at each stop to help you choose</li>
                             <li>Creates an optimized itinerary with suggested stops</li>
                         </ol>
                         <p>This ensures you find birding spots along your actual path, not just near the midpoint.</p>
@@ -341,10 +342,51 @@
                 </details>
 
                 <details class="faq-item">
+                    <summary class="faq-question">What do the RARE, LIFER, and TARGET badges mean?</summary>
+                    <div class="faq-answer">
+                        <p>When selecting stops along your route, each hotspot card shows badges indicating key birds:</p>
+                        <ul>
+                            <li><strong>RARE</strong> (orange) - Notable or uncommon species have been recently observed at this hotspot</li>
+                            <li><strong>LIFER</strong> (purple) - Species not on your imported life list are present (potential new life birds)</li>
+                            <li><strong>TARGET</strong> (blue) - Species you specified in the "Target Species" field are present at this stop</li>
+                        </ul>
+                        <p>The "Key Birds" section below each card shows the top 3 highlighted species with their status.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">How do I search for specific target species?</summary>
+                    <div class="faq-answer">
+                        <p>In the route planning form, enter one or more species names in the "Target Species" field, separated by commas. For example: "Painted Bunting, Wood Stork, Roseate Spoonbill".</p>
+                        <p>Hotspots where these species have been recently observed will display a blue "TARGET" badge, and the matching species will be highlighted at the top of the Key Birds list.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">What is the "Optimize for Lifers" option?</summary>
+                    <div class="faq-answer">
+                        <p>When you have a life list imported, the "Optimize for Lifers" checkbox appears in route planning. When enabled, the tool automatically pre-selects all stops where potential lifers (species not on your life list) have been recently observed.</p>
+                        <p>This helps you quickly plan a route focused on adding new species to your life list.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">What does the unique species indicator mean?</summary>
+                    <div class="faq-answer">
+                        <p>When you select stops along your route, unselected stops show a diversity indicator:</p>
+                        <ul>
+                            <li><strong>"+X unique species"</strong> - How many species this stop has that your selected stops don't have</li>
+                            <li><strong>"X% overlap"</strong> - Shown when a stop has mostly the same species as your selected stops (high overlap means less value adding this stop)</li>
+                        </ul>
+                        <p>This helps you choose stops that maximize species diversity and avoid redundant stops with similar bird lists.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
                     <summary class="faq-question">Can I add custom stops to my route?</summary>
                     <div class="faq-answer">
-                        <p>Currently, the tool automatically selects the best hotspots along your route based on species diversity and proximity. Custom stop selection may be added in a future update.</p>
-                        <p>You can adjust how many hotspots are included by changing the "Max Detour" setting.</p>
+                        <p>Yes! After the route search finds hotspots, you can select which ones to include by clicking the checkboxes on each hotspot card or by clicking on map markers. Use the "Select All" or "Deselect All" buttons to quickly manage your selections.</p>
+                        <p>The diversity indicator and key birds display help you make informed decisions about which stops will add the most value to your trip.</p>
                     </div>
                 </details>
 

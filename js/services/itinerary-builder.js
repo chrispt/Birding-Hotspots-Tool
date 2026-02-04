@@ -19,6 +19,56 @@ export function calculateVisitTime(speciesCount) {
 }
 
 /**
+ * Calculate unique species contribution for a hotspot
+ * @param {Object} hotspot - Hotspot with birds array
+ * @param {Set} seenSpecies - Species codes already in selected stops
+ * @returns {Object} Uniqueness score data
+ */
+export function calculateUniquenessScore(hotspot, seenSpecies) {
+    if (!hotspot.birds || hotspot.birds.length === 0) {
+        return {
+            uniqueCount: 0,
+            uniqueNotable: 0,
+            uniqueLifers: 0,
+            overlapPercent: 0,
+            uniqueBirds: []
+        };
+    }
+
+    const uniqueBirds = hotspot.birds.filter(b => !seenSpecies.has(b.speciesCode));
+    const uniqueNotable = uniqueBirds.filter(b => b.isNotable);
+    const uniqueLifers = uniqueBirds.filter(b => b.isLifer);
+    const overlapPercent = hotspot.birds.length > 0
+        ? Math.round((1 - uniqueBirds.length / hotspot.birds.length) * 100)
+        : 0;
+
+    return {
+        uniqueCount: uniqueBirds.length,
+        uniqueNotable: uniqueNotable.length,
+        uniqueLifers: uniqueLifers.length,
+        overlapPercent,
+        uniqueBirds
+    };
+}
+
+/**
+ * Calculate seen species from selected hotspots
+ * @param {Array} selectedHotspots - Array of selected hotspots
+ * @returns {Set} Set of species codes from all selected hotspots
+ */
+export function getSeenSpeciesFromHotspots(selectedHotspots) {
+    const seenSpecies = new Set();
+    selectedHotspots.forEach(hotspot => {
+        if (hotspot.birds) {
+            hotspot.birds.forEach(bird => {
+                seenSpecies.add(bird.speciesCode);
+            });
+        }
+    });
+    return seenSpecies;
+}
+
+/**
  * Score a hotspot for route optimization
  * @param {Object} hotspot - Hotspot data with speciesCount and distance
  * @param {number} maxSpecies - Max species count for normalization

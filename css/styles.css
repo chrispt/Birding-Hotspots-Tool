@@ -1025,6 +1025,119 @@ body {
     fill: currentColor;
 }
 
+/* Route Hotspot Card Badges */
+.route-hotspot-badges {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.route-rare-badge {
+    background: linear-gradient(135deg, #FF5722 0%, #F4511E 100%);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.route-rare-badge svg {
+    width: 12px;
+    height: 12px;
+    fill: currentColor;
+}
+
+.route-lifer-badge {
+    background: linear-gradient(135deg, var(--lifer-highlight) 0%, #7B1FA2 100%);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.route-target-badge {
+    background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+/* Route Key Birds Section */
+.route-key-birds {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--border-color);
+}
+
+.route-key-birds-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.route-key-birds-list {
+    list-style: none;
+    padding: 0;
+    margin: 6px 0 0 0;
+}
+
+.route-key-bird {
+    font-size: 0.85rem;
+    padding: 2px 0;
+    color: var(--text-primary);
+}
+
+.route-key-bird.notable {
+    color: var(--notable-highlight);
+    font-weight: 500;
+}
+
+.route-key-bird.lifer {
+    color: var(--lifer-highlight);
+    font-weight: 500;
+}
+
+.route-key-bird.target {
+    color: #1976D2;
+    font-weight: 500;
+}
+
+.route-key-birds-more {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    font-style: italic;
+    margin-top: 4px;
+    display: block;
+}
+
+/* Route Diversity Indicator */
+.route-diversity-indicator {
+    font-size: 0.8rem;
+    margin-top: 8px;
+    min-height: 1.2em;
+}
+
+.route-diversity-indicator.has-unique {
+    color: var(--primary-color);
+    font-weight: 500;
+}
+
+.route-diversity-indicator.high-overlap {
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
 .route-hotspots-footer {
     display: flex;
     justify-content: space-between;
@@ -2862,6 +2975,18 @@ details.about-section[open] .about-chevron {
     margin-top: 16px;
     padding-top: 16px;
     border-top: 1px solid var(--border-color);
+}
+
+/* Target Species Tags */
+.target-species-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.target-species-tags:empty {
+    display: none;
 }
 
 /* Species Search Results */
