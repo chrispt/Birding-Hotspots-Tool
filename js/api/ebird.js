@@ -243,6 +243,62 @@ export class EBirdAPI {
         });
         return data || [];
     }
+
+    /**
+     * Get detailed information about a specific hotspot
+     * @param {string} locId - eBird location ID (e.g., L123456)
+     * @returns {Promise<Object|null>} Hotspot info object or null if not found
+     */
+    async getHotspotInfo(locId) {
+        try {
+            const data = await this.fetchWithAuth(`/ref/hotspot/info/${locId}`);
+            return data || null;
+        } catch (error) {
+            // Return null for 404s or other errors - hotspot info is supplementary
+            console.warn(`Could not fetch hotspot info for ${locId}:`, error.message);
+            return null;
+        }
+    }
+
+    /**
+     * Get recent checklists submitted in a region
+     * @param {string} regionCode - eBird region code (e.g., 'US-FL', 'US-NY-061')
+     * @param {number} maxResults - Maximum number of checklists to return (default 100)
+     * @returns {Promise<Array>} Array of checklist objects
+     */
+    async getRecentChecklists(regionCode, maxResults = 100) {
+        try {
+            const data = await this.fetchWithAuth(`/product/lists/${regionCode}`, {
+                maxResults
+            });
+            return data || [];
+        } catch (error) {
+            console.warn(`Could not fetch recent checklists for ${regionCode}:`, error.message);
+            return [];
+        }
+    }
+
+    /**
+     * Get top observers in a region for a specific date
+     * @param {string} regionCode - eBird region code (e.g., 'US-FL')
+     * @param {Date} date - Date to get top observers for (default: today)
+     * @returns {Promise<Array>} Array of observer objects with species counts
+     */
+    async getTopObservers(regionCode, date = new Date()) {
+        try {
+            const year = date.getFullYear();
+            const month = date.getMonth() + 1;
+            const day = date.getDate();
+
+            const data = await this.fetchWithAuth(
+                `/product/top100/${regionCode}/${year}/${month}/${day}`
+            );
+            return data || [];
+        } catch (error) {
+            console.warn(`Could not fetch top observers for ${regionCode}:`, error.message);
+            return [];
+        }
+    }
 }
 
 /**

@@ -107,6 +107,8 @@ class BirdingHotspotsApp {
             liferAlert: document.getElementById('liferAlert'),
             weatherSummary: document.getElementById('weatherSummary'),
             migrationAlert: document.getElementById('migrationAlert'),
+            regionalActivity: document.getElementById('regionalActivity'),
+            topBirders: document.getElementById('topBirders'),
             // Life list elements
             lifeListToggle: document.getElementById('lifeListToggle'),
             lifeListContent: document.getElementById('lifeListContent'),
@@ -1333,6 +1335,7 @@ class BirdingHotspotsApp {
 
         // Track failures for this enrichment
         let observationFailures = 0;
+        let hotspotInfoFailures = 0;
         let addressFailures = 0;
         let drivingFailures = 0;
         let weatherFailed = false;
@@ -1347,9 +1350,22 @@ class BirdingHotspotsApp {
                 })
         );
 
-        // Wait for all observation requests
+        // Fetch hotspot info in parallel (for quality indicators)
+        const hotspotInfoPromises = hotspots.map(hotspot =>
+            this.ebirdApi.getHotspotInfo(hotspot.locId)
+                .catch(e => {
+                    console.warn(`Could not fetch hotspot info for ${hotspot.locId}:`, e);
+                    hotspotInfoFailures++;
+                    return null;
+                })
+        );
+
+        // Wait for all observation and hotspot info requests
         this.updateLoading('Processing observations...', 50);
-        const allObservations = await Promise.all(observationsPromises);
+        const [allObservations, allHotspotInfo] = await Promise.all([
+            Promise.all(observationsPromises),
+            Promise.all(hotspotInfoPromises)
+        ]);
 
         // Fetch addresses with rate limiting to avoid 429 errors
         this.updateLoading('Fetching hotspot addresses...', 55);
@@ -1390,6 +1406,9 @@ class BirdingHotspotsApp {
         if (observationFailures > 0) {
             this.partialFailures.push(`observations for ${observationFailures} hotspot${observationFailures > 1 ? 's' : ''}`);
         }
+        if (hotspotInfoFailures > 0) {
+            this.partialFailures.push(`hotspot details for ${hotspotInfoFailures} location${hotspotInfoFailures > 1 ? 's' : ''}`);
+        }
         if (addressFailures > 0) {
             this.partialFailures.push(`addresses for ${addressFailures} location${addressFailures > 1 ? 's' : ''}`);
         }
@@ -1410,6 +1429,7 @@ class BirdingHotspotsApp {
         return hotspots.map((hotspot, i) => {
             const observations = allObservations[i];
             const addrResult = allAddresses[i];
+            const hotspotInfo = allHotspotInfo[i];
             const distance = calculateDistance(origin.lat, origin.lng, hotspot.lat, hotspot.lng);
             const birds = processObservations(observations, notableSpecies, lifeListCodes, lifeListNames);
             const drivingRoute = drivingRoutes[i];
@@ -1426,7 +1446,10 @@ class BirdingHotspotsApp {
                 drivingDistance: drivingRoute?.distance ?? null,
                 drivingDuration: drivingRoute?.duration ?? null,
                 birds,
-                weather
+                weather,
+                // Hotspot quality indicators
+                totalSpecies: hotspotInfo?.numSpeciesAllTime ?? null,
+                totalChecklists: hotspotInfo?.numChecklists ?? null
             };
         });
     }
@@ -1504,6 +1527,304 @@ class BirdingHotspotsApp {
         setTimeout(() => {
             this.elements.resultsSection.focus();
         }, 500);
+
+        // Asynchronously load regional activity and top birders (non-blocking)
+        this.loadRegionalData(origin);
+    }
+
+    /**
+     * Load regional activity and top birders data asynchronously
+     * @param {Object} origin - Origin location with lat, lng
+     */
+    async loadRegionalData(origin) {
+        try {
+            // Get region code from reverse geocode
+            const reverseResult = await reverseGeocode(origin.lat, origin.lng);
+            const regionCode = this.extractRegionCode(reverseResult.raw);
+
+            if (!regionCode) {
+                console.warn('Could not determine region code for regional data');
+                return;
+            }
+
+            // Fetch regional activity and top birders in parallel
+            const [checklists, topObservers] = await Promise.all([
+                this.ebirdApi.getRecentChecklists(regionCode, 200),
+                this.ebirdApi.getTopObservers(regionCode)
+            ]);
+
+            // Render regional activity
+            this.renderRegionalActivity(checklists, regionCode);
+
+            // Render top birders
+            this.renderTopBirders(topObservers, regionCode);
+
+        } catch (error) {
+            console.warn('Could not load regional data:', error);
+            // Silently fail - these are supplementary features
+        }
+    }
+
+    /**
+     * Extract eBird region code from reverse geocode address data
+     * @param {Object} addressData - Raw address data from LocationIQ
+     * @returns {string|null} eBird region code (e.g., "US-FL") or null
+     */
+    extractRegionCode(addressData) {
+        if (!addressData) return null;
+
+        const countryCode = addressData.country_code?.toUpperCase();
+        if (!countryCode) return null;
+
+        // For US, use state code
+        if (countryCode === 'US' && addressData.state) {
+            const stateCode = this.getUSStateCode(addressData.state);
+            if (stateCode) {
+                return `US-${stateCode}`;
+            }
+        }
+
+        // For other countries, just use country code
+        return countryCode;
+    }
+
+    /**
+     * Get US state code from state name
+     * @param {string} stateName - Full state name
+     * @returns {string|null} Two-letter state code or null
+     */
+    getUSStateCode(stateName) {
+        const states = {
+            'alabama': 'AL', 'alaska': 'AK', 'arizona': 'AZ', 'arkansas': 'AR',
+            'california': 'CA', 'colorado': 'CO', 'connecticut': 'CT', 'delaware': 'DE',
+            'florida': 'FL', 'georgia': 'GA', 'hawaii': 'HI', 'idaho': 'ID',
+            'illinois': 'IL', 'indiana': 'IN', 'iowa': 'IA', 'kansas': 'KS',
+            'kentucky': 'KY', 'louisiana': 'LA', 'maine': 'ME', 'maryland': 'MD',
+            'massachusetts': 'MA', 'michigan': 'MI', 'minnesota': 'MN', 'mississippi': 'MS',
+            'missouri': 'MO', 'montana': 'MT', 'nebraska': 'NE', 'nevada': 'NV',
+            'new hampshire': 'NH', 'new jersey': 'NJ', 'new mexico': 'NM', 'new york': 'NY',
+            'north carolina': 'NC', 'north dakota': 'ND', 'ohio': 'OH', 'oklahoma': 'OK',
+            'oregon': 'OR', 'pennsylvania': 'PA', 'rhode island': 'RI', 'south carolina': 'SC',
+            'south dakota': 'SD', 'tennessee': 'TN', 'texas': 'TX', 'utah': 'UT',
+            'vermont': 'VT', 'virginia': 'VA', 'washington': 'WA', 'west virginia': 'WV',
+            'wisconsin': 'WI', 'wyoming': 'WY', 'district of columbia': 'DC',
+            'puerto rico': 'PR', 'guam': 'GU', 'virgin islands': 'VI'
+        };
+        const normalized = stateName.toLowerCase().trim();
+        return states[normalized] || null;
+    }
+
+    /**
+     * Render regional activity dashboard
+     * @param {Array} checklists - Recent checklists from eBird
+     * @param {string} regionCode - eBird region code
+     */
+    renderRegionalActivity(checklists, regionCode) {
+        const container = this.elements.regionalActivity;
+        if (!container || !checklists || checklists.length === 0) {
+            container?.classList.add('hidden');
+            return;
+        }
+
+        clearElement(container);
+
+        // Count checklists from last 24 hours
+        const now = new Date();
+        const yesterday = new Date(now - 24 * 60 * 60 * 1000);
+        const recentChecklists = checklists.filter(c => {
+            const checklistDate = new Date(c.obsDt);
+            return checklistDate >= yesterday;
+        });
+
+        // Group by hotspot to find trending locations
+        const hotspotCounts = {};
+        checklists.forEach(c => {
+            const locName = c.loc?.name || c.locId;
+            hotspotCounts[locName] = (hotspotCounts[locName] || 0) + 1;
+        });
+
+        // Sort by count and take top 5
+        const trendingHotspots = Object.entries(hotspotCounts)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5);
+
+        const maxCount = trendingHotspots[0]?.[1] || 1;
+
+        // Build the UI
+        const section = document.createElement('div');
+        section.className = 'regional-activity-section';
+
+        // Header with toggle
+        const header = document.createElement('button');
+        header.type = 'button';
+        header.className = 'regional-activity-header';
+        header.setAttribute('aria-expanded', 'true');
+
+        const headerText = document.createElement('span');
+        headerText.className = 'regional-activity-title';
+        headerText.innerHTML = `<svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/></svg> Regional Activity`;
+
+        const chevron = createSVGIcon('chevron', 20, 'chevron');
+        header.appendChild(headerText);
+        header.appendChild(chevron);
+
+        // Content
+        const content = document.createElement('div');
+        content.className = 'regional-activity-content';
+
+        // Stats summary
+        const stats = document.createElement('div');
+        stats.className = 'regional-stats';
+        stats.innerHTML = `
+            <span class="regional-stat">
+                <strong>${recentChecklists.length}</strong> checklists in last 24h
+            </span>
+            <span class="regional-stat">
+                <strong>${checklists.length}</strong> total this week
+            </span>
+        `;
+        content.appendChild(stats);
+
+        // Trending hotspots
+        if (trendingHotspots.length > 0) {
+            const trendingSection = document.createElement('div');
+            trendingSection.className = 'trending-hotspots';
+
+            const trendingTitle = document.createElement('div');
+            trendingTitle.className = 'trending-title';
+            trendingTitle.textContent = 'Most Active Hotspots';
+            trendingSection.appendChild(trendingTitle);
+
+            trendingHotspots.forEach(([name, count]) => {
+                const item = document.createElement('div');
+                item.className = 'trending-item';
+
+                const barContainer = document.createElement('div');
+                barContainer.className = 'trending-bar-container';
+
+                const bar = document.createElement('div');
+                bar.className = 'trending-bar';
+                bar.style.width = `${(count / maxCount) * 100}%`;
+
+                const label = document.createElement('span');
+                label.className = 'trending-label';
+                label.textContent = name.length > 30 ? name.substring(0, 30) + '...' : name;
+
+                const countSpan = document.createElement('span');
+                countSpan.className = 'trending-count';
+                countSpan.textContent = `${count}`;
+
+                barContainer.appendChild(bar);
+                item.appendChild(label);
+                item.appendChild(barContainer);
+                item.appendChild(countSpan);
+                trendingSection.appendChild(item);
+            });
+
+            content.appendChild(trendingSection);
+        }
+
+        // Toggle functionality
+        header.addEventListener('click', () => {
+            const expanded = header.getAttribute('aria-expanded') === 'true';
+            header.setAttribute('aria-expanded', !expanded);
+            content.classList.toggle('hidden', expanded);
+            chevron.style.transform = expanded ? '' : 'rotate(180deg)';
+        });
+
+        section.appendChild(header);
+        section.appendChild(content);
+        container.appendChild(section);
+        container.classList.remove('hidden');
+    }
+
+    /**
+     * Render top birders leaderboard
+     * @param {Array} observers - Top observers from eBird
+     * @param {string} regionCode - eBird region code
+     */
+    renderTopBirders(observers, regionCode) {
+        const container = this.elements.topBirders;
+        if (!container || !observers || observers.length === 0) {
+            container?.classList.add('hidden');
+            return;
+        }
+
+        clearElement(container);
+
+        // Take top 10
+        const topObservers = observers.slice(0, 10);
+
+        // Build the UI
+        const section = document.createElement('div');
+        section.className = 'top-birders-section';
+
+        // Header with toggle
+        const header = document.createElement('button');
+        header.type = 'button';
+        header.className = 'top-birders-header';
+        header.setAttribute('aria-expanded', 'false');
+
+        const headerText = document.createElement('span');
+        headerText.className = 'top-birders-title';
+        headerText.innerHTML = `<svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg> Top Local Birders Today`;
+
+        const chevron = createSVGIcon('chevron', 20, 'chevron');
+        header.appendChild(headerText);
+        header.appendChild(chevron);
+
+        // Content (initially hidden)
+        const content = document.createElement('div');
+        content.className = 'top-birders-content hidden';
+
+        const list = document.createElement('ol');
+        list.className = 'top-birders-list';
+
+        topObservers.forEach((observer, index) => {
+            const li = document.createElement('li');
+            li.className = 'birder-item';
+
+            const rank = document.createElement('span');
+            rank.className = 'birder-rank';
+            rank.textContent = index + 1;
+
+            const name = document.createElement('span');
+            name.className = 'birder-name';
+            name.textContent = observer.userDisplayName || 'Anonymous';
+
+            const speciesCount = document.createElement('span');
+            speciesCount.className = 'birder-species';
+            speciesCount.textContent = `${observer.numSpecies || 0} species`;
+
+            li.appendChild(rank);
+            li.appendChild(name);
+            li.appendChild(speciesCount);
+            list.appendChild(li);
+        });
+
+        content.appendChild(list);
+
+        // Link to eBird leaderboard
+        const link = document.createElement('a');
+        link.href = `https://ebird.org/region/${regionCode}/activity`;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.className = 'top-birders-link';
+        link.innerHTML = `View full leaderboard on eBird <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>`;
+        content.appendChild(link);
+
+        // Toggle functionality
+        header.addEventListener('click', () => {
+            const expanded = header.getAttribute('aria-expanded') === 'true';
+            header.setAttribute('aria-expanded', !expanded);
+            content.classList.toggle('hidden', expanded);
+            chevron.style.transform = expanded ? 'rotate(180deg)' : '';
+        });
+
+        section.appendChild(header);
+        section.appendChild(content);
+        container.appendChild(section);
+        container.classList.remove('hidden');
     }
 
     /**
@@ -3472,8 +3793,51 @@ class BirdingHotspotsApp {
             drivingStat.appendChild(document.createTextNode(` ${drivingDistanceText} · ${drivingDurationText} drive`));
             stats.appendChild(drivingStat);
         }
+
+        // Hotspot quality indicators (if available)
+        let qualitySection = null;
+        if (hotspot.totalSpecies != null || hotspot.totalChecklists != null) {
+            qualitySection = document.createElement('div');
+            qualitySection.className = 'hotspot-quality';
+
+            if (hotspot.totalSpecies != null) {
+                const totalSpeciesStat = document.createElement('span');
+                totalSpeciesStat.className = 'quality-stat';
+                totalSpeciesStat.appendChild(createSVGIcon('check', 14));
+                totalSpeciesStat.appendChild(document.createTextNode(` ${hotspot.totalSpecies.toLocaleString()} all-time`));
+                qualitySection.appendChild(totalSpeciesStat);
+            }
+
+            if (hotspot.totalChecklists != null) {
+                const checklistsStat = document.createElement('span');
+                checklistsStat.className = 'quality-stat';
+                checklistsStat.appendChild(createSVGIcon('calendar', 14));
+                checklistsStat.appendChild(document.createTextNode(` ${hotspot.totalChecklists.toLocaleString()} visits`));
+                qualitySection.appendChild(checklistsStat);
+            }
+
+            // Add quality badge based on checklist count
+            if (hotspot.totalChecklists != null) {
+                const qualityBadge = document.createElement('span');
+                if (hotspot.totalChecklists >= 500) {
+                    qualityBadge.className = 'quality-badge established';
+                    qualityBadge.textContent = 'Well-Established';
+                } else if (hotspot.totalChecklists >= 50) {
+                    qualityBadge.className = 'quality-badge active';
+                    qualityBadge.textContent = 'Active';
+                } else {
+                    qualityBadge.className = 'quality-badge new';
+                    qualityBadge.textContent = 'New Spot';
+                }
+                qualitySection.appendChild(qualityBadge);
+            }
+        }
+
         titleSection.appendChild(nameH3);
         titleSection.appendChild(stats);
+        if (qualitySection) {
+            titleSection.appendChild(qualitySection);
+        }
         header.appendChild(numberDiv);
         header.appendChild(titleSection);
 
@@ -4912,6 +5276,14 @@ class BirdingHotspotsApp {
         // Hide and clear migration alert
         this.elements.migrationAlert.classList.add('hidden');
         clearElement(this.elements.migrationAlert);
+
+        // Hide and clear regional activity
+        this.elements.regionalActivity.classList.add('hidden');
+        clearElement(this.elements.regionalActivity);
+
+        // Hide and clear top birders
+        this.elements.topBirders.classList.add('hidden');
+        clearElement(this.elements.topBirders);
 
         // Clear stored results
         this.currentResults = null;

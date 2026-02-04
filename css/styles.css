@@ -1551,6 +1551,53 @@ details.about-section[open] .about-chevron {
     color: var(--primary-color) !important;
 }
 
+/* Hotspot Quality Indicators */
+.hotspot-quality {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--border-color);
+    font-size: 0.85rem;
+}
+
+.quality-stat {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--text-secondary);
+}
+
+.quality-stat svg {
+    color: var(--text-light);
+}
+
+.quality-badge {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.quality-badge.established {
+    background: linear-gradient(135deg, #E8F5E9, #C8E6C9);
+    color: #2E7D32;
+}
+
+.quality-badge.active {
+    background: linear-gradient(135deg, #FFF8E1, #FFECB3);
+    color: #F57F17;
+}
+
+.quality-badge.new {
+    background: linear-gradient(135deg, #ECEFF1, #CFD8DC);
+    color: #546E7A;
+}
+
 /* Hotspot Details */
 .hotspot-details {
     padding: 16px 20px;
@@ -2760,6 +2807,251 @@ details.about-section[open] .about-chevron {
 .migration-alert-subtitle {
     color: #BF360C;
     font-size: 0.8rem;
+}
+
+/* Regional Activity Dashboard */
+.regional-activity-section {
+    background: linear-gradient(135deg, #E3F2FD, #BBDEFB);
+    border-radius: 12px;
+    margin-bottom: 16px;
+    overflow: hidden;
+}
+
+.regional-activity-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    background: none;
+    border: none;
+    padding: 14px 16px;
+    cursor: pointer;
+    color: #1565C0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    transition: background var(--transition);
+}
+
+.regional-activity-header:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.regional-activity-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.regional-activity-title svg {
+    color: #1976D2;
+}
+
+.regional-activity-header .chevron {
+    transition: transform var(--transition);
+    color: #1976D2;
+}
+
+.regional-activity-content {
+    padding: 0 16px 16px;
+}
+
+.regional-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px dashed rgba(21, 101, 192, 0.3);
+}
+
+.regional-stat {
+    color: #1565C0;
+    font-size: 0.9rem;
+}
+
+.regional-stat strong {
+    color: #0D47A1;
+}
+
+.trending-hotspots {
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 8px;
+    padding: 12px;
+}
+
+.trending-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #1565C0;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.trending-item {
+    display: grid;
+    grid-template-columns: 1fr 100px 40px;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+}
+
+.trending-label {
+    font-size: 0.85rem;
+    color: #1565C0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.trending-bar-container {
+    height: 8px;
+    background: rgba(21, 101, 192, 0.15);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.trending-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #42A5F5, #1976D2);
+    border-radius: 4px;
+    transition: width 0.5s ease;
+}
+
+.trending-count {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #0D47A1;
+    text-align: right;
+}
+
+/* Top Birders Leaderboard */
+.top-birders-section {
+    background: linear-gradient(135deg, #F3E5F5, #E1BEE7);
+    border-radius: 12px;
+    margin-top: 16px;
+    overflow: hidden;
+}
+
+.top-birders-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    background: none;
+    border: none;
+    padding: 14px 16px;
+    cursor: pointer;
+    color: #7B1FA2;
+    font-size: 0.95rem;
+    font-weight: 600;
+    transition: background var(--transition);
+}
+
+.top-birders-header:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.top-birders-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.top-birders-title svg {
+    color: #9C27B0;
+}
+
+.top-birders-header .chevron {
+    transition: transform var(--transition);
+    color: #9C27B0;
+}
+
+.top-birders-content {
+    padding: 0 16px 16px;
+}
+
+.top-birders-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.birder-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(123, 31, 162, 0.1);
+}
+
+.birder-item:last-child {
+    border-bottom: none;
+}
+
+.birder-rank {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    background: #9C27B0;
+    color: white;
+    border-radius: 50%;
+    font-size: 0.75rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.birder-item:nth-child(1) .birder-rank {
+    background: linear-gradient(135deg, #FFD700, #FFA000);
+}
+
+.birder-item:nth-child(2) .birder-rank {
+    background: linear-gradient(135deg, #C0C0C0, #9E9E9E);
+}
+
+.birder-item:nth-child(3) .birder-rank {
+    background: linear-gradient(135deg, #CD7F32, #8D6E63);
+}
+
+.birder-name {
+    flex: 1;
+    font-size: 0.9rem;
+    color: #4A148C;
+    font-weight: 500;
+}
+
+.birder-species {
+    font-size: 0.8rem;
+    color: #7B1FA2;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.top-birders-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 12px;
+    padding: 8px 12px;
+    background: rgba(156, 39, 176, 0.1);
+    border-radius: 6px;
+    color: #7B1FA2;
+    font-size: 0.85rem;
+    text-decoration: none;
+    transition: background var(--transition);
+}
+
+.top-birders-link:hover {
+    background: rgba(156, 39, 176, 0.2);
+}
+
+.top-birders-link svg {
+    flex-shrink: 0;
 }
 
 /* Seasonal Insights Section (collapsible on hotspot cards) */
