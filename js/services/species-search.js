@@ -111,6 +111,7 @@ export class SpeciesSearch {
     constructor(ebirdApi) {
         this.ebirdApi = ebirdApi;
         this.taxonomy = null;
+        this._speciesIndex = null;
         this.isLoading = false;
         this.loadPromise = null;
     }
@@ -145,6 +146,7 @@ export class SpeciesSearch {
 
         if (cached) {
             this.taxonomy = this._processTaxonomy(cached);
+            this._speciesIndex = this._buildSpeciesIndex(this.taxonomy);
             if (onProgress) onProgress('Species data loaded from cache');
             return;
         }
@@ -154,6 +156,7 @@ export class SpeciesSearch {
         try {
             const rawTaxonomy = await this.ebirdApi.getTaxonomy();
             this.taxonomy = this._processTaxonomy(rawTaxonomy);
+            this._speciesIndex = this._buildSpeciesIndex(this.taxonomy);
 
             // Cache for later
             await cacheTaxonomy(rawTaxonomy);
@@ -183,6 +186,36 @@ export class SpeciesSearch {
     }
 
     /**
+     * Build an index to speed up search operations.
+     * The index maintains:
+     * - A map from lowercased common name prefix to species array for quick prefix lookups.
+     * - A reference to the full taxonomy for fallback substring searches.
+     * @param {Array} taxonomy
+     * @returns {Object}
+     */
+    _buildSpeciesIndex(taxonomy) {
+        const prefixMap = new Map();
+
+        for (const species of taxonomy) {
+            const lowerName = species.commonName.toLowerCase();
+            // Index first few characters of the common name to keep index size reasonable.
+            const maxPrefixLength = Math.min(lowerName.length, 4);
+            for (let len = 1; len <= maxPrefixLength; len++) {
+                const prefix = lowerName.slice(0, len);
+                if (!prefixMap.has(prefix)) {
+                    prefixMap.set(prefix, []);
+                }
+                prefixMap.get(prefix).push(species);
+            }
+        }
+
+        return {
+            prefixMap,
+            allSpecies: taxonomy
+        };
+    }
+
+    /**
      * Search for species by name
      * @param {string} query - Search query
      * @param {number} limit - Maximum results
@@ -194,17 +227,26 @@ export class SpeciesSearch {
         const lowerQuery = query.toLowerCase();
         const results = [];
 
-        // First pass: starts with query (higher priority)
-        for (const species of this.taxonomy) {
+        // Ensure index is built (for backward compatibility if taxonomy was set manually).
+        if (!this._speciesIndex) {
+            this._speciesIndex = this._buildSpeciesIndex(this.taxonomy);
+        }
+
+        const index = this._speciesIndex;
+
+        // First pass: look up by prefix in the index using up to 4 characters.
+        const prefixKey = lowerQuery.slice(0, Math.min(lowerQuery.length, 4));
+        const prefixCandidates = index.prefixMap.get(prefixKey) || [];
+        for (const species of prefixCandidates) {
             if (results.length >= limit) break;
-            if (species.commonName.toLowerCase().startsWith(lowerQuery)) {
+            if (species.commonName.toLowerCase().startsWith(lowerQuery) && !results.includes(species)) {
                 results.push(species);
             }
         }
 
-        // Second pass: contains query
+        // Second pass: fallback to contains query across all species, reusing existing searchText.
         if (results.length < limit) {
-            for (const species of this.taxonomy) {
+            for (const species of index.allSpecies) {
                 if (results.length >= limit) break;
                 if (!results.includes(species) && species.searchText.includes(lowerQuery)) {
                     results.push(species);
