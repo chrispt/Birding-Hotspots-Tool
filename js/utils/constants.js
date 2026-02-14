@@ -26,7 +26,8 @@ export const CONFIG = {
         GEOAPIFY_KEY: 'birding_geoapify_key',
         LIFE_LIST: 'birding_life_list',
         RECENT_SEARCHES: 'birding_recent_searches',
-        FAVORITE_HOTSPOTS: 'birding_favorite_hotspots'
+        FAVORITE_HOTSPOTS: 'birding_favorite_hotspots',
+        THEME: 'birding_theme'
     }
 };
 

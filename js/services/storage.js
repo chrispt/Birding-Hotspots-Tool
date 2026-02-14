@@ -322,6 +322,36 @@ export const storage = {
         }
     },
 
+    // ==================== Theme Preference ====================
+
+    /**
+     * Get theme preference
+     * @returns {string|null} 'light', 'dark', or null (auto)
+     */
+    getTheme() {
+        try {
+            return localStorage.getItem(STORAGE_KEYS.THEME) || null;
+        } catch (e) {
+            return null;
+        }
+    },
+
+    /**
+     * Set theme preference
+     * @param {string|null} theme - 'light', 'dark', or null to clear (auto)
+     */
+    setTheme(theme) {
+        try {
+            if (theme) {
+                localStorage.setItem(STORAGE_KEYS.THEME, theme);
+            } else {
+                localStorage.removeItem(STORAGE_KEYS.THEME);
+            }
+        } catch (e) {
+            console.warn('Could not save theme preference:', e);
+        }
+    },
+
     /**
      * Toggle a hotspot's favorite status
      * @param {Object} hotspot - Hotspot object

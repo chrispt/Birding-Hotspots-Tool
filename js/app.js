@@ -189,7 +189,9 @@ class BirdingHotspotsApp {
             favoriteHotspotsSection: document.getElementById('favoriteHotspotsSection'),
             favoriteHotspotsList: document.getElementById('favoriteHotspotsList'),
             favoriteHotspotsToggle: document.getElementById('favoriteHotspotsToggle'),
-            favoriteHotspotsContent: document.getElementById('favoriteHotspotsContent')
+            favoriteHotspotsContent: document.getElementById('favoriteHotspotsContent'),
+            // Theme toggle
+            themeToggle: document.getElementById('themeToggle')
         };
 
         // Temperature unit preference (true = Fahrenheit, false = Celsius)
@@ -255,6 +257,7 @@ class BirdingHotspotsApp {
         // Track partial failures during search
         this.partialFailures = [];
 
+        this.initializeTheme();
         this.initializeEventListeners();
         this.loadSavedData();
     }
@@ -280,6 +283,37 @@ class BirdingHotspotsApp {
         this.routePreviewMarkers = [];
         this.routePreviewLine = null;
         this.itineraryRouteLine = null;
+    }
+
+    /**
+     * Initialize theme from saved preference or system setting
+     */
+    initializeTheme() {
+        const saved = storage.getTheme();
+        if (saved) {
+            document.documentElement.setAttribute('data-theme', saved);
+        }
+        // Theme toggle click handler
+        if (this.elements.themeToggle) {
+            this.elements.themeToggle.addEventListener('click', () => {
+                const current = document.documentElement.getAttribute('data-theme');
+                let next;
+                if (current === 'dark') {
+                    next = 'light';
+                } else if (current === 'light') {
+                    // Go back to auto (remove attribute)
+                    next = null;
+                } else {
+                    next = 'dark';
+                }
+                if (next) {
+                    document.documentElement.setAttribute('data-theme', next);
+                } else {
+                    document.documentElement.removeAttribute('data-theme');
+                }
+                storage.setTheme(next);
+            });
+        }
     }
 
     /**
@@ -1137,10 +1171,15 @@ class BirdingHotspotsApp {
         clearElement(container);
 
         if (favorites.length === 0) {
-            const p = document.createElement('p');
-            p.className = 'no-favorites';
-            p.textContent = 'No saved locations yet';
-            container.appendChild(p);
+            const emptyDiv = document.createElement('div');
+            emptyDiv.className = 'no-favorites empty-state-inline';
+            emptyDiv.innerHTML = `
+                <svg viewBox="0 0 24 24" width="32" height="32" aria-hidden="true" class="empty-state-icon">
+                    <path fill="currentColor" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                </svg>
+                <p>No saved locations yet</p>
+            `;
+            container.appendChild(emptyDiv);
             return;
         }
 
@@ -1317,6 +1356,8 @@ class BirdingHotspotsApp {
 
         const toast = document.createElement('div');
         toast.className = `toast-notification toast-${type}`;
+        toast.setAttribute('role', 'status');
+        toast.setAttribute('aria-live', 'polite');
         toast.textContent = message;
         document.body.appendChild(toast);
 
@@ -1325,11 +1366,12 @@ class BirdingHotspotsApp {
             toast.classList.add('show');
         });
 
-        // Remove after 3 seconds
+        // Longer delay for warnings so users can read them
+        const delay = type === 'warning' ? 4000 : 3000;
         setTimeout(() => {
             toast.classList.remove('show');
             setTimeout(() => toast.remove(), 300);
-        }, 3000);
+        }, delay);
     }
 
     /**
@@ -6001,6 +6043,8 @@ class BirdingHotspotsApp {
     showLoading(message, percent) {
         this.elements.loadingOverlay.classList.remove('hidden');
         this.updateLoading(message, percent);
+        // Show skeleton cards in the results area
+        this.showSkeletonCards();
     }
 
     /**
@@ -6016,6 +6060,44 @@ class BirdingHotspotsApp {
      */
     hideLoading() {
         this.elements.loadingOverlay.classList.add('hidden');
+        this.removeSkeletonCards();
+    }
+
+    /**
+     * Show skeleton placeholder cards in the results area
+     */
+    showSkeletonCards() {
+        if (!this.elements.hotspotCards) return;
+        // Only add if not already showing
+        if (this.elements.hotspotCards.querySelector('.skeleton-card')) return;
+
+        for (let i = 0; i < 3; i++) {
+            const card = document.createElement('div');
+            card.className = 'skeleton-card';
+            card.setAttribute('aria-hidden', 'true');
+            card.innerHTML = `
+                <div style="display:flex;gap:16px;align-items:flex-start;padding-bottom:16px;border-bottom:1px solid var(--border-color);">
+                    <div class="skeleton skeleton-circle"></div>
+                    <div style="flex:1;">
+                        <div class="skeleton skeleton-line"></div>
+                        <div class="skeleton skeleton-line short"></div>
+                    </div>
+                </div>
+                <div style="padding-top:12px;">
+                    <div class="skeleton skeleton-line medium"></div>
+                    <div class="skeleton skeleton-line short"></div>
+                </div>
+            `;
+            this.elements.hotspotCards.appendChild(card);
+        }
+    }
+
+    /**
+     * Remove skeleton placeholder cards
+     */
+    removeSkeletonCards() {
+        if (!this.elements.hotspotCards) return;
+        this.elements.hotspotCards.querySelectorAll('.skeleton-card').forEach(el => el.remove());
     }
 
     /**
@@ -6041,27 +6123,7 @@ class BirdingHotspotsApp {
      * @param {string} message - Success message to display
      */
     showSuccessToast(message) {
-        // Create toast element
-        const toast = document.createElement('div');
-        toast.className = 'success-toast';
-        toast.setAttribute('role', 'status');
-        toast.setAttribute('aria-live', 'polite');
-        toast.textContent = message;
-
-        // Add to DOM
-        document.body.appendChild(toast);
-
-        // Trigger animation
-        requestAnimationFrame(() => {
-            toast.classList.add('show');
-        });
-
-        // Remove after delay
-        // 4s duration for accessibility - allows time to read
-        setTimeout(() => {
-            toast.classList.remove('show');
-            setTimeout(() => toast.remove(), 300);
-        }, 4000);
+        this.showToast(message, 'success');
     }
 
     /**
@@ -6069,23 +6131,7 @@ class BirdingHotspotsApp {
      * @param {string} message - Warning message to display
      */
     showWarningToast(message) {
-        const toast = document.createElement('div');
-        toast.className = 'warning-toast';
-        toast.setAttribute('role', 'status');
-        toast.setAttribute('aria-live', 'polite');
-        toast.textContent = message;
-
-        document.body.appendChild(toast);
-
-        requestAnimationFrame(() => {
-            toast.classList.add('show');
-        });
-
-        // Longer delay for warnings so users can read them
-        setTimeout(() => {
-            toast.classList.remove('show');
-            setTimeout(() => toast.remove(), 300);
-        }, 4000);
+        this.showToast(message, 'warning');
     }
 
     /**

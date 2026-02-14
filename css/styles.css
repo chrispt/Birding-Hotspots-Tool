@@ -24,11 +24,95 @@
     --radius-large: 12px;
     --transition: 0.2s ease;
     --hover-bg: #E8F5E9;
+    /* Target/alert/stop semantic colors */
+    --target-color: #2196F3;
+    --target-hover: #1976D2;
+    --target-light: #64B5F6;
+    --alert-color: #FF9800;
+    --alert-dark: #E65100;
+    --alert-medium: #F57C00;
+    --stop-start: #22c55e;
+    --stop-end: #ef4444;
+    --stop-end-hover: #dc2626;
     /* Spacing scale */
     --spacing-xs: 8px;
     --spacing-sm: 16px;
     --spacing-md: 24px;
     --spacing-lg: 32px;
+}
+
+/* Dark Mode - System Preference */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --primary-color: #4CAF50;
+        --primary-hover: #66BB6A;
+        --primary-light: #81C784;
+        --secondary-color: #AED581;
+        --background: #121212;
+        --card-bg: #1E1E1E;
+        --text-primary: #E0E0E0;
+        --text-secondary: #9E9E9E;
+        --text-light: #9E9E9E;
+        --border-color: #333333;
+        --shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        --shadow-hover: 0 4px 16px rgba(0, 0, 0, 0.4);
+        --hover-bg: #2A2A2A;
+        --error-bg: #3E1E1E;
+        --lifer-bg: #2A1E2E;
+    }
+}
+
+/* Dark Mode - Specific overrides for non-variable elements */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .loading-overlay {
+        background: rgba(18, 18, 18, 0.95);
+    }
+    :root:not([data-theme="light"]) .select-input {
+        background: var(--card-bg);
+        color: var(--text-primary);
+    }
+    :root:not([data-theme="light"]) .stop-content {
+        background: var(--card-bg);
+    }
+    :root:not([data-theme="light"]) .favorite-hotspot-btn {
+        background: var(--card-bg);
+    }
+}
+
+/* Dark Mode - Manual Toggle */
+[data-theme="dark"] {
+    --primary-color: #4CAF50;
+    --primary-hover: #66BB6A;
+    --primary-light: #81C784;
+    --secondary-color: #AED581;
+    --background: #121212;
+    --card-bg: #1E1E1E;
+    --text-primary: #E0E0E0;
+    --text-secondary: #9E9E9E;
+    --text-light: #9E9E9E;
+    --border-color: #333333;
+    --shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    --shadow-hover: 0 4px 16px rgba(0, 0, 0, 0.4);
+    --hover-bg: #2A2A2A;
+    --error-bg: #3E1E1E;
+    --lifer-bg: #2A1E2E;
+}
+
+[data-theme="dark"] .loading-overlay {
+    background: rgba(18, 18, 18, 0.95);
+}
+
+[data-theme="dark"] .select-input {
+    background: var(--card-bg);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .stop-content {
+    background: var(--card-bg);
+}
+
+[data-theme="dark"] .favorite-hotspot-btn {
+    background: var(--card-bg);
 }
 
 /* Reset and Base Styles */
@@ -181,6 +265,25 @@ body {
         top: var(--spacing-md);
         max-height: calc(100vh - var(--spacing-lg));
         overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: var(--border-color) transparent;
+    }
+
+    .main-content.has-results .settings-sidebar::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    .main-content.has-results .settings-sidebar::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .main-content.has-results .settings-sidebar::-webkit-scrollbar-thumb {
+        background: var(--border-color);
+        border-radius: 2px;
+    }
+
+    .main-content.has-results .settings-sidebar::-webkit-scrollbar-thumb:hover {
+        background: var(--primary-light);
     }
 }
 
@@ -835,6 +938,21 @@ body {
     position: relative;
 }
 
+#mapPreviewContainer, #routePreviewMap {
+    height: 200px;
+    border-radius: var(--radius);
+}
+
+.input-with-button .input-with-validation {
+    flex: 1;
+}
+
+.section-title-icon {
+    fill: var(--primary-color);
+    vertical-align: middle;
+    margin-right: 4px;
+}
+
 .map-preview-container iframe {
     display: block;
     width: 100%;
@@ -1062,7 +1180,7 @@ body {
 }
 
 .route-target-badge {
-    background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+    background: linear-gradient(135deg, var(--target-color) 0%, var(--target-hover) 100%);
     color: white;
     padding: 2px 8px;
     border-radius: 10px;
@@ -1109,7 +1227,7 @@ body {
 }
 
 .route-key-bird.target {
-    color: #1976D2;
+    color: var(--target-hover);
     font-weight: 500;
 }
 
@@ -1182,7 +1300,7 @@ body {
 }
 
 .popup-toggle-btn:not(.selected) {
-    background: #9E9E9E;
+    background: var(--text-light);
 }
 
 .popup-toggle-btn:not(.selected) .add-text {
@@ -1508,7 +1626,7 @@ details.about-section[open] .about-chevron {
     margin-top: 12px;
     padding-top: 12px;
     border-top: 1px solid var(--border-color);
-    color: #424242;
+    color: var(--text-primary);
     font-size: 14px;
     line-height: 1.6;
 }
@@ -2012,8 +2130,8 @@ details.about-section[open] .about-chevron {
     background: white;
     border: 1px solid var(--border-color);
     border-radius: 50%;
-    width: 28px;
-    height: 28px;
+    width: 36px;
+    height: 36px;
     padding: 0;
     cursor: pointer;
     display: flex;
@@ -2022,6 +2140,16 @@ details.about-section[open] .about-chevron {
     transition: all var(--transition);
     z-index: 2;
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* Expand tap target to 44px without changing visual size */
+.favorite-hotspot-btn::before {
+    content: '';
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    bottom: -4px;
+    left: -4px;
 }
 
 .favorite-hotspot-btn svg {
@@ -2138,13 +2266,6 @@ details.about-section[open] .about-chevron {
     .favorite-hotspot-btn {
         top: 12px;
         right: 12px;
-        width: 26px;
-        height: 26px;
-    }
-
-    .favorite-hotspot-btn svg {
-        width: 14px;
-        height: 14px;
     }
 
     .species-grid {
@@ -2175,7 +2296,7 @@ details.about-section[open] .about-chevron {
 
 .rare-bird-alert {
     background: linear-gradient(135deg, #FFF3E0 0%, #FFE0B2 100%);
-    border: 2px solid #FF9800;
+    border: 2px solid var(--alert-color);
     border-radius: var(--radius-large);
     padding: 16px 20px;
     margin-bottom: 16px;
@@ -2183,8 +2304,8 @@ details.about-section[open] .about-chevron {
 }
 
 @keyframes alertPulse {
-    0%, 100% { border-color: #FF9800; }
-    50% { border-color: #F57C00; box-shadow: 0 0 8px rgba(255, 152, 0, 0.3); }
+    0%, 100% { border-color: var(--alert-color); }
+    50% { border-color: var(--alert-medium); box-shadow: 0 0 8px rgba(255, 152, 0, 0.3); }
 }
 
 .rare-alert-header {
@@ -2195,20 +2316,20 @@ details.about-section[open] .about-chevron {
 }
 
 .rare-alert-icon {
-    color: #E65100;
+    color: var(--alert-dark);
     flex-shrink: 0;
 }
 
 .rare-alert-title {
     font-weight: 700;
-    color: #E65100;
+    color: var(--alert-dark);
     font-size: 1rem;
     margin: 0;
 }
 
 .rare-alert-count {
     font-size: 0.875rem;
-    color: #F57C00;
+    color: var(--alert-medium);
     margin-left: auto;
 }
 
@@ -2230,7 +2351,7 @@ details.about-section[open] .about-chevron {
 }
 
 .rare-alert-item strong {
-    color: #E65100;
+    color: var(--alert-dark);
 }
 
 .rare-alert-location {
@@ -2256,7 +2377,7 @@ details.about-section[open] .about-chevron {
     cursor: pointer;
     font-size: 0.85rem;
     font-weight: 500;
-    color: #E65100;
+    color: var(--alert-dark);
     transition: all var(--transition);
     font-family: inherit;
 }
@@ -2299,7 +2420,7 @@ details.about-section[open] .about-chevron {
 /* Notable Highlight Section in Hotspot Card */
 .notable-highlight {
     background: linear-gradient(135deg, #FFF8E1 0%, #FFECB3 100%);
-    border-left: 4px solid #FF9800;
+    border-left: 4px solid var(--alert-color);
     padding: 12px 16px;
     margin: 0;
     border-radius: 0;
@@ -2315,13 +2436,13 @@ details.about-section[open] .about-chevron {
     border: none;
     font-size: 0.85rem;
     font-weight: 600;
-    color: #E65100;
+    color: var(--alert-dark);
     cursor: pointer;
     font-family: inherit;
 }
 
 .notable-highlight-toggle svg {
-    color: #FF9800;
+    color: var(--alert-color);
     flex-shrink: 0;
 }
 
@@ -2676,7 +2797,7 @@ details.about-section[open] .about-chevron {
 .weather-icon {
     width: 36px;
     height: 36px;
-    color: #1976D2;
+    color: var(--target-hover);
 }
 
 .weather-temp {
@@ -2710,18 +2831,18 @@ details.about-section[open] .about-chevron {
 .weather-detail svg {
     width: 14px;
     height: 14px;
-    color: #64B5F6;
+    color: var(--target-light);
 }
 
 /* Weather condition colors */
 .weather-badge.clear { background: linear-gradient(135deg, #FFF8E1 0%, #FFECB3 100%); }
-.weather-badge.clear .weather-icon { color: #FF9800; }
+.weather-badge.clear .weather-icon { color: var(--alert-color); }
 
 .weather-badge.cloudy { background: linear-gradient(135deg, #ECEFF1 0%, #CFD8DC 100%); }
 .weather-badge.cloudy .weather-icon { color: #607D8B; }
 
 .weather-badge.rain { background: linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%); }
-.weather-badge.rain .weather-icon { color: #1976D2; }
+.weather-badge.rain .weather-icon { color: var(--target-hover); }
 
 .weather-badge.snow { background: linear-gradient(135deg, #FAFAFA 0%, #EEEEEE 100%); }
 .weather-badge.snow .weather-icon { color: #90A4AE; }
@@ -3014,7 +3135,7 @@ details.about-section[open] .about-chevron {
     align-items: center;
     gap: 6px;
     padding: 4px 8px 4px 12px;
-    background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+    background: linear-gradient(135deg, var(--target-color) 0%, var(--target-hover) 100%);
     color: white;
     border-radius: 16px;
     font-size: 0.85rem;
@@ -3243,11 +3364,11 @@ details.about-section[open] .about-chevron {
 
 .migration-alert-icon {
     flex-shrink: 0;
-    color: #F57C00;
+    color: var(--alert-medium);
 }
 
 .migration-alert-banner.peak .migration-alert-icon {
-    color: #E65100;
+    color: var(--alert-dark);
     animation: pulse-migration 2s ease-in-out infinite;
 }
 
@@ -3262,7 +3383,7 @@ details.about-section[open] .about-chevron {
 
 .migration-alert-title {
     font-weight: 600;
-    color: #E65100;
+    color: var(--alert-dark);
     font-size: 0.9rem;
     margin-bottom: 2px;
 }
@@ -3839,54 +3960,53 @@ details.about-section[open] .about-chevron {
 }
 
 /* ===========================================
-   SUCCESS TOAST STYLES
+   SKELETON LOADING STATES
    =========================================== */
 
-.success-toast {
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%) translateY(100px);
-    background: var(--success);
-    color: white;
-    padding: 12px 24px;
-    border-radius: var(--radius);
-    box-shadow: var(--shadow-hover);
-    font-weight: 500;
-    font-size: 0.95rem;
-    z-index: 1100;
-    opacity: 0;
-    transition: transform 0.3s ease, opacity 0.3s ease;
+@keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
 }
 
-.success-toast.show {
-    transform: translateX(-50%) translateY(0);
-    opacity: 1;
+.skeleton {
+    background: linear-gradient(90deg, var(--background) 25%, var(--hover-bg) 50%, var(--background) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+    border-radius: var(--radius);
 }
 
-/* Warning toast for partial failures */
-.warning-toast {
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%) translateY(100px);
-    background: #e65100; /* WCAG AA compliant contrast with white text */
-    color: white;
-    padding: 12px 24px;
-    border-radius: var(--radius);
-    box-shadow: var(--shadow-hover);
-    font-weight: 500;
-    font-size: 0.95rem;
-    z-index: 1100;
-    opacity: 0;
-    transition: transform 0.3s ease, opacity 0.3s ease;
+.skeleton-card {
+    padding: 20px;
+    border-radius: var(--radius-large);
+    box-shadow: var(--shadow);
+    background: var(--card-bg);
+}
+
+.skeleton-line {
+    height: 16px;
+    margin-bottom: 8px;
+    border-radius: 4px;
+}
+
+.skeleton-line.short {
+    width: 60%;
+}
+
+.skeleton-line.medium {
+    width: 80%;
+}
+
+.skeleton-circle {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+}
+
+/* Toast warning type */
+.toast-notification.toast-warning {
+    background: var(--alert-dark);
     max-width: 400px;
     text-align: center;
-}
-
-.warning-toast.show {
-    transform: translateX(-50%) translateY(0);
-    opacity: 1;
 }
 
 /* ===========================================
@@ -3915,6 +4035,25 @@ details.about-section[open] .about-chevron {
 .empty-state p {
     color: var(--text-secondary);
     font-size: 0.95rem;
+    margin: 0;
+}
+
+/* Inline empty state for sidebar sections */
+.empty-state-inline {
+    text-align: center;
+    padding: 20px 12px;
+    color: var(--text-light);
+}
+
+.empty-state-inline .empty-state-icon {
+    color: var(--text-light);
+    margin-bottom: 8px;
+    opacity: 0.6;
+}
+
+.empty-state-inline p {
+    font-size: 0.9rem;
+    font-style: italic;
     margin: 0;
 }
 
@@ -4016,11 +4155,11 @@ details.about-section[open] .about-chevron {
 }
 
 .stop-marker.start {
-    background: #22c55e;
+    background: var(--stop-start);
 }
 
 .stop-marker.end {
-    background: #ef4444;
+    background: var(--stop-end);
 }
 
 .stop-marker.hotspot {
@@ -4308,6 +4447,13 @@ details.about-section[open] .about-chevron {
     flex-shrink: 0;
 }
 
+.theme-toggle-btn {
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.9rem;
+}
+
 /* ========================================
    Tooltips
    ======================================== */
@@ -4569,12 +4715,12 @@ details.about-section[open] .about-chevron {
 }
 
 .popup-btn-remove {
-    background: #ef4444;
+    background: var(--stop-end);
     color: white;
 }
 
 .popup-btn-remove:hover {
-    background: #dc2626;
+    background: var(--stop-end-hover);
 }
 
 /* Preview Selection Count Display */
