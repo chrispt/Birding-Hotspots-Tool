@@ -6,7 +6,7 @@ export const CONFIG = {
     EBIRD_API_BASE: 'https://api.ebird.org/v2',
 
     // LocationIQ Geocoding API
-    LOCATIONIQ_API_KEY: 'pk.dde574cf08ddd6cd62d8f57dc614c587',
+    LOCATIONIQ_API_KEY: '',
     LOCATIONIQ_BASE: 'https://us1.locationiq.com/v1',
 
     // Static Maps
@@ -27,7 +27,8 @@ export const CONFIG = {
         LIFE_LIST: 'birding_life_list',
         RECENT_SEARCHES: 'birding_recent_searches',
         FAVORITE_HOTSPOTS: 'birding_favorite_hotspots',
-        THEME: 'birding_theme'
+        THEME: 'birding_theme',
+        LOCATIONIQ_KEY: 'birding_locationiq_key'
     }
 };
 

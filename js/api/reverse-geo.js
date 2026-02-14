@@ -3,10 +3,19 @@
  * Uses LocationIQ REST API for geocoding
  */
 import { CONFIG } from '../utils/constants.js';
+import { storage } from '../services/storage.js';
 
 // In-memory cache for reverse geocoding results for the current session.
 // Keyed by 'lat,lng' string to avoid repeated API calls for the same coordinates.
 const reverseGeocodeCache = new Map();
+
+/**
+ * Get the LocationIQ API key from storage, falling back to CONFIG
+ * @returns {string} The API key (empty string if not configured)
+ */
+function getLocationIQKey() {
+    return storage.getLocationIQKey() || CONFIG.LOCATIONIQ_API_KEY || '';
+}
 
 /**
  * Helper to build a stable cache key from coordinates.
@@ -38,7 +47,7 @@ export async function reverseGeocode(lat, lng) {
     };
 
     const params = new URLSearchParams({
-        key: CONFIG.LOCATIONIQ_API_KEY,
+        key: getLocationIQKey(),
         lat: lat.toString(),
         lon: lng.toString(),
         format: 'json'

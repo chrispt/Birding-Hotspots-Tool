@@ -11,12 +11,12 @@
     --text-primary: #212121;
     --text-secondary: #595959;
     --text-light: #595959; /* WCAG AA compliant contrast ratio 4.5:1 on white */
-    --border-color: #E0E0E0;
+    --border-color: #BDBDBD;
     --error: #D32F2F;
     --error-bg: #FFEBEE;
     --success: #388E3C;
     --notable-highlight: #FF5722;
-    --lifer-highlight: #9C27B0;
+    --lifer-highlight: #6A1B9A;
     --lifer-bg: #F3E5F5;
     --shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     --shadow-hover: 0 4px 16px rgba(0, 0, 0, 0.15);
@@ -53,7 +53,7 @@
         --text-primary: #E0E0E0;
         --text-secondary: #9E9E9E;
         --text-light: #9E9E9E;
-        --border-color: #333333;
+        --border-color: #444444;
         --shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
         --shadow-hover: 0 4px 16px rgba(0, 0, 0, 0.4);
         --hover-bg: #2A2A2A;
@@ -90,7 +90,7 @@
     --text-primary: #E0E0E0;
     --text-secondary: #9E9E9E;
     --text-light: #9E9E9E;
-    --border-color: #333333;
+    --border-color: #444444;
     --shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     --shadow-hover: 0 4px 16px rgba(0, 0, 0, 0.4);
     --hover-bg: #2A2A2A;
@@ -141,6 +141,19 @@
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     border: 0;
+}
+
+/* Global focus-visible styles for keyboard accessibility (WCAG 2.4.7) */
+:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+/* Remove focus ring on mouse click for elements with custom focus styles */
+.text-input:focus:not(:focus-visible),
+.species-search-input:focus:not(:focus-visible),
+.select-input:focus:not(:focus-visible) {
+    outline: none;
 }
 
 html {

@@ -21,6 +21,14 @@ import { generateGPX, downloadGPX } from './services/gpx-generator.js';
 import { LifeListService } from './services/life-list.js';
 
 /**
+ * Sanitize a string for safe HTML interpolation (prevent XSS)
+ */
+function sanitizeHTML(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
+
+/**
  * Main application class
  */
 class BirdingHotspotsApp {
@@ -50,6 +58,12 @@ class BirdingHotspotsApp {
             eyeIcon: document.getElementById('eyeIcon'),
             rememberKey: document.getElementById('rememberKey'),
 
+            // LocationIQ API key
+            locationiqApiKey: document.getElementById('locationiqApiKey'),
+            toggleLocationiqKey: document.getElementById('toggleLocationiqKey'),
+            locationiqEyeIcon: document.getElementById('locationiqEyeIcon'),
+            rememberLocationiqKey: document.getElementById('rememberLocationiqKey'),
+
             // Sort options
             sortMethodRadios: document.querySelectorAll('[name="sortMethod"]'),
 
@@ -76,6 +90,7 @@ class BirdingHotspotsApp {
             // Generate
             generateReport: document.getElementById('generateReport'),
             errorMessage: document.getElementById('errorMessage'),
+            searchStatus: document.getElementById('searchStatus'),
 
             // Loading
             loadingOverlay: document.getElementById('loadingOverlay'),
@@ -334,6 +349,10 @@ class BirdingHotspotsApp {
         // Remember API key checkbox
         this.elements.rememberKey.addEventListener('change', (e) => this.handleRememberKeyChange(e.target.checked));
 
+        // LocationIQ API key toggle visibility and remember
+        this.elements.toggleLocationiqKey.addEventListener('click', () => this.toggleLocationiqKeyVisibility());
+        this.elements.rememberLocationiqKey.addEventListener('change', (e) => this.handleRememberLocationiqKeyChange(e.target.checked));
+
         // Favorites
         this.elements.saveFavorite.addEventListener('click', () => this.showSaveFavoriteModal());
         this.elements.cancelSaveFavorite.addEventListener('click', () => this.hideSaveFavoriteModal());
@@ -506,6 +525,13 @@ class BirdingHotspotsApp {
             this.elements.rememberKey.checked = true;
         }
 
+        // Load saved LocationIQ key
+        const savedLocationiqKey = storage.getLocationIQKey();
+        if (savedLocationiqKey) {
+            this.elements.locationiqApiKey.value = savedLocationiqKey;
+            this.elements.rememberLocationiqKey.checked = true;
+        }
+
         // Load favorites
         this.renderFavorites();
 
@@ -564,6 +590,38 @@ class BirdingHotspotsApp {
             }
         } else {
             storage.clearApiKey();
+        }
+    }
+
+    /**
+     * Toggle LocationIQ API key visibility
+     */
+    toggleLocationiqKeyVisibility() {
+        const isPassword = this.elements.locationiqApiKey.type === 'password';
+        this.elements.locationiqApiKey.type = isPassword ? 'text' : 'password';
+
+        const eyePath = isPassword
+            ? 'M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46A11.804 11.804 0 001 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z'
+            : 'M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z';
+
+        this.elements.locationiqEyeIcon.innerHTML = '';
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('fill', 'currentColor');
+        path.setAttribute('d', eyePath);
+        this.elements.locationiqEyeIcon.appendChild(path);
+    }
+
+    /**
+     * Handle remember LocationIQ key toggle
+     */
+    handleRememberLocationiqKeyChange(remember) {
+        if (remember) {
+            const key = this.elements.locationiqApiKey.value.trim();
+            if (key) {
+                storage.setLocationIQKey(key);
+            }
+        } else {
+            storage.clearLocationIQKey();
         }
     }
 
@@ -1521,6 +1579,14 @@ class BirdingHotspotsApp {
                 storage.setApiKey(apiKeyValidation.apiKey);
             }
 
+            // Save LocationIQ key if remember is checked
+            if (this.elements.rememberLocationiqKey.checked) {
+                const locationiqKey = this.elements.locationiqApiKey.value.trim();
+                if (locationiqKey) {
+                    storage.setLocationIQKey(locationiqKey);
+                }
+            }
+
             // Initialize eBird API with abort signal
             this.ebirdApi = new EBirdAPI(apiKeyValidation.apiKey);
             this.ebirdApi.setAbortSignal(this.abortController.signal);
@@ -1890,6 +1956,13 @@ class BirdingHotspotsApp {
 
         // Scroll to results and set focus for accessibility
         this.elements.resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+        // Announce results to screen readers
+        if (this.elements.searchStatus) {
+            this.elements.searchStatus.textContent = hotspots.length === 0
+                ? 'No hotspots found'
+                : `Found ${hotspots.length} hotspots`;
+        }
 
         // Focus results section after scroll animation for screen reader users
         setTimeout(() => {
@@ -3990,6 +4063,12 @@ class BirdingHotspotsApp {
         // Show results section
         this.elements.resultsSection.classList.remove('hidden');
         this.elements.resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+        // Announce route results to screen readers
+        if (this.elements.searchStatus) {
+            const hotspotCount = itinerary.stops.filter(s => s.type === 'hotspot').length;
+            this.elements.searchStatus.textContent = `Route itinerary built with ${hotspotCount} birding stops`;
+        }
     }
 
     /**
@@ -4141,7 +4220,7 @@ class BirdingHotspotsApp {
             });
 
             const marker = L.marker([stop.lat, stop.lng], { icon })
-                .bindPopup(`<strong>${stop.name || stop.address}</strong>${isHotspot && stop.speciesCount ? `<br>${stop.speciesCount} species` : ''}`)
+                .bindPopup(`<strong>${sanitizeHTML(stop.name || stop.address)}</strong>${isHotspot && stop.speciesCount ? `<br>${sanitizeHTML(String(stop.speciesCount))} species` : ''}`)
                 .addTo(this.resultsMapInstance);
 
             this.resultsMarkers.push(marker);
@@ -5245,9 +5324,9 @@ class BirdingHotspotsApp {
 
                     const popupContent = `
                         <div class="hotspot-preview-popup">
-                            <strong class="popup-hotspot-name">${h.locName}</strong>
-                            <div class="popup-species-count">${speciesText}</div>
-                            <button class="popup-itinerary-btn ${buttonClass}" data-loc-id="${h.locId}">
+                            <strong class="popup-hotspot-name">${sanitizeHTML(h.locName)}</strong>
+                            <div class="popup-species-count">${sanitizeHTML(speciesText)}</div>
+                            <button class="popup-itinerary-btn ${buttonClass}" data-loc-id="${sanitizeHTML(h.locId)}">
                                 ${buttonText}
                             </button>
                         </div>
@@ -5712,7 +5791,7 @@ class BirdingHotspotsApp {
             });
 
             const marker = L.marker([stop.lat, stop.lng], { icon })
-                .bindPopup(`<strong>${stop.name}</strong>${stop.speciesCount ? `<br>${stop.speciesCount} species` : ''}`)
+                .bindPopup(`<strong>${sanitizeHTML(stop.name)}</strong>${stop.speciesCount ? `<br>${sanitizeHTML(String(stop.speciesCount))} species` : ''}`)
                 .addTo(this.resultsMapInstance);
 
             this.resultsMarkers.push(marker);
@@ -5876,7 +5955,7 @@ class BirdingHotspotsApp {
             });
 
             const marker = L.marker([hotspot.lat, hotspot.lng], { icon: hotspotIcon })
-                .bindPopup(`<strong>${hotspot.name}</strong><br>${hotspot.speciesCount} species`)
+                .bindPopup(`<strong>${sanitizeHTML(hotspot.name)}</strong><br>${sanitizeHTML(String(hotspot.speciesCount))} species`)
                 .on('click', () => this.scrollToHotspotCard(number));
 
             marker.addTo(this.resultsMapInstance);
