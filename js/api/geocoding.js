@@ -3,23 +3,9 @@
  * Uses LocationIQ REST API for geocoding
  */
 import { CONFIG, ErrorTypes, ErrorMessages } from '../utils/constants.js';
-import { storage } from '../services/storage.js';
 
 // Cache for geocoding results (session-level for performance)
 const geocodeCache = new Map();
-
-/**
- * Get the LocationIQ API key from storage, falling back to CONFIG
- * @returns {string} The API key
- * @throws {Error} If no key is configured
- */
-function getLocationIQKey() {
-    const key = storage.getLocationIQKey() || CONFIG.LOCATIONIQ_API_KEY;
-    if (!key) {
-        throw new Error('LocationIQ API key is not configured. Please add your key in the settings.');
-    }
-    return key;
-}
 
 /**
  * Convert an address to coordinates using LocationIQ API
@@ -35,7 +21,7 @@ export async function geocodeAddress(address) {
     }
 
     const params = new URLSearchParams({
-        key: getLocationIQKey(),
+        key: CONFIG.LOCATIONIQ_API_KEY,
         q: address,
         format: 'json',
         limit: '1'

@@ -42,8 +42,7 @@ export const CONFIG = {
         LIFE_LIST: 'birding_life_list',
         RECENT_SEARCHES: 'birding_recent_searches',
         FAVORITE_HOTSPOTS: 'birding_favorite_hotspots',
-        THEME: 'birding_theme',
-        LOCATIONIQ_KEY: 'birding_locationiq_key'
+        THEME: 'birding_theme'
     }
 };
 

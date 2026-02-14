@@ -192,58 +192,6 @@ export const storage = {
         }
     },
 
-    // ==================== LocationIQ API Key ====================
-
-    /**
-     * Get saved LocationIQ API key (handles both obfuscated and legacy plain text)
-     * @returns {string|null} The saved API key or null
-     */
-    getLocationIQKey() {
-        try {
-            const stored = localStorage.getItem(STORAGE_KEYS.LOCATIONIQ_KEY);
-            if (!stored) return null;
-
-            const deobfuscated = deobfuscate(stored);
-            if (deobfuscated && deobfuscated.startsWith('pk.')) {
-                return deobfuscated;
-            }
-
-            // Fall back to plain text (legacy) and migrate
-            if (stored.startsWith('pk.')) {
-                this.setLocationIQKey(stored);
-                return stored;
-            }
-
-            return null;
-        } catch (e) {
-            console.warn('Could not access localStorage:', e);
-            return null;
-        }
-    },
-
-    /**
-     * Save LocationIQ API key (obfuscated)
-     * @param {string} key - The API key to save
-     */
-    setLocationIQKey(key) {
-        try {
-            localStorage.setItem(STORAGE_KEYS.LOCATIONIQ_KEY, obfuscate(key));
-        } catch (e) {
-            console.warn('Could not save to localStorage:', e);
-        }
-    },
-
-    /**
-     * Remove saved LocationIQ API key
-     */
-    clearLocationIQKey() {
-        try {
-            localStorage.removeItem(STORAGE_KEYS.LOCATIONIQ_KEY);
-        } catch (e) {
-            console.warn('Could not clear localStorage:', e);
-        }
-    },
-
     // ==================== Recent Searches ====================
 
     /**
