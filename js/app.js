@@ -70,6 +70,7 @@ class BirdingHotspotsApp {
             // Advanced Options
             advancedOptionsToggle: document.getElementById('advancedOptionsToggle'),
             advancedOptionsContent: document.getElementById('advancedOptionsContent'),
+            advancedOptionsSection: document.getElementById('advancedOptionsSection'),
 
             // Favorites
             favoritesList: document.getElementById('favoritesList'),
@@ -2517,6 +2518,9 @@ class BirdingHotspotsApp {
         // Search range and hotspots count are for location search only
         this.elements.searchRangeSection.classList.toggle('hidden', type !== 'location');
         this.elements.hotspotsCountSection.classList.toggle('hidden', type !== 'location' || this.searchSubMode === 'species');
+
+        // Hide entire Advanced Options section in route mode (none of its options apply)
+        this.elements.advancedOptionsSection.classList.toggle('hidden', type !== 'location');
 
         // Update generate button
         this.updateGenerateButton();
