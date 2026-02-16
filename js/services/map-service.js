@@ -266,7 +266,7 @@ function drawMarkers(ctx, hotspots, centerLat, centerLng, toCanvas) {
 
     ctx.beginPath();
     ctx.arc(homePos.x, homePos.y, 15, 0, Math.PI * 2);
-    ctx.fillStyle = '#2E7D32';
+    ctx.fillStyle = '#3A6B35';
     ctx.fill();
     ctx.strokeStyle = '#FFFFFF';
     ctx.lineWidth = 3;
@@ -300,7 +300,7 @@ function drawLegend(ctx, width, height) {
     // Your Location item
     ctx.beginPath();
     ctx.arc(30, height - 42, 8, 0, Math.PI * 2);
-    ctx.fillStyle = '#2E7D32';
+    ctx.fillStyle = '#3A6B35';
     ctx.fill();
 
     ctx.fillStyle = '#212121';

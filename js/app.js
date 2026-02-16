@@ -3782,7 +3782,7 @@ class BirdingHotspotsApp {
             const marker = this.routeHotspotMarkers[index];
             const hasTarget = marker.hasTargetSpecies;
             marker.setStyle({
-                fillColor: selected ? '#2E7D32' : '#FF9800', // Green if selected, orange if not
+                fillColor: selected ? '#3A6B35' : '#FF9800', // Green if selected, orange if not
                 fillOpacity: selected ? 0.9 : 0.85,
                 // Preserve blue border for target species, otherwise white
                 color: hasTarget ? '#1976D2' : '#fff',
@@ -4136,7 +4136,7 @@ class BirdingHotspotsApp {
         if (itinerary.geometry && itinerary.geometry.coordinates && itinerary.geometry.coordinates.length > 0) {
             const routeCoords = itinerary.geometry.coordinates.map(c => [c[1], c[0]]);
             this.itineraryRouteLine = L.polyline(routeCoords, {
-                color: '#2E7D32',
+                color: '#3A6B35',
                 weight: 5,
                 opacity: 0.8
             }).addTo(this.resultsMapInstance);
@@ -5201,7 +5201,7 @@ class BirdingHotspotsApp {
         // Add route line (convert GeoJSON coordinates to Leaflet format)
         const routeCoords = route.geometry.coordinates.map(c => [c[1], c[0]]);
         this.routePreviewLine = L.polyline(routeCoords, {
-            color: '#2E7D32',
+            color: '#3A6B35',
             weight: 4,
             opacity: 0.8
         }).addTo(this.routePreviewMapInstance);
@@ -5250,7 +5250,7 @@ class BirdingHotspotsApp {
                     const isSelected = this.selectedPreviewHotspots.has(h.locId);
                     const marker = L.circleMarker([h.lat, h.lng], {
                         radius: 8,
-                        fillColor: isSelected ? '#4CAF50' : '#FF5722',
+                        fillColor: isSelected ? '#5A8F55' : '#FF5722',
                         color: '#fff',
                         weight: 2,
                         fillOpacity: 0.9,
@@ -5358,7 +5358,7 @@ class BirdingHotspotsApp {
         } else {
             // Add to selection
             this.selectedPreviewHotspots.add(locId);
-            marker.setStyle({ fillColor: '#4CAF50' }); // Green for selected
+            marker.setStyle({ fillColor: '#5A8F55' }); // Green for selected
         }
 
         // Update popup content
@@ -5711,7 +5711,7 @@ class BirdingHotspotsApp {
         // Add route line from geometry
         const coords = itinerary.geometry.coordinates.map(c => [c[1], c[0]]);
         this.itineraryRouteLine = L.polyline(coords, {
-            color: '#2E7D32',
+            color: '#3A6B35',
             weight: 4,
             opacity: 0.8
         }).addTo(this.resultsMapInstance);
@@ -5721,8 +5721,8 @@ class BirdingHotspotsApp {
         this.resultsMarkers = [];
 
         itinerary.stops.forEach((stop, index) => {
-            const markerColor = stop.type === 'start' ? '#2E7D32' :
-                stop.type === 'end' ? '#D32F2F' : '#FFC107';
+            const markerColor = stop.type === 'start' ? '#3A6B35' :
+                stop.type === 'end' ? '#D32F2F' : '#D4A843';
             const markerText = stop.type === 'start' ? 'S' :
                 stop.type === 'end' ? 'E' : index;
 
