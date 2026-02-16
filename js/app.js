@@ -425,6 +425,17 @@ class BirdingHotspotsApp {
         this.elements.routeEndAddress.addEventListener('blur', () => this.handleRouteEndBlur());
         this.elements.useCurrentLocationStart.addEventListener('click', () => this.handleUseCurrentLocationForRoute('start'));
         this.elements.useCurrentLocationEnd.addEventListener('click', () => this.handleUseCurrentLocationForRoute('end'));
+        // Explicit click handler for "Open in Google Maps" route preview link
+        this.elements.openRouteInGoogleMaps.addEventListener('click', (e) => {
+            if (this.validatedRouteStartCoords && this.validatedRouteEndCoords) {
+                e.preventDefault();
+                const url = getGoogleMapsDirectionsUrl(
+                    this.validatedRouteStartCoords.lat, this.validatedRouteStartCoords.lng,
+                    this.validatedRouteEndCoords.lat, this.validatedRouteEndCoords.lng
+                );
+                window.open(url, '_blank', 'noopener,noreferrer');
+            }
+        });
         this.elements.routeMaxDetour.addEventListener('input', () => {
             this.elements.routeMaxDetourValue.textContent = this.elements.routeMaxDetour.value;
         });

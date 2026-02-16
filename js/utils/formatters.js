@@ -97,11 +97,10 @@ export function formatNumber(num) {
  * @returns {string} Google Maps URL
  */
 export function getGoogleMapsDirectionsUrl(originLat, originLng, destLat, destLng) {
-    const url = new URL('https://www.google.com/maps/dir/');
-    url.searchParams.set('api', '1');
-    url.searchParams.set('origin', `${originLat},${originLng}`);
-    url.searchParams.set('destination', `${destLat},${destLng}`);
-    return url.toString();
+    // Build URL manually to avoid URLSearchParams encoding commas as %2C
+    const origin = `${Number(originLat)},${Number(originLng)}`;
+    const dest = `${Number(destLat)},${Number(destLng)}`;
+    return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}`;
 }
 
 /**
@@ -112,27 +111,21 @@ export function getGoogleMapsDirectionsUrl(originLat, originLng, destLat, destLn
 export function getGoogleMapsRouteUrl(stops) {
     if (!stops || stops.length < 2) return '';
 
-    const url = new URL('https://www.google.com/maps/dir/');
-    url.searchParams.set('api', '1');
-
-    // First stop is origin
+    // Build URL manually to avoid URLSearchParams encoding commas/pipes as %2C/%7C
     const origin = stops[0];
-    url.searchParams.set('origin', `${origin.lat},${origin.lng}`);
-
-    // Last stop is destination
     const destination = stops[stops.length - 1];
-    url.searchParams.set('destination', `${destination.lat},${destination.lng}`);
+    let url = `https://www.google.com/maps/dir/?api=1&origin=${Number(origin.lat)},${Number(origin.lng)}&destination=${Number(destination.lat)},${Number(destination.lng)}`;
 
     // Middle stops are waypoints (max ~10 waypoints work reliably)
     if (stops.length > 2) {
         const waypoints = stops.slice(1, -1)
-            .map(s => `${s.lat},${s.lng}`)
+            .map(s => `${Number(s.lat)},${Number(s.lng)}`)
             .join('|');
-        url.searchParams.set('waypoints', waypoints);
+        url += `&waypoints=${waypoints}`;
     }
 
-    url.searchParams.set('travelmode', 'driving');
-    return url.toString();
+    url += '&travelmode=driving';
+    return url;
 }
 
 /**
@@ -153,10 +146,8 @@ export function getEbirdHotspotUrl(locId) {
  * @returns {string} Google Maps URL
  */
 export function getGoogleMapsSearchUrl(lat, lng) {
-    const url = new URL('https://www.google.com/maps/search/');
-    url.searchParams.set('api', '1');
-    url.searchParams.set('query', `${lat},${lng}`);
-    return url.toString();
+    // Build URL manually to avoid URLSearchParams encoding commas as %2C
+    return `https://www.google.com/maps/search/?api=1&query=${Number(lat)},${Number(lng)}`;
 }
 
 /**
