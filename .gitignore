@@ -5,6 +5,10 @@ desktop.ini
 
 # Claude Code local settings
 .claude/
+.agents/
+
+# Playwright MCP
+.playwright-mcp/
 
 # IDE
 .vscode/
@@ -12,4 +16,3 @@ desktop.ini
 
 # OS files
 .DS_Store
-.claude/settings.local.json
