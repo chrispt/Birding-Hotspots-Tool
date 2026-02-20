@@ -67,3 +67,19 @@ Tests export functions prefixed with `test` and use a minimal `assert()` helper 
 - **Dark mode**: CSS custom properties in `:root` and `[data-theme="dark"]` in `styles.css`, toggled via `data-theme` attribute on `<html>`
 - **Two search modes**: Location-based (radius search) and Route-based (hotspots along a driving route) — controlled by toggle buttons in UI
 - **Typography**: Plus Jakarta Sans via Google Fonts
+
+## Workflow Rules
+
+### Post-code audits
+
+After writing new code but **before committing**, always run three audits and present findings to the user:
+
+1. **UX/UI Audit** — Review the changes for usability, visual consistency, responsive behavior, and adherence to existing design patterns (color tokens, spacing scale, component styles).
+2. **Security Audit** — Check for XSS vectors, unsafe DOM insertion, CSP compliance, exposed secrets, injection risks, and OWASP top 10 concerns relevant to the changes.
+3. **Accessibility Audit** — Verify ARIA attributes, keyboard navigability, color contrast, screen reader compatibility, and semantic HTML in the changed code.
+
+**Do not apply any audit recommendations unless the user explicitly approves them.** Present findings as a summary and wait for direction.
+
+### Commit, push & sync
+
+After code is finalized (audits complete, any approved fixes applied), always commit, push, and sync in one flow — do not stop after committing.
