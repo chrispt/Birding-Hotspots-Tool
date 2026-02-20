@@ -2864,6 +2864,7 @@ details.about-section[open] .about-chevron {
 .weather-badge {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 12px;
     padding: 12px 16px;
     background: linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%);
@@ -2933,6 +2934,37 @@ details.about-section[open] .about-chevron {
 .weather-badge.storm { background: linear-gradient(135deg, #ECEFF1 0%, #B0BEC5 100%); }
 .weather-badge.storm .weather-icon { color: #455A64; }
 
+/* Sunrise/Sunset in weather summary banner */
+.weather-sun-times {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    margin-left: auto;
+    white-space: nowrap;
+}
+
+.weather-sun-times.golden-active {
+    color: var(--accent-color);
+    font-weight: 600;
+}
+
+/* Sunrise/Sunset row in hotspot weather badge */
+.weather-sun-times-badge {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding-top: 8px;
+    margin-top: 8px;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    width: 100%;
+}
+
+.weather-sun-times-badge .daylight {
+    opacity: 0.8;
+    font-style: italic;
+}
+
 /* Temperature Unit Toggle */
 .temp-toggle {
     display: inline-flex;
@@ -2996,6 +3028,11 @@ details.about-section[open] .about-chevron {
 
     .weather-summary {
         flex-wrap: wrap;
+    }
+
+    .weather-sun-times {
+        margin-left: 0;
+        width: 100%;
     }
 }
 

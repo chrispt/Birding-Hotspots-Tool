@@ -127,6 +127,67 @@ export function getBirdingConditionScore(weather) {
 }
 
 /**
+ * Format a Date object to 12-hour time string (e.g., "6:42 AM")
+ * @param {Date} date
+ * @returns {string}
+ */
+function formatTime12h(date) {
+    let hours = date.getHours();
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12 || 12;
+    return `${hours}:${minutes} ${ampm}`;
+}
+
+/**
+ * Parse sunrise/sunset from Open-Meteo daily data and compute golden hours
+ * @param {Object} daily - data.daily from Open-Meteo response
+ * @returns {Object} Sun time fields
+ */
+function parseSunTimes(daily) {
+    if (!daily?.sunrise?.[0] || !daily?.sunset?.[0]) {
+        return {};
+    }
+
+    const sunriseDate = new Date(daily.sunrise[0]);
+    const sunsetDate = new Date(daily.sunset[0]);
+
+    const daylightMs = sunsetDate - sunriseDate;
+    const daylightHours = Math.round((daylightMs / 3600000) * 10) / 10;
+
+    // Golden hour: first hour after sunrise, last hour before sunset
+    const goldenMorningEnd = new Date(sunriseDate.getTime() + 3600000);
+    const goldenEveningStart = new Date(sunsetDate.getTime() - 3600000);
+
+    return {
+        sunrise: formatTime12h(sunriseDate),
+        sunset: formatTime12h(sunsetDate),
+        sunriseDate,
+        sunsetDate,
+        daylightHours,
+        goldenHourMorning: { start: formatTime12h(sunriseDate), end: formatTime12h(goldenMorningEnd) },
+        goldenHourEvening: { start: formatTime12h(goldenEveningStart), end: formatTime12h(sunsetDate) }
+    };
+}
+
+/**
+ * Check if the current time falls within a golden hour window
+ * @param {Object} weather - Weather data with sunriseDate/sunsetDate
+ * @returns {string|null} 'morning' or 'evening' if in golden hour, null otherwise
+ */
+export function getGoldenHourStatus(weather) {
+    if (!weather?.sunriseDate || !weather?.sunsetDate) return null;
+
+    const now = new Date();
+    const morningEnd = new Date(weather.sunriseDate.getTime() + 3600000);
+    const eveningStart = new Date(weather.sunsetDate.getTime() - 3600000);
+
+    if (now >= weather.sunriseDate && now <= morningEnd) return 'morning';
+    if (now >= eveningStart && now <= weather.sunsetDate) return 'evening';
+    return null;
+}
+
+/**
  * Fetch weather data for a single location
  * @param {number} lat - Latitude
  * @param {number} lng - Longitude
@@ -137,6 +198,7 @@ export async function getWeatherForLocation(lat, lng) {
         latitude: lat.toFixed(4),
         longitude: lng.toFixed(4),
         current: 'temperature_2m,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,wind_direction_10m',
+        daily: 'sunrise,sunset',
         hourly: 'precipitation_probability',
         temperature_unit: 'celsius',
         wind_speed_unit: 'kmh',
@@ -159,6 +221,9 @@ export async function getWeatherForLocation(lat, lng) {
 
         const weatherInfo = getWeatherInfo(data.current.weather_code);
 
+        // Parse sunrise/sunset from daily data
+        const sunData = parseSunTimes(data.daily);
+
         return {
             temperatureC: Math.round(data.current.temperature_2m),
             temperatureF: celsiusToFahrenheit(data.current.temperature_2m),
@@ -172,7 +237,8 @@ export async function getWeatherForLocation(lat, lng) {
             windSpeedKmh: Math.round(data.current.wind_speed_10m),
             windSpeedMph: kmhToMph(data.current.wind_speed_10m),
             windDirection: getWindDirection(data.current.wind_direction_10m),
-            windDirectionDegrees: data.current.wind_direction_10m
+            windDirectionDegrees: data.current.wind_direction_10m,
+            ...sunData
         };
     } catch (error) {
         console.warn(`Weather fetch failed for ${lat}, ${lng}:`, error);

@@ -13,7 +13,7 @@ import { reverseGeocode, batchReverseGeocode } from './api/reverse-geo.js';
 import { EBirdAPI, processObservations } from './api/ebird.js';
 import { generatePDFReport, downloadPDF, generateRoutePDFReport, downloadRoutePDF } from './services/pdf-generator.js';
 import { getDrivingRoutes, getRouteThrough } from './api/routing.js';
-import { getWeatherForLocations, getOverallBirdingConditions, getBirdingConditionScore } from './api/weather.js';
+import { getWeatherForLocations, getOverallBirdingConditions, getBirdingConditionScore, getGoldenHourStatus } from './api/weather.js';
 import { SpeciesSearch } from './services/species-search.js';
 import { getSeasonalInsights, getOptimalBirdingTimes, getCurrentSeason } from './services/seasonal-insights.js';
 import { buildItinerary, formatItineraryDuration, formatItineraryTime, calculateUniquenessScore, getSeenSpeciesFromHotspots } from './services/itinerary-builder.js';
@@ -113,6 +113,7 @@ class BirdingHotspotsApp {
             hotspotCards: document.getElementById('hotspotCards'),
             newSearchBtn: document.getElementById('newSearchBtn'),
             exportPdfBtn: document.getElementById('exportPdfBtn'),
+            shareLinkBtn: document.getElementById('shareLinkBtn'),
             sortBySpecies: document.getElementById('sortBySpecies'),
             sortByDistance: document.getElementById('sortByDistance'),
             sortByDriving: document.getElementById('sortByDriving'),
@@ -270,6 +271,7 @@ class BirdingHotspotsApp {
         this.initializeTheme();
         this.initializeEventListeners();
         this.loadSavedData();
+        this.loadFromURL();
     }
 
     /**
@@ -495,6 +497,9 @@ class BirdingHotspotsApp {
                 this.selectSpecies(species);
             }
         });
+
+        // Share link
+        this.elements.shareLinkBtn.addEventListener('click', () => this.handleShareLink());
 
         // Itinerary builder events
         this.elements.buildItineraryBtn.addEventListener('click', () => this.toggleItineraryPanel());
@@ -1335,6 +1340,113 @@ class BirdingHotspotsApp {
     }
 
     /**
+     * Parse URL hash params and auto-populate form on page load
+     */
+    loadFromURL() {
+        const hash = window.location.hash.slice(1);
+        if (!hash) return;
+
+        const params = new URLSearchParams(hash);
+        const lat = parseFloat(params.get('lat'));
+        const lng = parseFloat(params.get('lng'));
+
+        if (isNaN(lat) || isNaN(lng)) return;
+
+        // Switch to GPS mode and populate coordinates
+        const gpsRadio = document.querySelector('[name="inputMode"][value="gps"]');
+        if (gpsRadio) {
+            gpsRadio.checked = true;
+            this.toggleInputMode('gps');
+        }
+
+        this.elements.latitude.value = lat;
+        this.elements.longitude.value = lng;
+
+        // Set sort method if provided
+        const sort = params.get('sort');
+        if (sort) {
+            const sortRadio = document.querySelector(`[name="sortMethod"][value="${sort}"]`);
+            if (sortRadio) sortRadio.checked = true;
+        }
+
+        // Set search range if provided
+        const range = params.get('range');
+        if (range) {
+            const rangeRadio = document.querySelector(`[name="searchRange"][value="${range}"]`);
+            if (rangeRadio) rangeRadio.checked = true;
+        }
+
+        // Set hotspot count if provided
+        const count = params.get('count');
+        if (count) {
+            const countRadio = document.querySelector(`[name="hotspotsCount"][value="${count}"]`);
+            if (countRadio) countRadio.checked = true;
+        }
+
+        // Auto-trigger search if API key is already saved
+        const savedKey = storage.getApiKey();
+        if (savedKey) {
+            this.handleGenerateReport();
+        }
+    }
+
+    /**
+     * Update URL hash with current search params (uses replaceState to avoid history pollution)
+     */
+    updateURLHash(origin) {
+        if (!origin || !origin.lat || !origin.lng) return;
+        // Only for location search, not route
+        if (this.searchType === 'route') return;
+
+        const params = new URLSearchParams();
+        params.set('lat', origin.lat.toFixed(4));
+        params.set('lng', origin.lng.toFixed(4));
+
+        if (origin.address) {
+            params.set('addr', origin.address);
+        }
+
+        const sortMethod = document.querySelector('[name="sortMethod"]:checked')?.value;
+        if (sortMethod) params.set('sort', sortMethod);
+
+        const searchRange = document.querySelector('[name="searchRange"]:checked')?.value;
+        if (searchRange) params.set('range', searchRange);
+
+        const hotspotsCount = document.querySelector('[name="hotspotsCount"]:checked')?.value;
+        if (hotspotsCount) params.set('count', hotspotsCount);
+
+        history.replaceState(null, '', `#${params.toString()}`);
+    }
+
+    /**
+     * Build the full shareable URL with current search params
+     */
+    buildShareURL() {
+        return window.location.href;
+    }
+
+    /**
+     * Copy share URL to clipboard with toast feedback
+     */
+    async handleShareLink() {
+        const url = this.buildShareURL();
+        try {
+            await navigator.clipboard.writeText(url);
+            this.showToast('Link copied to clipboard!');
+
+            // Temporarily change button text
+            const btn = this.elements.shareLinkBtn;
+            const originalHTML = btn.innerHTML;
+            btn.textContent = 'Copied!';
+            setTimeout(() => {
+                btn.innerHTML = originalHTML;
+            }, 2000);
+        } catch {
+            this.showToast('Could not copy link to clipboard', 'error');
+        }
+    }
+
+    /**
      * Copy species list to clipboard
      */
     async copySpeciesList(hotspotName, birds) {
@@ -1686,6 +1798,9 @@ class BirdingHotspotsApp {
 
             // Save to recent searches
             this.saveRecentSearch(origin);
+
+            // Update URL hash for shareable links (location search only)
+            this.updateURLHash(origin);
 
             this.hideLoading();
 
@@ -2338,6 +2453,25 @@ class BirdingHotspotsApp {
 
         container.appendChild(iconSpan);
         container.appendChild(textSpan);
+
+        // Add sunrise/sunset times from the first hotspot with sun data
+        const sunWeather = weatherData.find(w => w.sunrise && w.sunset);
+        if (sunWeather) {
+            const sunTimesSpan = document.createElement('span');
+            sunTimesSpan.className = 'weather-sun-times';
+
+            let sunText = `Sunrise ${sunWeather.sunrise} \u00B7 Sunset ${sunWeather.sunset}`;
+
+            const goldenStatus = getGoldenHourStatus(sunWeather);
+            if (goldenStatus) {
+                sunText += ' \u00B7 Golden hour now!';
+                sunTimesSpan.classList.add('golden-active');
+            }
+
+            sunTimesSpan.textContent = sunText;
+            container.appendChild(sunTimesSpan);
+        }
+
         container.classList.remove('hidden');
     }
 
@@ -2482,6 +2616,31 @@ class BirdingHotspotsApp {
 
         badge.appendChild(main);
         badge.appendChild(details);
+
+        // Sunrise/sunset row
+        if (weather.sunrise && weather.sunset) {
+            const sunRow = document.createElement('div');
+            sunRow.className = 'weather-sun-times-badge';
+
+            const sunriseSpan = document.createElement('span');
+            sunriseSpan.className = 'weather-detail';
+            sunriseSpan.appendChild(createSVGIcon('sunrise', 14));
+            sunriseSpan.appendChild(document.createTextNode(` ${weather.sunrise}`));
+
+            const sunsetSpan = document.createElement('span');
+            sunsetSpan.className = 'weather-detail';
+            sunsetSpan.appendChild(createSVGIcon('sunset', 14));
+            sunsetSpan.appendChild(document.createTextNode(` ${weather.sunset}`));
+
+            const daylightSpan = document.createElement('span');
+            daylightSpan.className = 'weather-detail daylight';
+            daylightSpan.textContent = `${weather.daylightHours}h daylight`;
+
+            sunRow.appendChild(sunriseSpan);
+            sunRow.appendChild(sunsetSpan);
+            sunRow.appendChild(daylightSpan);
+            badge.appendChild(sunRow);
+        }
 
         return badge;
     }
