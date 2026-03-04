@@ -692,6 +692,7 @@ class BirdingHotspotsApp {
 
         // Hide results section
         this.elements.resultsSection.classList.add('hidden');
+        document.querySelector('.main-content').classList.remove('has-results');
 
         // Clear hotspot cards
         clearElement(this.elements.hotspotCards);
@@ -758,6 +759,7 @@ class BirdingHotspotsApp {
 
         // Hide results section
         this.elements.resultsSection.classList.add('hidden');
+        document.querySelector('.main-content').classList.remove('has-results');
 
         // Focus the start address input
         this.elements.routeStartAddress.focus();
