@@ -1,19 +1,24 @@
 /**
  * Error Reporter Service
- * Captures runtime errors, queues them client-side, and lets the user
- * report them to GitHub via pre-filled issue URLs.
+ * Captures runtime errors, queues them client-side, and automatically
+ * reports them to GitHub via a serverless API endpoint (/api/report-error).
  *
- * No authentication or backend required — opens GitHub's /issues/new
- * endpoint with query parameters for title, body, and labels.
+ * Auto-reporting is debounced: after the last error, waits 5 seconds of
+ * quiet before sending. This batches cascading failures into fewer API calls.
+ * Falls back to manual reporting via pre-filled GitHub issue URLs if the
+ * API is unavailable.
  */
 
 import { CONFIG, ErrorTypes } from '../utils/constants.js';
 
 const REPO_URL = 'https://github.com/chrispt/Birding-Hotspots-Tool';
+const API_ENDPOINT = '/api/report-error';
 const MAX_QUEUE_SIZE = 20;
 const MAX_URL_BODY_CHARS = 6000;
 const MAX_STACK_LINES = 10;
 const EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
+const AUTO_REPORT_DELAY_MS = 5000; // Debounce: wait 5s of quiet before auto-reporting
+const MAX_AUTO_REPORTS_PER_SESSION = 10; // Prevent runaway reporting
 
 /**
  * Normalize an error message for fingerprinting by stripping variable data
@@ -89,6 +94,9 @@ class ErrorReporter {
         this._queue = [];
         this._listeners = [];
         this._initialized = false;
+        this._autoReportTimer = null;
+        this._autoReportsThisSession = 0;
+        this._reportedFingerprints = new Set(); // Track what's already been sent to API
     }
 
     /**
@@ -144,6 +152,7 @@ class ErrorReporter {
             existing.lastSeen = new Date().toISOString();
             this._persist();
             this._notifyListeners();
+            this._scheduleAutoReport();
             return;
         }
 
@@ -170,6 +179,7 @@ class ErrorReporter {
 
         this._persist();
         this._notifyListeners();
+        this._scheduleAutoReport();
     }
 
     /**
@@ -281,6 +291,71 @@ class ErrorReporter {
         this._listeners.forEach(fn => {
             try { fn(count); } catch (e) { /* ignore listener errors */ }
         });
+    }
+
+    /**
+     * Schedule an auto-report after a debounce period.
+     * Resets the timer on each new error so cascading failures batch together.
+     */
+    _scheduleAutoReport() {
+        if (this._autoReportTimer) {
+            clearTimeout(this._autoReportTimer);
+        }
+
+        // Don't auto-report if we've hit the session limit
+        if (this._autoReportsThisSession >= MAX_AUTO_REPORTS_PER_SESSION) return;
+
+        this._autoReportTimer = setTimeout(() => {
+            this._autoReportTimer = null;
+            this._autoReport();
+        }, AUTO_REPORT_DELAY_MS);
+    }
+
+    /**
+     * Automatically report unreported errors to the serverless API.
+     * Each error is sent individually so the server can deduplicate by title.
+     */
+    async _autoReport() {
+        const unreported = this._queue.filter(e => !this._reportedFingerprints.has(e.fingerprint));
+        if (unreported.length === 0) return;
+
+        const metadata = collectMetadata();
+
+        for (const error of unreported) {
+            if (this._autoReportsThisSession >= MAX_AUTO_REPORTS_PER_SESSION) break;
+
+            try {
+                const response = await fetch(API_ENDPOINT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        type: error.type,
+                        message: error.message,
+                        stack: error.stack,
+                        source: error.source,
+                        line: error.line,
+                        count: error.count,
+                        metadata
+                    })
+                });
+
+                if (response.ok) {
+                    this._reportedFingerprints.add(error.fingerprint);
+                    this._autoReportsThisSession++;
+                    const result = await response.json();
+                    console.info(`[ErrorReporter] Auto-reported to GitHub: ${result.action} #${result.issueNumber}`);
+                } else {
+                    // API not available (e.g., no GITHUB_TOKEN configured, or running locally)
+                    // Silently fall back to manual reporting via badge
+                    console.info('[ErrorReporter] Auto-report API unavailable, manual reporting available via badge');
+                    break; // Don't retry other errors if the API is down
+                }
+            } catch (e) {
+                // Network error or running on a non-Vercel host — fall back silently
+                console.info('[ErrorReporter] Auto-report failed (likely running locally), manual reporting available');
+                break;
+            }
+        }
     }
 
     /**
