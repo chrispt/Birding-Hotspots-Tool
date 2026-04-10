@@ -43,6 +43,7 @@ export const CONFIG = {
         RECENT_SEARCHES: 'birding_recent_searches',
         FAVORITE_HOTSPOTS: 'birding_favorite_hotspots',
         THEME: 'birding_theme',
+        TEMP_UNIT: 'birding_temp_unit',
         ERROR_QUEUE: 'birding_error_queue'
     }
 };

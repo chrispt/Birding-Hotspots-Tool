@@ -39,6 +39,22 @@
     --stop-start: #22c55e;
     --stop-end: #ef4444;
     --stop-end-hover: #dc2626;
+    /* Semantic colors: weather conditions */
+    --weather-excellent: #3A6B35;
+    --weather-good: #689F38;
+    --weather-fair: #FFA000;
+    --weather-poor: #D32F2F;
+    --weather-cloudy: #607D8B;
+    /* Semantic colors: lifer badges */
+    --lifer-text: #7B1FA2;
+    --lifer-glow: rgba(156, 39, 176, 0.3);
+    /* Semantic colors: seasons */
+    --season-spring: #3A6B35;
+    --season-fall: #F57F17;
+    --season-winter: #546E7A;
+    /* Error badge */
+    --error-badge-bg: #d32f2f;
+    --error-badge-text: #fff;
     /* Spacing scale */
     --spacing-xs: 8px;
     --spacing-sm: 16px;
@@ -103,6 +119,19 @@
     --error-bg: #3E1E1E;
     --lifer-bg: #2A1E2E;
     --card-bg-muted: #201C14;
+    /* Semantic colors: softened for dark backgrounds */
+    --weather-excellent: #66BB6A;
+    --weather-good: #8BC34A;
+    --weather-fair: #FFB74D;
+    --weather-poor: #EF5350;
+    --weather-cloudy: #90A4AE;
+    --lifer-text: #CE93D8;
+    --lifer-glow: rgba(206, 147, 216, 0.3);
+    --season-spring: #66BB6A;
+    --season-fall: #FFD54F;
+    --season-winter: #90A4AE;
+    --error-badge-bg: #ef5350;
+    --error-badge-text: #fff;
 }
 
 [data-theme="dark"] .loading-overlay {
@@ -1222,7 +1251,7 @@ body {
 }
 
 .route-lifer-badge {
-    background: linear-gradient(135deg, var(--lifer-highlight) 0%, #7B1FA2 100%);
+    background: linear-gradient(135deg, var(--lifer-highlight) 0%, var(--lifer-text) 100%);
     color: white;
     padding: 2px 8px;
     border-radius: 10px;
@@ -1520,8 +1549,8 @@ body {
     height: 18px;
     padding: 0 5px;
     border-radius: 9px;
-    background: #d32f2f;
-    color: #fff;
+    background: var(--error-badge-bg);
+    color: var(--error-badge-text);
     font-size: 11px;
     font-weight: 700;
     line-height: 1;
@@ -1562,13 +1591,9 @@ body {
 .error-item-type {
     font-family: var(--font-mono, monospace);
     font-size: 11px;
-    color: #d32f2f;
+    color: var(--error);
     font-weight: 600;
     text-transform: uppercase;
-}
-
-[data-theme="dark"] .error-item-type {
-    color: #ef5350;
 }
 
 .error-item-message {
@@ -1948,7 +1973,7 @@ details.about-section[open] .about-chevron {
 }
 
 .origin-marker {
-    background: #3A6B35;
+    background: var(--primary-color);
     border: 3px solid white;
     border-radius: 50%;
     width: 32px;
@@ -2095,17 +2120,17 @@ details.about-section[open] .about-chevron {
 
 .quality-badge.established {
     background: linear-gradient(135deg, #EBF2E4, #D4E5CB);
-    color: #3A6B35;
+    color: var(--season-spring);
 }
 
 .quality-badge.active {
     background: linear-gradient(135deg, #FFF8E1, #FFECB3);
-    color: #F57F17;
+    color: var(--season-fall);
 }
 
 .quality-badge.new {
     background: linear-gradient(135deg, #ECEFF1, #CFD8DC);
-    color: #546E7A;
+    color: var(--season-winter);
 }
 
 /* Hotspot Details */
@@ -2684,7 +2709,7 @@ details.about-section[open] .about-chevron {
 
 @keyframes liferPulse {
     0%, 100% { border-color: var(--lifer-highlight); }
-    50% { border-color: #7B1FA2; box-shadow: 0 0 8px rgba(156, 39, 176, 0.3); }
+    50% { border-color: var(--lifer-text); box-shadow: 0 0 8px var(--lifer-glow); }
 }
 
 .lifer-alert-header {
@@ -2695,20 +2720,20 @@ details.about-section[open] .about-chevron {
 }
 
 .lifer-alert-icon {
-    color: #7B1FA2;
+    color: var(--lifer-text);
     flex-shrink: 0;
 }
 
 .lifer-alert-title {
     font-weight: 700;
-    color: #7B1FA2;
+    color: var(--lifer-text);
     font-size: 1rem;
     margin: 0;
 }
 
 .lifer-alert-count {
     font-size: 0.875rem;
-    color: #8E24AA;
+    color: var(--lifer-text);
     margin-left: auto;
 }
 
@@ -2730,7 +2755,7 @@ details.about-section[open] .about-chevron {
 }
 
 .lifer-alert-item strong {
-    color: #7B1FA2;
+    color: var(--lifer-text);
 }
 
 .lifer-alert-location {
@@ -2756,7 +2781,7 @@ details.about-section[open] .about-chevron {
     cursor: pointer;
     font-size: 0.85rem;
     font-weight: 500;
-    color: #7B1FA2;
+    color: var(--lifer-text);
     transition: all var(--transition);
     font-family: inherit;
 }
@@ -2775,7 +2800,7 @@ details.about-section[open] .about-chevron {
 
 /* Lifer Badge on Hotspot Cards */
 .lifer-badge {
-    background: linear-gradient(135deg, var(--lifer-highlight) 0%, #7B1FA2 100%);
+    background: linear-gradient(135deg, var(--lifer-highlight) 0%, var(--lifer-text) 100%);
     color: white;
     padding: 4px 10px;
     border-radius: 12px;
@@ -2814,7 +2839,7 @@ details.about-section[open] .about-chevron {
     border: none;
     font-size: 0.85rem;
     font-weight: 600;
-    color: #7B1FA2;
+    color: var(--lifer-text);
     cursor: pointer;
     font-family: inherit;
 }
@@ -2937,10 +2962,10 @@ details.about-section[open] .about-chevron {
     color: var(--text-secondary);
 }
 
-.weather-summary.excellent .weather-summary-icon { color: #3A6B35; }
-.weather-summary.good .weather-summary-icon { color: #689F38; }
-.weather-summary.fair .weather-summary-icon { color: #FFA000; }
-.weather-summary.poor .weather-summary-icon { color: #D32F2F; }
+.weather-summary.excellent .weather-summary-icon { color: var(--weather-excellent); }
+.weather-summary.good .weather-summary-icon { color: var(--weather-good); }
+.weather-summary.fair .weather-summary-icon { color: var(--weather-fair); }
+.weather-summary.poor .weather-summary-icon { color: var(--weather-poor); }
 
 /* Weather Badge on Hotspot Cards */
 .weather-badge {
@@ -3005,7 +3030,7 @@ details.about-section[open] .about-chevron {
 .weather-badge.clear .weather-icon { color: var(--alert-color); }
 
 .weather-badge.cloudy { background: linear-gradient(135deg, #ECEFF1 0%, #CFD8DC 100%); }
-.weather-badge.cloudy .weather-icon { color: #607D8B; }
+.weather-badge.cloudy .weather-icon { color: var(--weather-cloudy); }
 
 .weather-badge.rain { background: linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%); }
 .weather-badge.rain .weather-icon { color: var(--target-hover); }
@@ -3076,7 +3101,7 @@ details.about-section[open] .about-chevron {
 
 .birding-condition.excellent {
     background: #C8E6C9;
-    color: #3A6B35;
+    color: var(--weather-excellent);
 }
 
 .birding-condition.good {

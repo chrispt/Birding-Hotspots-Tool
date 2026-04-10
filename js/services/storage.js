@@ -174,7 +174,7 @@ export const storage = {
      */
     getTemperatureUnit() {
         try {
-            return localStorage.getItem('birding_temp_unit') || 'F';
+            return localStorage.getItem(STORAGE_KEYS.TEMP_UNIT) || 'F';
         } catch (e) {
             return 'F';
         }
@@ -186,7 +186,7 @@ export const storage = {
      */
     setTemperatureUnit(unit) {
         try {
-            localStorage.setItem('birding_temp_unit', unit === 'C' ? 'C' : 'F');
+            localStorage.setItem(STORAGE_KEYS.TEMP_UNIT, unit === 'C' ? 'C' : 'F');
         } catch (e) {
             console.warn('Could not save temperature unit:', e);
         }

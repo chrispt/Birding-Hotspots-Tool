@@ -5,11 +5,12 @@
  * The GitHub PAT is stored as a Vercel environment variable (GITHUB_TOKEN),
  * never exposed to the browser.
  *
- * Deduplication: searches for an existing open issue with the same title.
- * If found, adds a comment with the new occurrence instead of creating a duplicate.
- *
- * Rate limiting: client-side cooldown prevents spamming; server-side validates
- * payload size and rejects malformed requests.
+ * Security:
+ * - Origin validation: only accepts requests from allowed domains
+ * - Rate limiting: in-memory sliding window per IP (resets on cold start,
+ *   but sufficient to stop sustained abuse within a single instance)
+ * - Deduplication: searches for existing open issues with matching titles
+ * - Input sanitization: control chars stripped, lengths capped, payload size limited
  */
 
 const REPO_OWNER = 'chrispt';
@@ -17,10 +18,65 @@ const REPO_NAME = 'Birding-Hotspots-Tool';
 const GITHUB_API = 'https://api.github.com';
 const MAX_BODY_SIZE = 10000; // bytes
 
+// Allowed origins for error reporting
+const ALLOWED_ORIGINS = [
+    'https://birdinghotspotstool.com',
+    'https://www.birdinghotspotstool.com',
+    'http://localhost:3000',
+    'http://localhost:8000',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:8000'
+];
+
+// Rate limiting: max 5 requests per IP per 10-minute window
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+const RATE_LIMIT_MAX = 5;
+const rateLimitMap = new Map(); // IP -> { count, resetTime }
+
+/**
+ * Check if a request is within rate limits.
+ * Uses in-memory tracking (resets on cold start, which is acceptable).
+ */
+function checkRateLimit(ip) {
+    const now = Date.now();
+    const entry = rateLimitMap.get(ip);
+
+    if (!entry || now > entry.resetTime) {
+        rateLimitMap.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+        return true;
+    }
+
+    if (entry.count >= RATE_LIMIT_MAX) {
+        return false;
+    }
+
+    entry.count++;
+    return true;
+}
+
 export default async function handler(req, res) {
     // Only accept POST
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
+    }
+
+    // Origin validation — reject requests from unknown domains
+    const origin = req.headers.origin || req.headers.referer || '';
+    const originHost = origin.replace(/\/$/, ''); // Strip trailing slash
+    // Check if the origin matches any allowed origin (or starts with one for referer URLs)
+    const isAllowedOrigin = ALLOWED_ORIGINS.some(allowed =>
+        originHost === allowed || originHost.startsWith(allowed + '/')
+    );
+    if (!isAllowedOrigin) {
+        return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    // Rate limiting by IP
+    const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+                     req.headers['x-real-ip'] ||
+                     'unknown';
+    if (!checkRateLimit(clientIp)) {
+        return res.status(429).json({ error: 'Too many requests. Try again later.' });
     }
 
     // Validate GitHub token is configured
