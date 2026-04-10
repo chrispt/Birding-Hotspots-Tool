@@ -51,6 +51,7 @@
                         <path fill="currentColor" d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-7 12h-2v-2h2v2zm0-4h-2V6h2v4z"/>
                     </svg>
                     Feedback
+                    <span id="errorBadge" class="error-badge hidden" aria-live="polite" aria-label="errors captured">0</span>
                 </a>
                 <button type="button" id="themeToggle" class="help-link theme-toggle-btn" aria-label="Toggle dark mode">
                     <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
@@ -753,6 +754,24 @@
             <div class="modal-actions">
                 <button type="button" id="cancelSaveFavorite" class="btn btn-secondary">Cancel</button>
                 <button type="button" id="confirmSaveFavorite" class="btn btn-primary">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Report Dialog -->
+    <div id="errorReportDialog" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="errorReportTitle">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content error-report-dialog">
+            <h3 id="errorReportTitle">
+                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" style="vertical-align: middle;">
+                    <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                </svg>
+                Captured Errors
+            </h3>
+            <div id="errorReportList" class="error-report-list" role="list"></div>
+            <div class="modal-actions">
+                <button type="button" id="errorReportClear" class="btn btn-secondary">Dismiss All</button>
+                <button type="button" id="errorReportClose" class="btn btn-secondary">Close</button>
             </div>
         </div>
     </div>

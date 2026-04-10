@@ -42,7 +42,8 @@ export const CONFIG = {
         LIFE_LIST: 'birding_life_list',
         RECENT_SEARCHES: 'birding_recent_searches',
         FAVORITE_HOTSPOTS: 'birding_favorite_hotspots',
-        THEME: 'birding_theme'
+        THEME: 'birding_theme',
+        ERROR_QUEUE: 'birding_error_queue'
     }
 };
 
@@ -56,7 +57,10 @@ export const ErrorTypes = {
     NETWORK_ERROR: 'network_error',
     NO_HOTSPOTS: 'no_hotspots',
     INVALID_COORDINATES: 'invalid_coordinates',
-    LOCATION_DENIED: 'location_denied'
+    LOCATION_DENIED: 'location_denied',
+    UNCAUGHT_EXCEPTION: 'uncaught_exception',
+    UNHANDLED_REJECTION: 'unhandled_rejection',
+    APP_ERROR: 'app_error'
 };
 
 /**

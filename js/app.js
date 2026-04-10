@@ -19,6 +19,10 @@ import { getSeasonalInsights, getOptimalBirdingTimes, getCurrentSeason } from '.
 import { buildItinerary, formatItineraryDuration, formatItineraryTime, calculateUniquenessScore, getSeenSpeciesFromHotspots } from './services/itinerary-builder.js';
 import { generateGPX, downloadGPX } from './services/gpx-generator.js';
 import { LifeListService } from './services/life-list.js';
+import { errorReporter } from './services/error-reporter.js';
+
+// Install global error handlers as early as possible
+errorReporter.init();
 
 /**
  * Sanitize a string for safe HTML interpolation (prevent XSS)
@@ -87,6 +91,12 @@ class BirdingHotspotsApp {
             confirmDialogMessage: document.getElementById('confirmDialogMessage'),
             confirmDialogOk: document.getElementById('confirmDialogOk'),
             confirmDialogCancel: document.getElementById('confirmDialogCancel'),
+            // Error report dialog
+            errorBadge: document.getElementById('errorBadge'),
+            errorReportDialog: document.getElementById('errorReportDialog'),
+            errorReportList: document.getElementById('errorReportList'),
+            errorReportClear: document.getElementById('errorReportClear'),
+            errorReportClose: document.getElementById('errorReportClose'),
 
             // Generate
             generateReport: document.getElementById('generateReport'),
@@ -549,6 +559,11 @@ class BirdingHotspotsApp {
 
         // Initialize life list count
         this.updateLifeListCount();
+
+        // Wire up error reporter badge and dialog
+        errorReporter.onQueueChange(count => this._updateErrorBadge(count));
+        this._updateErrorBadge(errorReporter.getCount());
+        this._initErrorReportDialog();
     }
 
     /**
@@ -1056,6 +1071,130 @@ class BirdingHotspotsApp {
             e.preventDefault();
             firstElement.focus();
         }
+    }
+
+    /**
+     * Update the error badge count on the Feedback link.
+     * @param {number} count - Number of captured errors
+     */
+    _updateErrorBadge(count) {
+        if (!this.elements.errorBadge) return;
+        if (count > 0) {
+            this.elements.errorBadge.textContent = count > 99 ? '99+' : count;
+            this.elements.errorBadge.classList.remove('hidden');
+        } else {
+            this.elements.errorBadge.classList.add('hidden');
+        }
+    }
+
+    /**
+     * Initialize the error report dialog event handlers.
+     */
+    _initErrorReportDialog() {
+        if (!this.elements.errorBadge) return;
+
+        // Clicking the badge opens the error report dialog
+        this.elements.errorBadge.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            this._showErrorReportDialog();
+        });
+
+        // Dialog close button
+        this.elements.errorReportClose.addEventListener('click', () => {
+            this.elements.errorReportDialog.classList.add('hidden');
+        });
+
+        // Dialog backdrop closes it
+        this.elements.errorReportDialog.querySelector('.modal-backdrop').addEventListener('click', () => {
+            this.elements.errorReportDialog.classList.add('hidden');
+        });
+
+        // Dismiss all button
+        this.elements.errorReportClear.addEventListener('click', () => {
+            errorReporter.clear();
+            this.elements.errorReportDialog.classList.add('hidden');
+        });
+    }
+
+    /**
+     * Show the error report dialog with the current error queue.
+     */
+    _showErrorReportDialog() {
+        const queue = errorReporter.getQueue();
+        const list = this.elements.errorReportList;
+        list.innerHTML = '';
+
+        if (queue.length === 0) {
+            list.innerHTML = '<p class="error-report-empty">No errors captured.</p>';
+            this.elements.errorReportDialog.classList.remove('hidden');
+            return;
+        }
+
+        queue.forEach(error => {
+            const item = document.createElement('div');
+            item.className = 'error-item';
+            item.setAttribute('role', 'listitem');
+
+            const info = document.createElement('div');
+            info.className = 'error-item-info';
+
+            const type = document.createElement('div');
+            type.className = 'error-item-type';
+            type.textContent = error.type.replace(/_/g, ' ');
+            info.appendChild(type);
+
+            const msg = document.createElement('div');
+            msg.className = 'error-item-message';
+            msg.textContent = error.message;
+            info.appendChild(msg);
+
+            const meta = document.createElement('div');
+            meta.className = 'error-item-meta';
+            const timeAgo = this._formatTimeAgo(error.lastSeen);
+            meta.textContent = error.count > 1
+                ? `${error.count} occurrences \u00B7 last ${timeAgo}`
+                : timeAgo;
+            if (error.source) {
+                meta.textContent += ` \u00B7 ${error.source}:${error.line}`;
+            }
+            info.appendChild(meta);
+
+            item.appendChild(info);
+
+            const actions = document.createElement('div');
+            actions.className = 'error-item-actions';
+            const reportBtn = document.createElement('button');
+            reportBtn.type = 'button';
+            reportBtn.className = 'btn btn-primary btn-small';
+            reportBtn.textContent = 'Report';
+            reportBtn.setAttribute('aria-label', `Report error: ${error.message.substring(0, 40)}`);
+            reportBtn.addEventListener('click', () => {
+                errorReporter.reportToGitHub(error);
+            });
+            actions.appendChild(reportBtn);
+            item.appendChild(actions);
+
+            list.appendChild(item);
+        });
+
+        this.elements.errorReportDialog.classList.remove('hidden');
+        this.elements.errorReportClose.focus();
+    }
+
+    /**
+     * Format a timestamp as a relative time string.
+     * @param {string} isoString - ISO timestamp
+     * @returns {string} e.g. "2 min ago", "1 hr ago"
+     */
+    _formatTimeAgo(isoString) {
+        const seconds = Math.floor((Date.now() - new Date(isoString).getTime()) / 1000);
+        if (seconds < 60) return 'just now';
+        const minutes = Math.floor(seconds / 60);
+        if (minutes < 60) return `${minutes} min ago`;
+        const hours = Math.floor(minutes / 60);
+        if (hours < 24) return `${hours} hr ago`;
+        return `${Math.floor(hours / 24)} day ago`;
     }
 
     /**
@@ -6367,6 +6506,12 @@ class BirdingHotspotsApp {
      * Show error message
      */
     showError(message) {
+        // Capture for error reporting (skip user-facing validation messages)
+        errorReporter.capture({
+            type: 'app_error',
+            message: message
+        });
+
         this.elements.errorMessage.textContent = message;
         this.elements.errorMessage.classList.remove('hidden');
 
