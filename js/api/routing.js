@@ -4,6 +4,7 @@
  */
 
 const OSRM_BASE_URL = 'https://router.project-osrm.org/route/v1/driving';
+const OSRM_TABLE_URL = 'https://router.project-osrm.org/table/v1/driving';
 const OSRM_TRIP_URL = 'https://router.project-osrm.org/trip/v1/driving';
 
 /**
@@ -43,14 +44,63 @@ export async function getDrivingRoute(originLat, originLng, destLat, destLng) {
 }
 
 /**
- * Get driving routes for multiple destinations from a single origin
+ * Get driving distances/durations from one origin to many destinations using the OSRM Table API.
+ * Returns all results in a single HTTP request instead of one per destination.
+ * @param {number} originLat - Origin latitude
+ * @param {number} originLng - Origin longitude
+ * @param {Array<{lat: number, lng: number}>} destinations - Array of destination coordinates
+ * @returns {Promise<Array<{distance: number, duration: number}|null>>} Array of route info or null for failed entries
+ */
+async function getDrivingDistancesTable(originLat, originLng, destinations) {
+    // Build coordinates: origin first, then all destinations (OSRM uses lng,lat)
+    const coords = [`${originLng},${originLat}`, ...destinations.map(d => `${d.lng},${d.lat}`)];
+    const url = `${OSRM_TABLE_URL}/${coords.join(';')}?sources=0&annotations=distance,duration`;
+
+    const response = await fetch(url);
+    if (!response.ok) {
+        throw new Error(`OSRM Table API returned ${response.status}`);
+    }
+
+    const data = await response.json();
+    if (data.code !== 'Ok') {
+        throw new Error(`OSRM Table API error: ${data.code}`);
+    }
+
+    // distances[0] and durations[0] are the single row from source index 0 (origin)
+    // Index 0 is origin-to-origin (skip it), indices 1..N map to destinations
+    const distances = data.distances[0];
+    const durations = data.durations[0];
+
+    return destinations.map((_, i) => {
+        const dist = distances[i + 1];
+        const dur = durations[i + 1];
+        // OSRM returns null for unreachable pairs
+        if (dist === null || dur === null) return null;
+        return {
+            distance: dist / 1000, // meters to km
+            duration: dur           // seconds
+        };
+    });
+}
+
+/**
+ * Get driving routes for multiple destinations from a single origin.
+ * Uses the OSRM Table API for a single fast request, falling back to
+ * individual route requests if the table call fails.
  * @param {number} originLat - Origin latitude
  * @param {number} originLng - Origin longitude
  * @param {Array<{lat: number, lng: number}>} destinations - Array of destination coordinates
  * @returns {Promise<Array<{distance: number, duration: number}|null>>} Array of route info or null for failed routes
  */
 export async function getDrivingRoutes(originLat, originLng, destinations) {
-    // Fetch routes in parallel with small batches to avoid overwhelming the API
+    // Fast path: single Table API request for all destinations
+    try {
+        return await getDrivingDistancesTable(originLat, originLng, destinations);
+    } catch (error) {
+        console.warn('OSRM Table API failed, falling back to individual routes:', error.message);
+    }
+
+    // Fallback: individual route requests in batches
     const BATCH_SIZE = 5;
     const results = [];
 
@@ -63,7 +113,6 @@ export async function getDrivingRoutes(originLat, originLng, destinations) {
         const batchResults = await Promise.all(batchPromises);
         results.push(...batchResults);
 
-        // Small delay between batches to be respectful to the free API
         if (i + BATCH_SIZE < destinations.length) {
             await new Promise(resolve => setTimeout(resolve, 100));
         }
