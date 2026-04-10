@@ -81,6 +81,12 @@ class BirdingHotspotsApp {
             favoriteName: document.getElementById('favoriteName'),
             cancelSaveFavorite: document.getElementById('cancelSaveFavorite'),
             confirmSaveFavorite: document.getElementById('confirmSaveFavorite'),
+            // Confirm dialog (non-blocking replacement for native confirm())
+            confirmDialog: document.getElementById('confirmDialog'),
+            confirmDialogTitle: document.getElementById('confirmDialogTitle'),
+            confirmDialogMessage: document.getElementById('confirmDialogMessage'),
+            confirmDialogOk: document.getElementById('confirmDialogOk'),
+            confirmDialogCancel: document.getElementById('confirmDialogCancel'),
 
             // Generate
             generateReport: document.getElementById('generateReport'),
@@ -971,6 +977,60 @@ class BirdingHotspotsApp {
     }
 
     /**
+     * Show a non-blocking confirmation dialog (async replacement for native confirm()).
+     * Returns a Promise that resolves to true (OK) or false (Cancel).
+     * @param {string} message - Confirmation message to display
+     * @param {Object} [options] - Optional settings
+     * @param {string} [options.title='Confirm'] - Dialog title
+     * @param {string} [options.okText='OK'] - OK button text
+     * @param {string} [options.cancelText='Cancel'] - Cancel button text
+     * @returns {Promise<boolean>} True if confirmed, false if cancelled
+     */
+    showConfirmDialog(message, { title = 'Confirm', okText = 'OK', cancelText = 'Cancel' } = {}) {
+        return new Promise((resolve) => {
+            this.elements.confirmDialogTitle.textContent = title;
+            this.elements.confirmDialogMessage.textContent = message;
+            this.elements.confirmDialogOk.textContent = okText;
+            this.elements.confirmDialogCancel.textContent = cancelText;
+
+            // Store focus for restoration
+            const previousFocus = document.activeElement;
+
+            const cleanup = () => {
+                this.elements.confirmDialog.classList.add('hidden');
+                this.elements.confirmDialogOk.removeEventListener('click', onOk);
+                this.elements.confirmDialogCancel.removeEventListener('click', onCancel);
+                this.elements.confirmDialog.querySelector('.modal-backdrop').removeEventListener('click', onCancel);
+                document.removeEventListener('keydown', onKeydown);
+                if (previousFocus) previousFocus.focus();
+            };
+
+            const onOk = () => { cleanup(); resolve(true); };
+            const onCancel = () => { cleanup(); resolve(false); };
+            const onKeydown = (e) => {
+                if (e.key === 'Escape') onCancel();
+                if (e.key === 'Tab') {
+                    // Simple focus trap between the two buttons
+                    const buttons = [this.elements.confirmDialogCancel, this.elements.confirmDialogOk];
+                    const idx = buttons.indexOf(document.activeElement);
+                    if (idx !== -1) {
+                        e.preventDefault();
+                        buttons[(idx + 1) % 2].focus();
+                    }
+                }
+            };
+
+            this.elements.confirmDialogOk.addEventListener('click', onOk);
+            this.elements.confirmDialogCancel.addEventListener('click', onCancel);
+            this.elements.confirmDialog.querySelector('.modal-backdrop').addEventListener('click', onCancel);
+            document.addEventListener('keydown', onKeydown);
+
+            this.elements.confirmDialog.classList.remove('hidden');
+            this.elements.confirmDialogCancel.focus();
+        });
+    }
+
+    /**
      * Handle keydown events for modal focus trap
      * @param {KeyboardEvent} e - Keyboard event
      */
@@ -1090,17 +1150,17 @@ class BirdingHotspotsApp {
     /**
      * Handle clearing the life list
      */
-    handleClearLifeList() {
-        // Use setTimeout to avoid blocking UI during confirm dialog
-        setTimeout(() => {
-            if (!confirm('Are you sure you want to clear your life list? This cannot be undone.')) {
-                return;
-            }
+    async handleClearLifeList() {
+        const confirmed = await this.showConfirmDialog(
+            'Are you sure you want to clear your life list? This cannot be undone.',
+            { title: 'Clear Life List', okText: 'Clear', cancelText: 'Keep' }
+        );
 
-            this.lifeListService.clear();
-            this.updateLifeListCount();
-            this.showSuccessToast('Life list cleared');
-        }, 0);
+        if (!confirmed) return;
+
+        this.lifeListService.clear();
+        this.updateLifeListCount();
+        this.showSuccessToast('Life list cleared');
     }
 
     /**
@@ -1161,11 +1221,16 @@ class BirdingHotspotsApp {
             if (deleteBtn) {
                 e.stopPropagation();
                 const name = item.querySelector('.favorite-name')?.textContent || 'this location';
-                if (confirm(`Delete "${name}" from saved locations?`)) {
-                    const id = parseInt(item.dataset.id, 10);
-                    storage.removeFavorite(id);
-                    this.renderFavorites();
-                }
+                this.showConfirmDialog(
+                    `Delete "${name}" from saved locations?`,
+                    { title: 'Delete Location', okText: 'Delete', cancelText: 'Keep' }
+                ).then(confirmed => {
+                    if (confirmed) {
+                        const id = parseInt(item.dataset.id, 10);
+                        storage.removeFavorite(id);
+                        this.renderFavorites();
+                    }
+                });
                 return;
             }
 

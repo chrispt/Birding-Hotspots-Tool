@@ -757,6 +757,19 @@
         </div>
     </div>
 
+    <!-- Confirm Dialog (reusable, non-blocking replacement for native confirm()) -->
+    <div id="confirmDialog" class="modal hidden" role="alertdialog" aria-modal="true" aria-labelledby="confirmDialogTitle" aria-describedby="confirmDialogMessage">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <h3 id="confirmDialogTitle">Confirm</h3>
+            <p id="confirmDialogMessage"></p>
+            <div class="modal-actions">
+                <button type="button" id="confirmDialogCancel" class="btn btn-secondary">Cancel</button>
+                <button type="button" id="confirmDialogOk" class="btn btn-primary">OK</button>
+            </div>
+        </div>
+    </div>
+
     <!-- External Libraries (defer for non-blocking load) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
             integrity="sha512-qZvrmS2ekKPF2mSznTQsxqPgnpkI4DNTlrdUmTzrDgektczlKNRRhy5X5AAOnx5S09ydFYWWNSfcEqDTTHgtNA=="
