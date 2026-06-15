@@ -53,7 +53,7 @@
                     Feedback
                     <span id="errorBadge" class="error-badge hidden" aria-live="polite" aria-label="errors captured">0</span>
                 </a>
-                <button type="button" id="themeToggle" class="help-link theme-toggle-btn" aria-label="Toggle dark mode">
+                <button type="button" id="themeToggle" class="help-link theme-toggle-btn" aria-label="Toggle dark mode" aria-pressed="false">
                     <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
                         <path fill="currentColor" d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/>
                     </svg>
@@ -116,7 +116,7 @@
             <section id="searchTypeSection" class="card">
                 <h2 class="section-title">What would you like to do?</h2>
                 <div class="search-type-cards">
-                    <button type="button" class="search-type-card active" id="locationSearchBtn">
+                    <button type="button" class="search-type-card active" id="locationSearchBtn" aria-pressed="true">
                         <div class="search-type-icon">
                             <svg viewBox="0 0 24 24" width="32" height="32" aria-hidden="true">
                                 <path fill="currentColor" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
@@ -127,7 +127,7 @@
                             <span class="search-type-desc">Find hotspots or a species near one place</span>
                         </div>
                     </button>
-                    <button type="button" class="search-type-card" id="routeSearchBtn">
+                    <button type="button" class="search-type-card" id="routeSearchBtn" aria-pressed="false">
                         <div class="search-type-icon">
                             <svg viewBox="0 0 24 24" width="32" height="32" aria-hidden="true">
                                 <path fill="currentColor" d="M21.71 11.29l-9-9c-.39-.39-1.02-.39-1.41 0l-9 9c-.39.39-.39 1.02 0 1.41l9 9c.39.39 1.02.39 1.41 0l9-9c.39-.38.39-1.01 0-1.41zM14 14.5V12h-4v3H8v-4c0-.55.45-1 1-1h5V7.5l3.5 3.5-3.5 3.5z"/>
@@ -220,8 +220,8 @@
 
                 <!-- Sub-toggle for hotspot vs species -->
                 <div class="search-sub-toggle">
-                    <button type="button" class="sub-toggle-btn active" id="hotspotSubBtn">Find Hotspots</button>
-                    <button type="button" class="sub-toggle-btn" id="speciesSubBtn">Find a Species</button>
+                    <button type="button" class="sub-toggle-btn active" id="hotspotSubBtn" aria-pressed="true">Find Hotspots</button>
+                    <button type="button" class="sub-toggle-btn" id="speciesSubBtn" aria-pressed="false">Find a Species</button>
                 </div>
 
                 <!-- Species Search Panel (hidden by default) -->
@@ -232,8 +232,8 @@
                                 <path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
                             </svg>
                         </span>
-                        <input type="text" id="speciesSearchInput" class="species-search-input" placeholder="Start typing a bird name..." autocomplete="off" aria-label="Search for a bird species">
-                        <div id="speciesDropdown" class="species-dropdown hidden"></div>
+                        <input type="text" id="speciesSearchInput" class="species-search-input" placeholder="Start typing a bird name..." autocomplete="off" aria-label="Search for a bird species" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="speciesDropdown" aria-haspopup="listbox">
+                        <div id="speciesDropdown" class="species-dropdown hidden" role="listbox" aria-label="Species suggestions"></div>
                     </div>
                     <div id="selectedSpecies" class="selected-species hidden"></div>
                     <p class="help-text">Search by common or scientific name</p>
@@ -302,8 +302,8 @@
                         Target Species (optional)
                     </label>
                     <div class="target-species-input-container">
-                        <input type="text" id="routeTargetSpeciesInput" class="text-input" placeholder="Start typing a bird name..." autocomplete="off" aria-label="Search for target species">
-                        <div id="routeTargetSpeciesDropdown" class="species-dropdown hidden"></div>
+                        <input type="text" id="routeTargetSpeciesInput" class="text-input" placeholder="Start typing a bird name..." autocomplete="off" aria-label="Search for target species" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="routeTargetSpeciesDropdown" aria-haspopup="listbox">
+                        <div id="routeTargetSpeciesDropdown" class="species-dropdown hidden" role="listbox" aria-label="Target species suggestions"></div>
                     </div>
                     <div id="routeTargetSpeciesTags" class="target-species-tags"></div>
                 </div>
@@ -475,7 +475,7 @@
 
             <!-- Saved Locations Section (Collapsible) -->
             <section class="card collapsible-section">
-                <button type="button" class="collapsible-header" id="savedLocationsToggle" aria-expanded="false">
+                <button type="button" class="collapsible-header" id="savedLocationsToggle" aria-expanded="false" aria-controls="savedLocationsContent">
                     <h2 class="section-title has-tooltip tooltip-left" data-tooltip="Bookmark your favorite starting points for quick access. Saved in your browser's local storage.">Saved Locations</h2>
                     <svg class="collapse-icon" viewBox="0 0 24 24" width="20" height="20">
                         <path fill="currentColor" d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
@@ -501,7 +501,7 @@
 
             <!-- Favorite Hotspots Section (Collapsible) - Hidden until hotspots are favorited -->
             <section id="favoriteHotspotsSection" class="card collapsible-section hidden">
-                <button type="button" class="collapsible-header" id="favoriteHotspotsToggle" aria-expanded="false">
+                <button type="button" class="collapsible-header" id="favoriteHotspotsToggle" aria-expanded="false" aria-controls="favoriteHotspotsContent">
                     <h2 class="section-title has-tooltip tooltip-left" data-tooltip="Hotspots you've starred for quick reference. Click to view on eBird.">Favorite Hotspots</h2>
                     <svg class="collapse-icon" viewBox="0 0 24 24" width="20" height="20">
                         <path fill="currentColor" d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
@@ -515,7 +515,7 @@
 
             <!-- Life List Section (Collapsible) -->
             <section class="card collapsible-section">
-                <button type="button" class="collapsible-header" id="lifeListToggle" aria-expanded="false">
+                <button type="button" class="collapsible-header" id="lifeListToggle" aria-expanded="false" aria-controls="lifeListContent">
                     <h2 class="section-title has-tooltip tooltip-left" data-tooltip="Import your eBird life list to highlight species you haven't seen yet (lifers).">My Life List</h2>
                     <span id="lifeListCount" class="life-list-badge">0 species</span>
                     <svg class="collapse-icon" viewBox="0 0 24 24" width="20" height="20">
@@ -543,6 +543,19 @@
                 </div>
             </section>
 
+            <!-- Saved Itineraries Section (hidden until itineraries are saved) -->
+            <section id="savedItinerariesSection" class="card collapsible-section hidden">
+                <button type="button" class="collapsible-header" id="savedItinerariesToggle" aria-expanded="false" aria-controls="savedItinerariesContent">
+                    <h2 class="section-title has-tooltip tooltip-left" data-tooltip="Itineraries you've saved for later. Click to view or delete.">Saved Itineraries</h2>
+                    <svg class="collapse-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                        <path fill="currentColor" d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
+                    </svg>
+                </button>
+                <div id="savedItinerariesContent" class="collapsible-content collapsed">
+                    <div id="savedItinerariesList" class="saved-itineraries-list"></div>
+                </div>
+            </section>
+
             <!-- Generate Button -->
             <button type="button" id="generateReport" class="btn btn-primary btn-large">
                 <svg viewBox="0 0 24 24" width="24" height="24">
@@ -566,13 +579,13 @@
                         <div id="weatherSummary" class="weather-summary hidden"></div>
                     </div>
                     <div class="sort-toggle" role="group" aria-label="Sort results">
-                        <button type="button" id="sortBySpecies" class="sort-btn active">
+                        <button type="button" id="sortBySpecies" class="sort-btn active" aria-pressed="true">
                             Most Species
                         </button>
-                        <button type="button" id="sortByDistance" class="sort-btn">
+                        <button type="button" id="sortByDistance" class="sort-btn" aria-pressed="false">
                             Closest
                         </button>
-                        <button type="button" id="sortByDriving" class="sort-btn">
+                        <button type="button" id="sortByDriving" class="sort-btn" aria-pressed="false">
                             Shortest Drive
                         </button>
                     </div>
@@ -686,6 +699,12 @@
                             </svg>
                             Export GPX
                         </button>
+                        <button type="button" id="saveItineraryBtn" class="btn btn-secondary">
+                            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                                <path fill="currentColor" d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/>
+                            </svg>
+                            Save Itinerary
+                        </button>
                         <button type="button" id="backToResults" class="btn btn-secondary">
                             <svg viewBox="0 0 24 24" width="16" height="16">
                                 <path fill="currentColor" d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
@@ -706,6 +725,22 @@
 
                 <!-- Migration Alert Container (dynamically populated) -->
                 <div id="migrationAlert" class="hidden"></div>
+
+                <!-- Regional Activity Panel (populated after search) -->
+                <div id="regionalActivityPanel" class="regional-activity-panel card hidden">
+                    <button type="button" class="collapsible-header regional-activity-toggle" aria-expanded="true" aria-controls="regionalActivityContent">
+                        <h3 class="section-title">
+                            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" class="section-title-icon">
+                                <path fill="currentColor" d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
+                            </svg>
+                            Regional Activity
+                        </h3>
+                        <svg class="collapse-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                            <path fill="currentColor" d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6 1.41 1.41z"/>
+                        </svg>
+                    </button>
+                    <div id="regionalActivityContent" class="collapsible-content regional-activity-body"></div>
+                </div>
 
                 <!-- Results Map -->
                 <div class="results-map-container">
@@ -754,6 +789,60 @@
             <div class="modal-actions">
                 <button type="button" id="cancelSaveFavorite" class="btn btn-secondary">Cancel</button>
                 <button type="button" id="confirmSaveFavorite" class="btn btn-primary">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Save Itinerary Modal -->
+    <div id="saveItineraryModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="saveItineraryModalTitle">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <h3 id="saveItineraryModalTitle">Save Itinerary</h3>
+            <div class="input-group">
+                <label for="itineraryName" class="input-label">Itinerary Name</label>
+                <input type="text" id="itineraryName" class="text-input" placeholder="e.g., Morning Marsh Loop">
+            </div>
+            <div class="modal-actions">
+                <button type="button" id="cancelSaveItinerary" class="btn btn-secondary">Cancel</button>
+                <button type="button" id="confirmSaveItinerary" class="btn btn-primary">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Onboarding Modal (shown to first-time users without a saved API key) -->
+    <div id="onboardingModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content onboarding-modal">
+            <button type="button" id="onboardingCloseBtn" class="modal-close-btn" aria-label="Close welcome dialog">
+                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+            </button>
+            <div class="onboarding-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="48" height="48">
+                    <path fill="#3A6B35" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+                    <path fill="#FF5722" d="M12 4.5c-.8 1.2-1.5 2.3-2 3.5-.6 1.3-.5 2.5.2 3.5.5-.8 1.2-1.5 1.8-2.2.6.7 1.3 1.4 1.8 2.2.7-1 .8-2.2.2-3.5-.5-1.2-1.2-2.3-2-3.5z"/>
+                </svg>
+            </div>
+            <h3 id="onboardingTitle">Welcome to Birding Hotspots Finder!</h3>
+            <p>Discover the best birding spots near you. Here's how it works:</p>
+            <ul class="onboarding-list">
+                <li>
+                    <strong>Search a Location</strong> — Find top hotspots near an address, GPS coordinates, or your current location
+                </li>
+                <li>
+                    <strong>Plan a Route</strong> — Find birding stops along a driving route between two places
+                </li>
+                <li>
+                    <strong>Track Lifers</strong> — Import your eBird life list to highlight species you haven't seen yet
+                </li>
+            </ul>
+            <div class="onboarding-api-notice">
+                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" style="flex-shrink:0;">
+                    <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                </svg>
+                <span>You'll need a free <a id="onboardingGetKeyLink" href="https://ebird.org/api/keygen" target="_blank" rel="noopener noreferrer">eBird API key</a> — paste it into the field at the top of the page to get started.</span>
+            </div>
+            <div class="modal-actions">
+                <button type="button" id="onboardingDismissBtn" class="btn btn-primary">Get Started</button>
             </div>
         </div>
     </div>

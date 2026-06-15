@@ -365,5 +365,90 @@ export const storage = {
             this.addFavoriteHotspot(hotspot);
             return true;
         }
+    },
+
+    // ==================== Saved Itineraries ====================
+
+    /**
+     * Get all saved itineraries
+     * @returns {Array} Array of saved itinerary objects
+     */
+    getSavedItineraries() {
+        try {
+            const stored = localStorage.getItem(STORAGE_KEYS.SAVED_ITINERARIES);
+            return stored ? JSON.parse(stored) : [];
+        } catch (e) {
+            console.warn('Could not read saved itineraries from localStorage:', e);
+            return [];
+        }
+    },
+
+    /**
+     * Save a new itinerary
+     * @param {Object} itinerary - Itinerary object with name, stops, locationName
+     * @returns {Object|null} The saved itinerary with generated ID, or null on failure
+     */
+    addSavedItinerary(itinerary) {
+        try {
+            const itineraries = this.getSavedItineraries();
+            const saved = {
+                id: Date.now(),
+                name: itinerary.name,
+                locationName: itinerary.locationName || '',
+                stops: itinerary.stops || [],
+                stopCount: itinerary.stops ? itinerary.stops.length : 0,
+                totalDistance: itinerary.totalDistance || 0,
+                createdAt: new Date().toISOString()
+            };
+            itineraries.unshift(saved);
+            // Keep only last 10 saved itineraries
+            const trimmed = itineraries.slice(0, 10);
+            localStorage.setItem(STORAGE_KEYS.SAVED_ITINERARIES, JSON.stringify(trimmed));
+            return saved;
+        } catch (e) {
+            console.warn('Could not save itinerary to localStorage:', e);
+            return null;
+        }
+    },
+
+    /**
+     * Remove a saved itinerary by ID
+     * @param {number} id - The itinerary ID to remove
+     * @returns {boolean} True if removed successfully
+     */
+    removeSavedItinerary(id) {
+        try {
+            const itineraries = this.getSavedItineraries().filter(it => it.id !== id);
+            localStorage.setItem(STORAGE_KEYS.SAVED_ITINERARIES, JSON.stringify(itineraries));
+            return true;
+        } catch (e) {
+            console.warn('Could not remove saved itinerary from localStorage:', e);
+            return false;
+        }
+    },
+
+    // ==================== Onboarding ====================
+
+    /**
+     * Check if the user has completed onboarding
+     * @returns {boolean}
+     */
+    hasOnboarded() {
+        try {
+            return localStorage.getItem(STORAGE_KEYS.ONBOARDED) === 'true';
+        } catch (e) {
+            return true; // Fail open — don't nag users who can't persist state
+        }
+    },
+
+    /**
+     * Mark onboarding as complete
+     */
+    setOnboarded() {
+        try {
+            localStorage.setItem(STORAGE_KEYS.ONBOARDED, 'true');
+        } catch (e) {
+            console.warn('Could not save onboarding state:', e);
+        }
     }
 };

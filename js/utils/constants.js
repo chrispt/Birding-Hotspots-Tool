@@ -44,7 +44,9 @@ export const CONFIG = {
         FAVORITE_HOTSPOTS: 'birding_favorite_hotspots',
         THEME: 'birding_theme',
         TEMP_UNIT: 'birding_temp_unit',
-        ERROR_QUEUE: 'birding_error_queue'
+        ERROR_QUEUE: 'birding_error_queue',
+        SAVED_ITINERARIES: 'birding_saved_itineraries',
+        ONBOARDED: 'birding_onboarded'
     }
 };
 

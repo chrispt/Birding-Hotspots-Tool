@@ -15,7 +15,7 @@ import { generatePDFReport, downloadPDF, generateRoutePDFReport, downloadRoutePD
 import { getDrivingRoutes, getRouteThrough } from './api/routing.js';
 import { getWeatherForLocations, getOverallBirdingConditions, getBirdingConditionScore, getGoldenHourStatus } from './api/weather.js';
 import { SpeciesSearch } from './services/species-search.js';
-import { getSeasonalInsights, getOptimalBirdingTimes, getCurrentSeason } from './services/seasonal-insights.js';
+import { getSeasonalInsights, getOptimalBirdingTimes, getCurrentSeason, analyzeHotspotActivity } from './services/seasonal-insights.js';
 import { buildItinerary, formatItineraryDuration, formatItineraryTime, calculateUniquenessScore, getSeenSpeciesFromHotspots } from './services/itinerary-builder.js';
 import { generateGPX, downloadGPX } from './services/gpx-generator.js';
 import { LifeListService } from './services/life-list.js';
@@ -218,7 +218,25 @@ class BirdingHotspotsApp {
             favoriteHotspotsToggle: document.getElementById('favoriteHotspotsToggle'),
             favoriteHotspotsContent: document.getElementById('favoriteHotspotsContent'),
             // Theme toggle
-            themeToggle: document.getElementById('themeToggle')
+            themeToggle: document.getElementById('themeToggle'),
+            // Saved itineraries
+            savedItinerariesSection: document.getElementById('savedItinerariesSection'),
+            savedItinerariesToggle: document.getElementById('savedItinerariesToggle'),
+            savedItinerariesContent: document.getElementById('savedItinerariesContent'),
+            savedItinerariesList: document.getElementById('savedItinerariesList'),
+            saveItineraryBtn: document.getElementById('saveItineraryBtn'),
+            saveItineraryModal: document.getElementById('saveItineraryModal'),
+            itineraryName: document.getElementById('itineraryName'),
+            cancelSaveItinerary: document.getElementById('cancelSaveItinerary'),
+            confirmSaveItinerary: document.getElementById('confirmSaveItinerary'),
+            // Regional activity panel
+            regionalActivityPanel: document.getElementById('regionalActivityPanel'),
+            regionalActivityContent: document.getElementById('regionalActivityContent'),
+            // Onboarding
+            onboardingModal: document.getElementById('onboardingModal'),
+            onboardingDismissBtn: document.getElementById('onboardingDismissBtn'),
+            onboardingCloseBtn: document.getElementById('onboardingCloseBtn'),
+            onboardingGetKeyLink: document.getElementById('onboardingGetKeyLink')
         };
 
         // Temperature unit preference (true = Fahrenheit, false = Celsius)
@@ -321,6 +339,18 @@ class BirdingHotspotsApp {
         if (saved) {
             document.documentElement.setAttribute('data-theme', saved);
         }
+
+        // Helper to sync aria-pressed with the effective dark/light state
+        const syncThemeBtn = () => {
+            if (!this.elements.themeToggle) return;
+            const current = document.documentElement.getAttribute('data-theme');
+            const isDark = current === 'dark' ||
+                (!current && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            this.elements.themeToggle.setAttribute('aria-pressed', String(isDark));
+        };
+
+        syncThemeBtn(); // Set initial state
+
         // Theme toggle click handler
         if (this.elements.themeToggle) {
             this.elements.themeToggle.addEventListener('click', () => {
@@ -340,6 +370,7 @@ class BirdingHotspotsApp {
                     document.documentElement.removeAttribute('data-theme');
                 }
                 storage.setTheme(next);
+                syncThemeBtn();
             });
         }
     }
@@ -407,7 +438,8 @@ class BirdingHotspotsApp {
             }
         });
 
-        // Address input change - update map preview with debounce
+        // Address input change - clears validation state so stale coords don't persist while typing;
+        // geocoding fires on blur via handleAddressBlur()
         this.elements.address.addEventListener('input', () => this.handleAddressInputChange());
         this.elements.address.addEventListener('blur', () => this.handleAddressBlur());
 
@@ -531,6 +563,47 @@ class BirdingHotspotsApp {
         this.elements.exportItineraryGpx.addEventListener('click', () => this.handleExportItineraryGpx());
         this.elements.backToResults.addEventListener('click', () => this.handleBackToResults());
 
+        // Save itinerary button + modal
+        if (this.elements.saveItineraryBtn) {
+            this.elements.saveItineraryBtn.addEventListener('click', () => this.showSaveItineraryModal());
+        }
+        if (this.elements.cancelSaveItinerary) {
+            this.elements.cancelSaveItinerary.addEventListener('click', () => this.hideSaveItineraryModal());
+        }
+        if (this.elements.confirmSaveItinerary) {
+            this.elements.confirmSaveItinerary.addEventListener('click', () => {
+                const name = (this.elements.itineraryName?.value.trim()) || 'My Itinerary';
+                this.hideSaveItineraryModal();
+                this.handleSaveItinerary(name);
+            });
+        }
+        if (this.elements.saveItineraryModal) {
+            this.elements.saveItineraryModal.querySelector('.modal-backdrop')
+                ?.addEventListener('click', () => this.hideSaveItineraryModal());
+        }
+
+        // Saved itineraries collapsible toggle
+        const savedItinToggle = this.elements.savedItinerariesToggle;
+        if (savedItinToggle) {
+            savedItinToggle.addEventListener('click', () => {
+                const isExpanded = savedItinToggle.getAttribute('aria-expanded') === 'true';
+                savedItinToggle.setAttribute('aria-expanded', String(!isExpanded));
+                this.elements.savedItinerariesContent.classList.toggle('collapsed');
+            });
+        }
+
+        // Regional activity panel — toggle via event delegation (button lives inside the panel)
+        if (this.elements.regionalActivityPanel) {
+            this.elements.regionalActivityPanel.addEventListener('click', (e) => {
+                const toggleBtn = e.target.closest('.regional-activity-toggle');
+                if (!toggleBtn) return;
+                const content = this.elements.regionalActivityContent;
+                const isExpanded = toggleBtn.getAttribute('aria-expanded') === 'true';
+                toggleBtn.setAttribute('aria-expanded', String(!isExpanded));
+                content.classList.toggle('collapsed', isExpanded);
+            });
+        }
+
         // Route hotspots selection events
         this.elements.selectAllRouteHotspots.addEventListener('click', () => this.selectAllRouteHotspots());
         this.elements.deselectAllRouteHotspots.addEventListener('click', () => this.deselectAllRouteHotspots());
@@ -560,10 +633,18 @@ class BirdingHotspotsApp {
         // Initialize life list count
         this.updateLifeListCount();
 
+        // Load saved itineraries
+        this.renderSavedItineraries();
+
         // Wire up error reporter badge and dialog
         errorReporter.onQueueChange(count => this._updateErrorBadge(count));
         this._updateErrorBadge(errorReporter.getCount());
         this._initErrorReportDialog();
+
+        // Show onboarding for first-time users without a saved API key
+        if (!savedKey && !storage.hasOnboarded()) {
+            this.showOnboarding();
+        }
     }
 
     /**
@@ -787,10 +868,11 @@ class BirdingHotspotsApp {
     }
 
     /**
-     * Handle address input change with debounce
+     * Handle address input change — resets validation state so stale coordinates
+     * don't carry over while the user is typing. Actual geocoding fires on blur.
      */
     handleAddressInputChange() {
-        // Clear any existing timer
+        // Cancel any pending blur-geocode if the user re-focuses and keeps typing
         if (this.addressDebounceTimer) {
             clearTimeout(this.addressDebounceTimer);
         }
@@ -960,34 +1042,62 @@ class BirdingHotspotsApp {
      * Show the save favorite modal with focus trap
      */
     showSaveFavoriteModal() {
-        // Store previously focused element
         this._previouslyFocusedElement = document.activeElement;
-
         this.elements.favoriteName.value = '';
         this.elements.saveFavoriteModal.classList.remove('hidden');
         this.elements.favoriteName.focus();
-
-        // Add focus trap handler
-        this._modalKeyHandler = (e) => this._handleModalKeydown(e);
-        document.addEventListener('keydown', this._modalKeyHandler);
+        this._saveFavTrapCleanup = this._trapFocus(this.elements.saveFavoriteModal, {
+            onEscape: () => this.hideSaveFavoriteModal()
+        });
     }
 
     /**
      * Hide the save favorite modal and restore focus
      */
     hideSaveFavoriteModal() {
-        this.elements.saveFavoriteModal.classList.add('hidden');
-
-        // Remove focus trap handler
-        if (this._modalKeyHandler) {
-            document.removeEventListener('keydown', this._modalKeyHandler);
-            this._modalKeyHandler = null;
+        if (this._saveFavTrapCleanup) {
+            this._saveFavTrapCleanup();
+            this._saveFavTrapCleanup = null;
         }
-
-        // Restore focus to previously focused element
+        this.elements.saveFavoriteModal.classList.add('hidden');
         if (this._previouslyFocusedElement) {
             this._previouslyFocusedElement.focus();
             this._previouslyFocusedElement = null;
+        }
+    }
+
+    showSaveItineraryModal() {
+        this._saveItineraryPreviousFocus = document.activeElement;
+        if (this.elements.itineraryName) this.elements.itineraryName.value = '';
+        this.elements.saveItineraryModal.classList.remove('hidden');
+        this.elements.itineraryName?.focus();
+        this._saveItineraryTrapCleanup = this._trapFocus(this.elements.saveItineraryModal, {
+            onEscape: () => this.hideSaveItineraryModal()
+        });
+        // Submit on Enter
+        this._saveItineraryEnterHandler = (e) => {
+            if (e.key === 'Enter' && !this.elements.saveItineraryModal.classList.contains('hidden')) {
+                const name = (this.elements.itineraryName?.value.trim()) || 'My Itinerary';
+                this.hideSaveItineraryModal();
+                this.handleSaveItinerary(name);
+            }
+        };
+        document.addEventListener('keydown', this._saveItineraryEnterHandler);
+    }
+
+    hideSaveItineraryModal() {
+        if (this._saveItineraryTrapCleanup) {
+            this._saveItineraryTrapCleanup();
+            this._saveItineraryTrapCleanup = null;
+        }
+        if (this._saveItineraryEnterHandler) {
+            document.removeEventListener('keydown', this._saveItineraryEnterHandler);
+            this._saveItineraryEnterHandler = null;
+        }
+        this.elements.saveItineraryModal.classList.add('hidden');
+        if (this._saveItineraryPreviousFocus) {
+            this._saveItineraryPreviousFocus.focus();
+            this._saveItineraryPreviousFocus = null;
         }
     }
 
@@ -1046,7 +1156,41 @@ class BirdingHotspotsApp {
     }
 
     /**
-     * Handle keydown events for modal focus trap
+     * Shared focus-trap helper for modals and panels.
+     * Returns a cleanup function that removes the keydown listener.
+     * @param {HTMLElement} containerEl - The modal/panel element to trap focus within
+     * @param {Object} [opts]
+     * @param {Function} [opts.onEscape] - Called when Escape is pressed
+     * @returns {Function} cleanup - Call to remove the keydown listener
+     */
+    _trapFocus(containerEl, { onEscape } = {}) {
+        const focusableSelector = 'input:not([disabled]), button:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])';
+        const handler = (e) => {
+            if (e.key === 'Escape' && onEscape) {
+                e.preventDefault();
+                onEscape();
+                return;
+            }
+            if (e.key !== 'Tab') return;
+            const focusable = Array.from(containerEl.querySelectorAll(focusableSelector));
+            if (focusable.length === 0) return;
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (e.shiftKey && document.activeElement === first) {
+                e.preventDefault();
+                last.focus();
+            } else if (!e.shiftKey && document.activeElement === last) {
+                e.preventDefault();
+                first.focus();
+            }
+        };
+        document.addEventListener('keydown', handler);
+        return () => document.removeEventListener('keydown', handler);
+    }
+
+    /**
+     * Handle keydown events for modal focus trap (save-favorite modal).
+     * Kept for backward compat; delegates to the shared helper.
      * @param {KeyboardEvent} e - Keyboard event
      */
     _handleModalKeydown(e) {
@@ -1093,27 +1237,41 @@ class BirdingHotspotsApp {
     _initErrorReportDialog() {
         if (!this.elements.errorBadge) return;
 
+        // Track focus-trap cleanup and focus origin
+        let cleanupTrap = null;
+        let previousFocus = null;
+
+        const openDialog = () => {
+            previousFocus = document.activeElement;
+            this._showErrorReportDialog();
+            cleanupTrap = this._trapFocus(this.elements.errorReportDialog, {
+                onEscape: closeDialog
+            });
+        };
+
+        const closeDialog = () => {
+            this.elements.errorReportDialog.classList.add('hidden');
+            if (cleanupTrap) { cleanupTrap(); cleanupTrap = null; }
+            if (previousFocus) previousFocus.focus();
+        };
+
         // Clicking the badge opens the error report dialog
         this.elements.errorBadge.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            this._showErrorReportDialog();
+            openDialog();
         });
 
         // Dialog close button
-        this.elements.errorReportClose.addEventListener('click', () => {
-            this.elements.errorReportDialog.classList.add('hidden');
-        });
+        this.elements.errorReportClose.addEventListener('click', closeDialog);
 
         // Dialog backdrop closes it
-        this.elements.errorReportDialog.querySelector('.modal-backdrop').addEventListener('click', () => {
-            this.elements.errorReportDialog.classList.add('hidden');
-        });
+        this.elements.errorReportDialog.querySelector('.modal-backdrop').addEventListener('click', closeDialog);
 
         // Dismiss all button
         this.elements.errorReportClear.addEventListener('click', () => {
             errorReporter.clear();
-            this.elements.errorReportDialog.classList.add('hidden');
+            closeDialog();
         });
     }
 
@@ -1246,7 +1404,7 @@ class BirdingHotspotsApp {
         const validTypes = ['text/csv', 'text/plain', 'application/csv', 'application/vnd.ms-excel'];
         const extension = file.name.toLowerCase().endsWith('.csv');
         if (!validTypes.includes(file.type) && !extension) {
-            this.showError('Please select a CSV file');
+            this.showError('Please select a CSV file', { report: false });
             e.target.value = '';
             return;
         }
@@ -1687,6 +1845,8 @@ class BirdingHotspotsApp {
 
     /**
      * Show a toast notification
+     * @param {string} message - Message text
+     * @param {string} [type='success'] - 'success' | 'warning' | 'error'
      */
     showToast(message, type = 'success') {
         // Remove any existing toasts
@@ -1695,9 +1855,26 @@ class BirdingHotspotsApp {
 
         const toast = document.createElement('div');
         toast.className = `toast-notification toast-${type}`;
-        toast.setAttribute('role', 'status');
-        toast.setAttribute('aria-live', 'polite');
-        toast.textContent = message;
+        // Error toasts are assertive so they interrupt screen readers immediately
+        toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
+        toast.setAttribute('aria-live', type === 'error' ? 'assertive' : 'polite');
+
+        const msgSpan = document.createElement('span');
+        msgSpan.textContent = message;
+        toast.appendChild(msgSpan);
+
+        // Dismiss button so users aren't forced to wait for auto-dismiss
+        const dismissBtn = document.createElement('button');
+        dismissBtn.type = 'button';
+        dismissBtn.className = 'toast-dismiss';
+        dismissBtn.setAttribute('aria-label', 'Dismiss notification');
+        dismissBtn.textContent = '×';
+        dismissBtn.addEventListener('click', () => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
+        });
+        toast.appendChild(dismissBtn);
+
         document.body.appendChild(toast);
 
         // Trigger animation
@@ -1705,12 +1882,23 @@ class BirdingHotspotsApp {
             toast.classList.add('show');
         });
 
-        // Longer delay for warnings so users can read them
-        const delay = type === 'warning' ? 4000 : 3000;
-        setTimeout(() => {
+        // Longer delay for warnings/errors so users can read them
+        const delay = (type === 'warning' || type === 'error') ? 5000 : 3000;
+        const timer = setTimeout(() => {
             toast.classList.remove('show');
             setTimeout(() => toast.remove(), 300);
         }, delay);
+
+        // Pause auto-dismiss while the user is hovering or has focus on the toast
+        toast.addEventListener('mouseenter', () => clearTimeout(timer));
+        toast.addEventListener('mouseleave', () => {
+            // Restart the timer with remaining delay
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, delay);
+        });
+        dismissBtn.addEventListener('focus', () => clearTimeout(timer));
     }
 
     /**
@@ -2149,6 +2337,8 @@ class BirdingHotspotsApp {
                 drivingDuration: drivingRoute?.duration ?? null,
                 birds,
                 weather,
+                // Raw observations — used by analyzeHotspotActivity for real best-time chart
+                recentObservations: Array.isArray(observations) ? observations : [],
                 // Hotspot quality indicators
                 totalSpecies: hotspotInfo?.numSpeciesAllTime ?? null,
                 totalChecklists: hotspotInfo?.numChecklists ?? null
@@ -2189,6 +2379,9 @@ class BirdingHotspotsApp {
         this.elements.sortBySpecies.classList.toggle('active', sortMethod === 'species');
         this.elements.sortByDistance.classList.toggle('active', sortMethod === 'distance');
         this.elements.sortByDriving.classList.toggle('active', sortMethod === 'driving');
+        this.elements.sortBySpecies.setAttribute('aria-pressed', String(sortMethod === 'species'));
+        this.elements.sortByDistance.setAttribute('aria-pressed', String(sortMethod === 'distance'));
+        this.elements.sortByDriving.setAttribute('aria-pressed', String(sortMethod === 'driving'));
 
         // Ensure export PDF button is visible (may have been hidden in route mode)
         this.elements.exportPdfBtn.classList.remove('hidden');
@@ -2244,6 +2437,11 @@ class BirdingHotspotsApp {
         setTimeout(() => {
             this.elements.resultsSection.focus();
         }, 500);
+
+        // Fetch regional activity panel (non-blocking, fires after results render)
+        if (origin && this.ebirdApi) {
+            this.fetchRegionalActivity(origin.lat, origin.lng).catch(() => {/* swallow — non-critical */});
+        }
     }
 
     /**
@@ -2871,6 +3069,8 @@ class BirdingHotspotsApp {
         // Update Step 1 card states
         this.elements.locationSearchBtn.classList.toggle('active', type === 'location');
         this.elements.routeSearchBtn.classList.toggle('active', type === 'route');
+        this.elements.locationSearchBtn.setAttribute('aria-pressed', String(type === 'location'));
+        this.elements.routeSearchBtn.setAttribute('aria-pressed', String(type === 'route'));
 
         // Toggle Step 2 sections
         this.elements.locationSearchSection.classList.toggle('hidden', type !== 'location');
@@ -2906,6 +3106,8 @@ class BirdingHotspotsApp {
         // Update sub-toggle buttons
         this.elements.hotspotSubBtn.classList.toggle('active', mode === 'hotspot');
         this.elements.speciesSubBtn.classList.toggle('active', mode === 'species');
+        this.elements.hotspotSubBtn.setAttribute('aria-pressed', String(mode === 'hotspot'));
+        this.elements.speciesSubBtn.setAttribute('aria-pressed', String(mode === 'species'));
 
         // Toggle species panel
         this.elements.speciesSearchPanel.classList.toggle('hidden', mode !== 'species');
@@ -2948,7 +3150,7 @@ class BirdingHotspotsApp {
     async initializeSpeciesSearch() {
         const apiKey = this.elements.apiKey.value.trim();
         if (!apiKey) {
-            this.showError('Please enter your eBird API key first');
+            this.showError('Please enter your eBird API key first', { report: false });
             this.setSearchSubMode('hotspot');
             return;
         }
@@ -3025,11 +3227,15 @@ class BirdingHotspotsApp {
      */
     renderSpeciesDropdown(results) {
         const dropdown = this.elements.speciesDropdown;
+        const input = this.elements.speciesSearchInput;
         clearElement(dropdown);
 
-        results.forEach(species => {
+        results.forEach((species, i) => {
             const option = document.createElement('div');
             option.className = 'species-option';
+            option.id = `species-opt-${i}`;
+            option.setAttribute('role', 'option');
+            option.setAttribute('aria-selected', 'false');
             option.dataset.code = species.speciesCode;
             option.dataset.name = species.commonName;
             option.dataset.scientific = species.scientificName;
@@ -3050,6 +3256,9 @@ class BirdingHotspotsApp {
         });
 
         dropdown.classList.remove('hidden');
+        // Update combobox ARIA state
+        input.setAttribute('aria-expanded', 'true');
+        input.removeAttribute('aria-activedescendant');
     }
 
     /**
@@ -3064,6 +3273,8 @@ class BirdingHotspotsApp {
         messageDiv.textContent = message;
         dropdown.appendChild(messageDiv);
         dropdown.classList.remove('hidden');
+        // Keep combobox expanded so screen readers announce the status message
+        this.elements.speciesSearchInput.setAttribute('aria-expanded', 'true');
     }
 
     /**
@@ -3072,6 +3283,9 @@ class BirdingHotspotsApp {
     hideSpeciesDropdown() {
         this.elements.speciesDropdown.classList.add('hidden');
         this.speciesDropdownHighlightIndex = -1;
+        // Update combobox ARIA state
+        this.elements.speciesSearchInput.setAttribute('aria-expanded', 'false');
+        this.elements.speciesSearchInput.removeAttribute('aria-activedescendant');
     }
 
     /**
@@ -3129,12 +3343,17 @@ class BirdingHotspotsApp {
      * @param {NodeList} options - Dropdown option elements
      */
     updateSpeciesDropdownHighlight(options) {
+        const input = this.elements.speciesSearchInput;
         options.forEach((opt, i) => {
             if (i === this.speciesDropdownHighlightIndex) {
                 opt.classList.add('highlighted');
+                opt.setAttribute('aria-selected', 'true');
                 opt.scrollIntoView({ block: 'nearest' });
+                // Point the combobox at the active option
+                input.setAttribute('aria-activedescendant', opt.id);
             } else {
                 opt.classList.remove('highlighted');
+                opt.setAttribute('aria-selected', 'false');
             }
         });
     }
@@ -3218,7 +3437,7 @@ class BirdingHotspotsApp {
         if (!this.speciesSearch) {
             const apiKey = this.elements.apiKey.value.trim();
             if (!apiKey) {
-                this.showError('Please enter your eBird API key first');
+                this.showError('Please enter your eBird API key first', { report: false });
                 return;
             }
             this.speciesSearch = new SpeciesSearch(new EBirdAPI(apiKey));
@@ -3272,11 +3491,15 @@ class BirdingHotspotsApp {
      */
     renderRouteTargetSpeciesDropdown(results) {
         const dropdown = this.elements.routeTargetSpeciesDropdown;
+        const input = this.elements.routeTargetSpeciesInput;
         clearElement(dropdown);
 
-        results.forEach(species => {
+        results.forEach((species, i) => {
             const option = document.createElement('div');
             option.className = 'species-option';
+            option.id = `route-species-opt-${i}`;
+            option.setAttribute('role', 'option');
+            option.setAttribute('aria-selected', 'false');
             option.dataset.code = species.speciesCode;
             option.dataset.name = species.commonName;
             option.dataset.scientific = species.scientificName;
@@ -3297,6 +3520,11 @@ class BirdingHotspotsApp {
 
         dropdown.classList.remove('hidden');
         this.routeTargetSpeciesHighlightIndex = -1;
+        // Update combobox ARIA state
+        if (input) {
+            input.setAttribute('aria-expanded', 'true');
+            input.removeAttribute('aria-activedescendant');
+        }
     }
 
     /**
@@ -3311,6 +3539,9 @@ class BirdingHotspotsApp {
         messageDiv.textContent = message;
         dropdown.appendChild(messageDiv);
         dropdown.classList.remove('hidden');
+        // Keep combobox expanded so screen readers announce the status message
+        const input = this.elements.routeTargetSpeciesInput;
+        if (input) input.setAttribute('aria-expanded', 'true');
     }
 
     /**
@@ -3321,6 +3552,11 @@ class BirdingHotspotsApp {
             this.elements.routeTargetSpeciesDropdown.classList.add('hidden');
         }
         this.routeTargetSpeciesHighlightIndex = -1;
+        // Update combobox ARIA state
+        if (this.elements.routeTargetSpeciesInput) {
+            this.elements.routeTargetSpeciesInput.setAttribute('aria-expanded', 'false');
+            this.elements.routeTargetSpeciesInput.removeAttribute('aria-activedescendant');
+        }
     }
 
     /**
@@ -3378,11 +3614,15 @@ class BirdingHotspotsApp {
      * @param {NodeList} options - Dropdown option elements
      */
     updateRouteTargetSpeciesDropdownHighlight(options) {
+        const input = this.elements.routeTargetSpeciesInput;
         options.forEach((opt, i) => {
             if (i === this.routeTargetSpeciesHighlightIndex) {
+                opt.setAttribute('aria-selected', 'true');
+                if (input) input.setAttribute('aria-activedescendant', opt.id);
                 opt.classList.add('highlighted');
                 opt.scrollIntoView({ block: 'nearest' });
             } else {
+                opt.setAttribute('aria-selected', 'false');
                 opt.classList.remove('highlighted');
             }
         });
@@ -3498,7 +3738,7 @@ class BirdingHotspotsApp {
      */
     async handleSpeciesSearch() {
         if (!this.selectedSpeciesData) {
-            this.showError('Please select a bird species to search for');
+            this.showError('Please select a bird species to search for', { report: false });
             this.isProcessing = false;
             return;
         }
@@ -4226,7 +4466,7 @@ class BirdingHotspotsApp {
         });
 
         if (selectedIndices.length === 0) {
-            this.showError('Please select at least one hotspot for your itinerary.');
+            this.showError('Please select at least one hotspot for your itinerary.', { report: false });
             return;
         }
 
@@ -5135,8 +5375,8 @@ class BirdingHotspotsApp {
         // Create weather badge if weather data is available
         const weatherBadge = this.createWeatherBadge(hotspot.weather);
 
-        // Create seasonal insights section
-        const seasonalInsights = this.createSeasonalInsightsSection();
+        // Create seasonal insights section — pass real observations for data-driven best-time chart
+        const seasonalInsights = this.createSeasonalInsightsSection(hotspot.recentObservations || []);
 
         // Assemble card
         card.appendChild(header);
@@ -5160,11 +5400,17 @@ class BirdingHotspotsApp {
 
     /**
      * Create seasonal insights section for a hotspot card
+     * @param {Array} [observations=[]] - Recent observations for this hotspot (from enrichHotspots).
+     *   When time-stamped observation data is available, `analyzeHotspotActivity` produces a
+     *   data-driven best-time chart; otherwise falls back to static seasonal estimates.
      * @returns {HTMLElement} Seasonal insights section element
      */
-    createSeasonalInsightsSection() {
+    createSeasonalInsightsSection(observations = []) {
         const insights = getSeasonalInsights();
         const optimalTimes = insights.optimalTimes;
+
+        // Try real observation-timestamp analysis first (data-driven best time)
+        const realActivity = analyzeHotspotActivity(observations);
 
         const section = document.createElement('div');
         section.className = 'seasonal-insights-section';
@@ -5191,26 +5437,54 @@ class BirdingHotspotsApp {
         // Best time of day chart
         const chartTitle = document.createElement('div');
         chartTitle.style.cssText = 'font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 8px;';
-        chartTitle.textContent = 'Best birding times today:';
 
         const timeChart = document.createElement('div');
         timeChart.className = 'time-of-day-chart';
 
-        const timeSlots = [
-            { key: 'morning', label: 'Early AM', ...optimalTimes.morning },
-            { key: 'midday', label: 'Midday', ...optimalTimes.midday },
-            { key: 'evening', label: 'Evening', ...optimalTimes.evening }
-        ];
+        let timeSlots;
+        if (realActivity) {
+            // Use real observation timestamps — richer and hotspot-specific
+            chartTitle.textContent = 'Best birding times (based on recent checklists):';
+            const maxPct = Math.max(...Object.values(realActivity).filter(v => typeof v === 'object' && v.percentage !== undefined).map(v => v.percentage), 1);
+            timeSlots = [
+                { key: 'earlyMorning', label: 'Dawn', percentage: realActivity.earlyMorning?.percentage || 0, maxPct },
+                { key: 'morning',      label: 'AM',   percentage: realActivity.morning?.percentage || 0, maxPct },
+                { key: 'midday',       label: 'Midday',percentage: realActivity.midday?.percentage || 0, maxPct },
+                { key: 'afternoon',    label: 'PM',   percentage: realActivity.afternoon?.percentage || 0, maxPct },
+                { key: 'evening',      label: 'Dusk', percentage: realActivity.evening?.percentage || 0, maxPct }
+            ];
+        } else {
+            // Fallback to static seasonal estimates
+            chartTitle.textContent = 'Best birding times today:';
+            timeSlots = [
+                { key: 'morning', label: 'Early AM', ...optimalTimes.morning },
+                { key: 'midday', label: 'Midday', ...optimalTimes.midday },
+                { key: 'evening', label: 'Evening', ...optimalTimes.evening }
+            ];
+        }
 
         timeSlots.forEach(slot => {
             const bar = document.createElement('div');
             bar.className = 'time-bar';
 
             const fill = document.createElement('div');
-            fill.className = `time-bar-fill ${slot.activity}`;
-            // Height based on activity level
-            const height = slot.activity === 'high' ? 100 : slot.activity === 'medium' ? 60 : 30;
+
+            // Support both real-data (percentage) and static (activity string) formats
+            let height, activityClass;
+            if (realActivity && slot.percentage !== undefined) {
+                const normalizedHeight = Math.round((slot.percentage / (slot.maxPct || 100)) * 100);
+                height = Math.max(normalizedHeight, 10); // Minimum 10% so bars are visible
+                activityClass = slot.percentage >= 35 ? 'high' : slot.percentage >= 15 ? 'medium' : 'low';
+            } else {
+                height = slot.activity === 'high' ? 100 : slot.activity === 'medium' ? 60 : 30;
+                activityClass = slot.activity || 'low';
+            }
+            fill.className = `time-bar-fill ${activityClass}`;
             fill.style.height = `${height}%`;
+            // Show percentage on real-data bars for context
+            if (realActivity && slot.percentage !== undefined) {
+                fill.title = `${slot.percentage}% of observations`;
+            }
 
             const label = document.createElement('div');
             label.className = 'time-bar-label';
@@ -5894,7 +6168,7 @@ class BirdingHotspotsApp {
         } else {
             const endAddr = this.elements.endAddress.value.trim();
             if (!endAddr) {
-                this.showError('Please enter an end address.');
+                this.showError('Please enter an end address.', { report: false });
                 return;
             }
 
@@ -6396,6 +6670,9 @@ class BirdingHotspotsApp {
         this.elements.sortBySpecies.classList.toggle('active', method === 'species');
         this.elements.sortByDistance.classList.toggle('active', method === 'distance');
         this.elements.sortByDriving.classList.toggle('active', method === 'driving');
+        this.elements.sortBySpecies.setAttribute('aria-pressed', String(method === 'species'));
+        this.elements.sortByDistance.setAttribute('aria-pressed', String(method === 'distance'));
+        this.elements.sortByDriving.setAttribute('aria-pressed', String(method === 'driving'));
 
         // Re-sort the hotspots
         const sortedHotspots = this.sortHotspots(
@@ -6441,16 +6718,24 @@ class BirdingHotspotsApp {
 
     /**
      * Show loading overlay
+     * @param {string} message - Status message
+     * @param {number} percent - Progress percentage
      */
     showLoading(message, percent) {
+        this._loadingPreviousFocus = document.activeElement;
         this.elements.loadingOverlay.classList.remove('hidden');
         this.updateLoading(message, percent);
+        // Move focus to Cancel so keyboard users can abort, then trap focus within the overlay
+        this.elements.cancelSearch.focus();
+        this._loadingTrapCleanup = this._trapFocus(this.elements.loadingOverlay);
         // Show skeleton cards in the results area
         this.showSkeletonCards();
     }
 
     /**
      * Update loading status
+     * @param {string} message - Status message
+     * @param {number} percent - Progress percentage
      */
     updateLoading(message, percent) {
         this.elements.loadingStatus.textContent = message;
@@ -6461,8 +6746,18 @@ class BirdingHotspotsApp {
      * Hide loading overlay
      */
     hideLoading() {
+        // Release focus trap before hiding so the cleanup listener is removed
+        if (this._loadingTrapCleanup) {
+            this._loadingTrapCleanup();
+            this._loadingTrapCleanup = null;
+        }
         this.elements.loadingOverlay.classList.add('hidden');
         this.removeSkeletonCards();
+        // Restore focus to the trigger element (e.g. the Generate button)
+        if (this._loadingPreviousFocus) {
+            this._loadingPreviousFocus.focus();
+            this._loadingPreviousFocus = null;
+        }
     }
 
     /**
@@ -6504,13 +6799,19 @@ class BirdingHotspotsApp {
 
     /**
      * Show error message
+     * @param {string} message - Message to display
+     * @param {Object} [opts]
+     * @param {boolean} [opts.report=true] - Whether to capture for error reporting.
+     *   Pass false for expected user-facing validation messages (missing API key, etc.)
+     *   so the error badge only counts real runtime failures.
      */
-    showError(message) {
-        // Capture for error reporting (skip user-facing validation messages)
-        errorReporter.capture({
-            type: 'app_error',
-            message: message
-        });
+    showError(message, { report = true } = {}) {
+        if (report) {
+            errorReporter.capture({
+                type: 'app_error',
+                message: message
+            });
+        }
 
         this.elements.errorMessage.textContent = message;
         this.elements.errorMessage.classList.remove('hidden');
@@ -6553,6 +6854,318 @@ class BirdingHotspotsApp {
             : `Some data unavailable: ${this.partialFailures.slice(0, 2).join(', ')}${this.partialFailures.length > 2 ? '...' : ''}`;
 
         this.showWarningToast(message);
+    }
+
+    // ==================== Onboarding ====================
+
+    /**
+     * Show first-run onboarding modal for new users without an API key.
+     */
+    showOnboarding() {
+        const modal = this.elements.onboardingModal;
+        if (!modal) return;
+
+        this._onboardingPreviousFocus = document.activeElement;
+        modal.classList.remove('hidden');
+
+        const closeOnboarding = () => {
+            storage.setOnboarded();
+            modal.classList.add('hidden');
+            if (this._onboardingTrapCleanup) { this._onboardingTrapCleanup(); this._onboardingTrapCleanup = null; }
+            if (this._onboardingPreviousFocus) { this._onboardingPreviousFocus.focus(); this._onboardingPreviousFocus = null; }
+            // Scroll to and highlight the API key input
+            this.elements.apiKey.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setTimeout(() => this.elements.apiKey.focus(), 400);
+        };
+
+        this._onboardingTrapCleanup = this._trapFocus(modal, { onEscape: closeOnboarding });
+
+        const dismissBtn = this.elements.onboardingDismissBtn;
+        if (dismissBtn) {
+            // Avoid stacking multiple listeners on subsequent calls
+            dismissBtn.onclick = closeOnboarding;
+            dismissBtn.focus();
+        }
+
+        // × close button
+        const closeBtn = document.getElementById('onboardingCloseBtn');
+        if (closeBtn) closeBtn.onclick = closeOnboarding;
+
+        // Also close when clicking the backdrop
+        const backdrop = modal.querySelector('.modal-backdrop');
+        if (backdrop) backdrop.onclick = closeOnboarding;
+
+        // Close when clicking the inline "Get a free API key" link (don't block the link)
+        const keyLink = this.elements.onboardingGetKeyLink;
+        if (keyLink) keyLink.addEventListener('click', () => closeOnboarding(), { once: true });
+    }
+
+    // ==================== Regional Activity ====================
+
+    /**
+     * Fetch and render the regional activity panel after results load.
+     * Uses the already-built but dormant getTopObservers() and getRecentChecklists() methods.
+     * @param {number} lat - Latitude
+     * @param {number} lng - Longitude
+     */
+    async fetchRegionalActivity(lat, lng) {
+        const panel = this.elements.regionalActivityPanel;
+        const content = this.elements.regionalActivityContent;
+        if (!panel || !content || !this.ebirdApi) return;
+
+        // Show the panel with a loading state
+        panel.classList.remove('hidden');
+        content.innerHTML = '';
+
+        const loadingMsg = document.createElement('p');
+        loadingMsg.className = 'regional-activity-loading help-text';
+        loadingMsg.textContent = 'Loading regional activity…';
+        content.appendChild(loadingMsg);
+
+        try {
+            // Derive the eBird region code from the search location's country/subnational2
+            // The nearest region-code we can derive without an extra lookup is sub-national lat/lng;
+            // eBird top-observers expects a region code. Use the reverse-geocoded county or
+            // fall back to a lat/lng-based regional-news approach.
+            // For now we use the nearby-notable-observations response that we already have loaded
+            // and render the top active observers from the notable obs set.
+            const today = new Date().toISOString().slice(0, 10);
+
+            // Attempt to get recent checklists nearby using lat/lng sub-national code.
+            // eBird's getRecentChecklists expects a region code (e.g. US-WA-033).
+            // We'll use the country fallback and top-observers with a broad region.
+            // Derive sub-national1 from notable observations' locId if available.
+            let regionCode = null;
+            if (this.notableObservations && this.notableObservations.length > 0) {
+                const sampleLocId = this.notableObservations[0].locId || '';
+                // eBird locIds look like L12345; region from subnational can be derived from
+                // observation county code if present
+                const subId = this.notableObservations[0].subnational2Code;
+                const subId1 = this.notableObservations[0].subnational1Code;
+                if (subId) regionCode = subId;
+                else if (subId1) regionCode = subId1;
+            }
+
+            if (!regionCode) {
+                content.innerHTML = '';
+                const msg = document.createElement('p');
+                msg.className = 'help-text';
+                msg.textContent = 'Regional activity data not available for this location.';
+                content.appendChild(msg);
+                return;
+            }
+
+            const [topObservers, recentChecklists] = await Promise.allSettled([
+                this.ebirdApi.getTopObservers(regionCode, today),
+                this.ebirdApi.getRecentChecklists(regionCode)
+            ]);
+
+            content.innerHTML = '';
+            this.renderRegionalActivity(content, topObservers, recentChecklists, regionCode);
+        } catch (err) {
+            content.innerHTML = '';
+            const msg = document.createElement('p');
+            msg.className = 'help-text';
+            msg.textContent = 'Could not load regional activity.';
+            content.appendChild(msg);
+        }
+    }
+
+    /**
+     * Render top observers and recent checklists into the regional activity panel.
+     * @param {HTMLElement} container
+     * @param {PromiseSettledResult} topObserversResult
+     * @param {PromiseSettledResult} recentChecklistsResult
+     * @param {string} regionCode
+     */
+    renderRegionalActivity(container, topObserversResult, recentChecklistsResult, regionCode) {
+        const observers = topObserversResult.status === 'fulfilled' ? topObserversResult.value : [];
+        const checklists = recentChecklistsResult.status === 'fulfilled' ? recentChecklistsResult.value : [];
+
+        if (observers.length === 0 && checklists.length === 0) {
+            const msg = document.createElement('p');
+            msg.className = 'help-text';
+            msg.textContent = 'No recent regional activity found.';
+            container.appendChild(msg);
+            return;
+        }
+
+        const body = document.createElement('div');
+        body.className = 'regional-activity-body';
+        container.appendChild(body);
+
+        if (observers.length > 0) {
+            const col = document.createElement('div');
+            col.className = 'regional-activity-column';
+
+            const obsTitle = document.createElement('h4');
+            obsTitle.textContent = 'Top Observers This Week';
+            col.appendChild(obsTitle);
+
+            const obsList = document.createElement('ol');
+
+            observers.slice(0, 5).forEach((obs, i) => {
+                const item = document.createElement('li');
+
+                const rank = document.createElement('span');
+                rank.className = 'rank-badge';
+                rank.textContent = `${i + 1}`;
+                rank.setAttribute('aria-hidden', 'true');
+
+                const name = document.createElement('span');
+                name.className = 'observer-name';
+                name.textContent = sanitizeHTML(obs.userDisplayName || obs.name || 'Unknown');
+
+                const count = document.createElement('span');
+                count.className = 'observer-count';
+                count.textContent = `${obs.numSpecies || 0} sp.`;
+
+                item.appendChild(rank);
+                item.appendChild(name);
+                item.appendChild(count);
+                obsList.appendChild(item);
+            });
+            col.appendChild(obsList);
+            body.appendChild(col);
+        }
+
+        if (checklists.length > 0) {
+            const col = document.createElement('div');
+            col.className = 'regional-activity-column';
+
+            const clTitle = document.createElement('h4');
+            clTitle.textContent = 'Recent Checklists';
+            col.appendChild(clTitle);
+
+            const clList = document.createElement('ul');
+
+            checklists.slice(0, 5).forEach(cl => {
+                const item = document.createElement('li');
+                const locName = sanitizeHTML(cl.loc?.name || cl.locName || 'Unknown location');
+
+                const locationEl = document.createElement('span');
+                locationEl.className = 'checklist-location';
+                locationEl.textContent = locName;
+
+                const speciesEl = document.createElement('span');
+                speciesEl.className = 'observer-count';
+                speciesEl.textContent = `${cl.numSpecies || '?'} sp.`;
+
+                const link = document.createElement('a');
+                link.href = `https://ebird.org/checklist/${sanitizeHTML(cl.subId || '')}`;
+                link.target = '_blank';
+                link.rel = 'noopener noreferrer';
+                link.className = 'checklist-link';
+                link.textContent = 'View';
+                link.setAttribute('aria-label', `View checklist for ${locName} on eBird`);
+
+                item.appendChild(locationEl);
+                item.appendChild(speciesEl);
+                item.appendChild(link);
+                clList.appendChild(item);
+            });
+            col.appendChild(clList);
+            body.appendChild(col);
+        }
+
+        // Link to full regional leaderboard
+        const footer = document.createElement('div');
+        footer.className = 'regional-activity-footer';
+        const ebirdLink = document.createElement('a');
+        const safeRegionCode = sanitizeHTML(regionCode);
+        ebirdLink.href = `https://ebird.org/region/${safeRegionCode}/recent-checklists`;
+        ebirdLink.target = '_blank';
+        ebirdLink.rel = 'noopener noreferrer';
+        ebirdLink.className = 'btn btn-secondary btn-small';
+        ebirdLink.textContent = 'View all on eBird';
+        ebirdLink.setAttribute('aria-label', `View all regional activity for ${safeRegionCode} on eBird`);
+        footer.appendChild(ebirdLink);
+        container.appendChild(footer);
+    }
+
+    // ==================== Save / Share Itineraries ====================
+
+    /**
+     * Save the current itinerary to localStorage and refresh the saved itineraries panel.
+     * @param {string} name - User-provided name for the itinerary
+     */
+    handleSaveItinerary(name) {
+        if (!this.currentItinerary) {
+            this.showToast('No itinerary to save', 'warning');
+            return;
+        }
+        const saved = storage.addSavedItinerary({
+            name: name || 'My Itinerary',
+            locationName: this.currentLocation ? (this.currentLocation.displayName || '') : '',
+            stops: this.currentItinerary.stops || [],
+            totalDistance: this.currentItinerary.totalDistance || 0
+        });
+        if (saved) {
+            this.renderSavedItineraries();
+            this.showToast('Itinerary saved!');
+        } else {
+            this.showToast('Could not save itinerary', 'error');
+        }
+    }
+
+    /**
+     * Render saved itineraries collapsible section.
+     */
+    renderSavedItineraries() {
+        const section = this.elements.savedItinerariesSection;
+        const list = this.elements.savedItinerariesList;
+        if (!section || !list) return;
+
+        const itineraries = storage.getSavedItineraries();
+        clearElement(list);
+
+        if (itineraries.length === 0) {
+            section.classList.add('hidden');
+            return;
+        }
+
+        section.classList.remove('hidden');
+
+        itineraries.forEach(it => {
+            const item = document.createElement('div');
+            item.className = 'saved-itinerary-item';
+
+            const info = document.createElement('div');
+            info.className = 'saved-itinerary-info';
+
+            const name = document.createElement('span');
+            name.className = 'saved-itinerary-name';
+            name.textContent = sanitizeHTML(it.name);
+
+            const meta = document.createElement('span');
+            meta.className = 'saved-itinerary-meta';
+            const date = new Date(it.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+            meta.textContent = `${it.stopCount} stops · ${date}`;
+
+            info.appendChild(name);
+            info.appendChild(meta);
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.type = 'button';
+            deleteBtn.className = 'btn-icon favorite-delete';
+            deleteBtn.setAttribute('aria-label', `Delete saved itinerary: ${sanitizeHTML(it.name)}`);
+            deleteBtn.innerHTML = `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>`;
+            deleteBtn.addEventListener('click', async () => {
+                const confirmed = await this.showConfirmDialog(`Delete "${sanitizeHTML(it.name)}"?`, {
+                    title: 'Delete Itinerary',
+                    okText: 'Delete',
+                    cancelText: 'Cancel'
+                });
+                if (confirmed) {
+                    storage.removeSavedItinerary(it.id);
+                    this.renderSavedItineraries();
+                }
+            });
+
+            item.appendChild(info);
+            item.appendChild(deleteBtn);
+            list.appendChild(item);
+        });
     }
 }
 

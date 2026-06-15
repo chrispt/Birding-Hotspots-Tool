@@ -304,6 +304,17 @@ body {
     width: 100%;
 }
 
+/* Two-column tablet layout - narrower sidebar for 768-1023px */
+@media (min-width: 768px) and (max-width: 1023px) {
+    .main-content.has-results {
+        display: grid;
+        grid-template-columns: 300px 1fr;
+        gap: var(--spacing-md);
+        align-items: start;
+        max-width: 100%;
+    }
+}
+
 /* Two-column desktop layout - only when results are showing */
 @media (min-width: 1024px) {
     .main-content.has-results {
@@ -1138,6 +1149,17 @@ body {
     }
 }
 
+@media (max-width: 360px) {
+    .route-stats {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .route-stat-value {
+        font-size: 1.25rem;
+    }
+}
+
 /* Route Hotspots Selection */
 .route-hotspots-actions {
     display: flex;
@@ -1723,8 +1745,34 @@ body {
     .favorite-item,
     .species-option,
     .route-hotspot-card,
-    .popup-toggle-btn {
+    .popup-toggle-btn,
+    .btn-reset,
+    .recent-search-chip,
+    .recent-searches-clear,
+    .theme-toggle-btn,
+    .header-nav a {
         min-height: 44px;
+    }
+
+    .recent-search-chip {
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .recent-searches-clear,
+    .theme-toggle-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding-top: 10px;
+        padding-bottom: 10px;
+    }
+
+    .header-nav a {
+        display: inline-flex;
+        align-items: center;
+        padding-top: 10px;
+        padding-bottom: 10px;
     }
 
     .radio-card {
@@ -3856,7 +3904,7 @@ details.about-section[open] .about-chevron {
     }
 
     .time-bar-label {
-        font-size: 0.6rem;
+        font-size: 0.7rem;
     }
 
     .migration-alert-banner {
@@ -5123,4 +5171,368 @@ details.about-section[open] .about-chevron {
 
 .hotspot-link:hover {
     text-decoration: none;
+}
+
+/* ========================================
+   TOAST DISMISS BUTTON
+   ======================================== */
+
+.toast-notification {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.toast-dismiss {
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    padding: 2px 4px;
+    font-size: 1.1rem;
+    line-height: 1;
+    opacity: 0.8;
+    border-radius: 4px;
+    flex-shrink: 0;
+    transition: opacity 0.15s;
+}
+
+.toast-dismiss:hover,
+.toast-dismiss:focus-visible {
+    opacity: 1;
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}
+
+/* ========================================
+   ONBOARDING MODAL
+   ======================================== */
+
+.modal-close-btn {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px;
+    color: var(--text-secondary);
+    border-radius: var(--radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s, background 0.15s;
+}
+
+.modal-close-btn:hover {
+    color: var(--text-primary);
+    background: var(--hover-bg);
+}
+
+.modal-close-btn:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+.onboarding-modal {
+    position: relative;
+    max-width: 480px;
+    padding: 32px;
+    text-align: left;
+}
+
+.onboarding-modal h3 {
+    font-size: 1.3rem;
+    margin-bottom: 16px;
+    color: var(--primary-color);
+}
+
+.onboarding-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 20px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.onboarding-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.onboarding-list li .onboarding-icon {
+    font-size: 1.2rem;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+.onboarding-api-notice {
+    background: var(--hover-bg);
+    border: 1px solid var(--border-color);
+    border-left: 3px solid var(--primary-color);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    margin-bottom: 24px;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.onboarding-api-notice a {
+    color: var(--primary-color);
+    font-weight: 600;
+    text-decoration: underline;
+}
+
+.onboarding-api-notice a:hover {
+    color: var(--primary-hover);
+}
+
+.onboarding-modal .btn-primary {
+    width: 100%;
+    justify-content: center;
+    font-size: 1rem;
+    padding: 14px;
+}
+
+/* ========================================
+   REGIONAL ACTIVITY PANEL
+   ======================================== */
+
+.regional-activity-panel {
+    margin-bottom: var(--spacing-md);
+}
+
+.regional-activity-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    font-family: inherit;
+    color: var(--text-primary);
+    text-align: left;
+}
+
+.regional-activity-toggle:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 4px;
+    border-radius: 4px;
+}
+
+.regional-activity-toggle-icon {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    transition: transform 0.2s;
+    flex-shrink: 0;
+}
+
+.regional-activity-toggle[aria-expanded="true"] .regional-activity-toggle-icon {
+    transform: rotate(180deg);
+}
+
+.regional-activity-body {
+    margin-top: 16px;
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+
+.regional-activity-column {
+    flex: 1;
+    min-width: 200px;
+}
+
+.regional-activity-column h4 {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin: 0 0 10px 0;
+}
+
+.regional-activity-column ol,
+.regional-activity-column ul {
+    padding: 0;
+    margin: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.regional-activity-column li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    padding: 6px 8px;
+    border-radius: var(--radius);
+    background: var(--background);
+}
+
+/* Gold / silver / bronze — use accent and primary tokens so dark mode works */
+.regional-activity-column li:nth-child(1) .rank-badge { color: var(--accent-color); }
+.regional-activity-column li:nth-child(2) .rank-badge { color: var(--text-secondary); }
+.regional-activity-column li:nth-child(3) .rank-badge { color: var(--primary-light); }
+
+.rank-badge {
+    font-size: 0.75rem;
+    font-weight: 700;
+    width: 18px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.observer-name {
+    flex: 1;
+    font-weight: 500;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.observer-count {
+    font-size: 0.8rem;
+    color: var(--text-light);
+    flex-shrink: 0;
+}
+
+.checklist-location {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.checklist-link {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+
+.checklist-link:hover {
+    text-decoration: underline;
+}
+
+.regional-activity-footer {
+    margin-top: 14px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.regional-activity-footer .btn-link {
+    font-size: 0.85rem;
+}
+
+@media (max-width: 600px) {
+    .regional-activity-body {
+        flex-direction: column;
+    }
+}
+
+/* ========================================
+   SAVED ITINERARIES
+   ======================================== */
+
+.saved-itineraries-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.saved-itinerary-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--background);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    transition: background 0.15s;
+}
+
+.saved-itinerary-item:hover {
+    background: var(--hover-bg);
+}
+
+.saved-itinerary-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.saved-itinerary-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+}
+
+.saved-itinerary-meta {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    margin-top: 2px;
+    display: block;
+}
+
+.saved-itinerary-actions {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.saved-itinerary-actions .btn-icon {
+    padding: 6px;
+    color: var(--text-secondary);
+    border-radius: var(--radius);
+}
+
+.saved-itinerary-actions .btn-icon:hover {
+    background: var(--hover-bg);
+    color: var(--text-primary);
+}
+
+.saved-itinerary-actions .btn-icon.danger:hover {
+    color: var(--danger-color);
+    background: rgba(var(--danger-rgb, 211, 47, 47), 0.08);
+}
+
+/* Save itinerary button in the export area */
+.save-itinerary-btn {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+}
+
+.save-itinerary-btn:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    background: var(--hover-bg);
+}
+
+/* Tablet sidebar sticky adjustment */
+@media (min-width: 768px) and (max-width: 1023px) {
+    .main-content.has-results .settings-sidebar {
+        position: sticky;
+        top: var(--spacing-md);
+        max-height: calc(100vh - var(--spacing-lg));
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: var(--border-color) transparent;
+    }
 }
