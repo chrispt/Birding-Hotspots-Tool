@@ -4,7 +4,7 @@
 
 import { CONFIG, ErrorMessages, ErrorTypes } from './utils/constants.js';
 import { validateCoordinates, validateApiKey, validateAddress, validateFavoriteName } from './utils/validators.js';
-import { calculateDistance, formatDistance, formatDuration, getGoogleMapsSearchUrl, getGoogleMapsDirectionsUrl, getGoogleMapsRouteUrl } from './utils/formatters.js';
+import { calculateDistance, formatDistance, formatDuration, distanceToRouteLine, getGoogleMapsSearchUrl, getGoogleMapsDirectionsUrl, getGoogleMapsRouteUrl } from './utils/formatters.js';
 import { createSVGIcon, ICONS } from './utils/icons.js';
 import { clearElement } from './utils/dom-helpers.js';
 import { storage } from './services/storage.js';
@@ -3952,7 +3952,9 @@ class BirdingHotspotsApp {
                         locId: hotspots[i].locId,
                         speciesCount: birds.length,
                         birds: birds,
-                        distance: calculateDistance(startCoords.lat, startCoords.lng, hotspots[i].lat, hotspots[i].lng)
+                        distance: this.currentRouteCoords
+                            ? distanceToRouteLine(hotspots[i].lat, hotspots[i].lng, this.currentRouteCoords)
+                            : calculateDistance(startCoords.lat, startCoords.lng, hotspots[i].lat, hotspots[i].lng)
                     });
                 } catch (e) {
                     console.warn(`Failed to get details for hotspot ${hotspots[i].locId}:`, e);
@@ -3998,9 +4000,10 @@ class BirdingHotspotsApp {
         // Update meta text
         this.elements.routeHotspotsMeta.textContent = `Found ${hotspots.length} birding ${hotspots.length === 1 ? 'hotspot' : 'hotspots'} along your route`;
 
-        // Create hotspot cards with checkboxes
+        // Create hotspot cards with checkboxes, pre-checking any the user selected in the preview
         hotspots.forEach((hotspot, index) => {
-            const card = this.createRouteHotspotCard(hotspot, index);
+            const isPreSelected = this.selectedPreviewHotspots?.has(hotspot.locId) ?? false;
+            const card = this.createRouteHotspotCard(hotspot, index, isPreSelected);
             this.elements.routeHotspotsList.appendChild(card);
         });
 
@@ -4105,6 +4108,13 @@ class BirdingHotspotsApp {
                 hotspots.forEach(h => bounds.extend([h.lat, h.lng]));
                 this.routePreviewMapInstance.fitBounds(bounds, { padding: [20, 20] });
             }
+
+            // Sync map marker colors for hotspots pre-selected from the preview stage
+            hotspots.forEach((hotspot, index) => {
+                if (this.selectedPreviewHotspots?.has(hotspot.locId)) {
+                    this.updateMapMarkerStyle(index, true);
+                }
+            });
         }
 
         // Show the section
@@ -4143,16 +4153,18 @@ class BirdingHotspotsApp {
      * @param {number} index - Index in the list
      * @returns {HTMLElement} The card element
      */
-    createRouteHotspotCard(hotspot, index) {
+    createRouteHotspotCard(hotspot, index, isPreSelected = false) {
         const card = document.createElement('div');
         card.className = 'route-hotspot-card';
         card.dataset.index = index;
+        if (isPreSelected) card.classList.add('selected');
 
         const checkbox = document.createElement('div');
         checkbox.className = 'route-hotspot-checkbox';
         const checkboxInput = document.createElement('input');
         checkboxInput.type = 'checkbox';
         checkboxInput.id = `routeHotspot${index}`;
+        checkboxInput.checked = isPreSelected;
         checkboxInput.setAttribute('aria-label', `Select ${hotspot.name}`);
         checkbox.appendChild(checkboxInput);
 
@@ -5854,6 +5866,7 @@ class BirdingHotspotsApp {
 
         // Add route line (convert GeoJSON coordinates to Leaflet format)
         const routeCoords = route.geometry.coordinates.map(c => [c[1], c[0]]);
+        this.currentRouteCoords = route.geometry.coordinates; // raw [lng, lat] for distanceToRouteLine
         this.routePreviewLine = L.polyline(routeCoords, {
             color: '#3A6B35',
             weight: 4,
