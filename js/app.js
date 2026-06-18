@@ -238,7 +238,7 @@ class BirdingHotspotsApp {
             onboardingCloseBtn: document.getElementById('onboardingCloseBtn'),
             onboardingGetKeyLink: document.getElementById('onboardingGetKeyLink'),
             // Layout
-            mainContent: this.elements.mainContent
+            mainContent: document.querySelector('.main-content')
         };
 
         // Temperature unit preference (true = Fahrenheit, false = Celsius)
