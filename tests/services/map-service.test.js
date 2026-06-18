@@ -17,6 +17,7 @@ function installDomMocks() {
                 scale: () => {},
                 fillRect: () => {},
                 beginPath: () => {},
+                closePath: () => {},
                 moveTo: () => {},
                 lineTo: () => {},
                 stroke: () => {},

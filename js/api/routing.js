@@ -3,9 +3,11 @@
  * Fetches driving distances and durations between coordinates
  */
 
-const OSRM_BASE_URL = 'https://router.project-osrm.org/route/v1/driving';
-const OSRM_TABLE_URL = 'https://router.project-osrm.org/table/v1/driving';
-const OSRM_TRIP_URL = 'https://router.project-osrm.org/trip/v1/driving';
+import { CONFIG } from '../utils/constants.js';
+
+const OSRM_BASE_URL = CONFIG.OSRM.BASE_URL;
+const OSRM_TABLE_URL = CONFIG.OSRM.TABLE_URL;
+const OSRM_TRIP_URL = CONFIG.OSRM.TRIP_URL;
 
 /**
  * Get driving route information between two points

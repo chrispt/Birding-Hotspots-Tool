@@ -2,7 +2,9 @@
  * Weather API client using Open-Meteo (free, no API key required)
  */
 
-const OPEN_METEO_BASE = 'https://api.open-meteo.com/v1/forecast';
+import { CONFIG } from '../utils/constants.js';
+
+const OPEN_METEO_BASE = CONFIG.OPEN_METEO_BASE;
 
 /**
  * WMO Weather interpretation codes

@@ -3,10 +3,9 @@
  * Handles taxonomy loading, caching, and species autocomplete
  */
 
-const DB_NAME = 'birding_hotspots_db';
-const DB_VERSION = 1;
-const STORE_NAME = 'taxonomy';
-const CACHE_EXPIRY_DAYS = 7;
+import { CONFIG } from '../utils/constants.js';
+
+const { DB_NAME, DB_VERSION, STORE_NAME, CACHE_EXPIRY_DAYS } = CONFIG.SPECIES_DB;
 
 /**
  * Open IndexedDB database
