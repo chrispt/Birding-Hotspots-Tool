@@ -34,6 +34,24 @@ export const CONFIG = {
     // Geocoding
     GEOCODE_TIMEOUT: 10000,  // 10 seconds
 
+    // OSRM routing (Open Source Routing Machine)
+    OSRM: {
+        BASE_URL: 'https://router.project-osrm.org/route/v1/driving',
+        TABLE_URL: 'https://router.project-osrm.org/table/v1/driving',
+        TRIP_URL: 'https://router.project-osrm.org/trip/v1/driving'
+    },
+
+    // Open-Meteo weather (no key required)
+    OPEN_METEO_BASE: 'https://api.open-meteo.com/v1/forecast',
+
+    // Species taxonomy IndexedDB
+    SPECIES_DB: {
+        DB_NAME: 'birding_hotspots_db',
+        DB_VERSION: 1,
+        STORE_NAME: 'taxonomy',
+        CACHE_EXPIRY_DAYS: 7
+    },
+
     // Local storage keys
     STORAGE_KEYS: {
         API_KEY: 'birding_ebird_api_key',

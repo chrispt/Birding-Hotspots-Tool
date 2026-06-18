@@ -153,7 +153,10 @@ export async function buildItinerary(start, end, hotspots, options = {}) {
     if (onProgress) onProgress('Optimizing route...', 30);
 
     // Build waypoints array: start -> hotspots -> end
-    const isRoundTrip = start.lat === end.lat && start.lng === end.lng;
+    const ROUND_TRIP_TOLERANCE = 1e-6;
+    const isRoundTrip =
+        Math.abs(start.lat - end.lat) < ROUND_TRIP_TOLERANCE &&
+        Math.abs(start.lng - end.lng) < ROUND_TRIP_TOLERANCE;
     const waypoints = [
         { lat: start.lat, lng: start.lng, name: 'Start', type: 'start', address: start.address },
         ...selectedHotspots.map(h => ({

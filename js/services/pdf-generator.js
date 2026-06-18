@@ -6,6 +6,15 @@
 import { formatDistance, formatDuration, formatDate, getGoogleMapsDirectionsUrl, getEbirdHotspotUrl } from '../utils/formatters.js';
 import { generateCanvasMap, generateRouteMap } from './map-service.js';
 import { generateQRCode, isQRCodeAvailable } from './qr-generator.js';
+import { CONFIG } from '../utils/constants.js';
+
+const PDF_COLORS = {
+    primary:       [46, 125, 50],    // Forest green
+    textPrimary:   [33, 33, 33],     // Dark gray
+    textSecondary: [117, 117, 117],  // Medium gray
+    notable:       [255, 87, 34],    // Orange for rare species
+    link:          [0, 102, 204]     // Blue for links
+};
 
 /**
  * Generate the PDF report
@@ -18,7 +27,8 @@ export async function generatePDFReport(data, onProgress = () => {}) {
         origin,
         hotspots,
         sortMethod,
-        generatedDate
+        generatedDate,
+        searchRadiusKm = CONFIG.DEFAULT_SEARCH_RADIUS
     } = data;
 
     // Get jsPDF from global scope (loaded via CDN)
@@ -36,12 +46,7 @@ export async function generatePDFReport(data, onProgress = () => {}) {
     const contentWidth = pageWidth - (margin * 2);
     let yPos = margin;
 
-    // Colors
-    const primaryColor = [46, 125, 50];     // Forest green
-    const textPrimary = [33, 33, 33];       // Dark gray
-    const textSecondary = [117, 117, 117];  // Medium gray
-    const notableColor = [255, 87, 34];     // Orange for rare species
-    const linkColor = [0, 102, 204];        // Blue for links
+    const { primary: primaryColor, textPrimary, textSecondary, notable: notableColor, link: linkColor } = PDF_COLORS;
 
     // Helper to check if we need a new page
     function checkNewPage(neededSpace) {
@@ -71,7 +76,8 @@ export async function generatePDFReport(data, onProgress = () => {}) {
     const sortLabels = { species: 'Most Species', distance: 'Closest Distance', driving: 'Shortest Drive' };
     doc.text(`Sorted by: ${sortLabels[sortMethod] || sortMethod}`, margin, yPos);
     yPos += 5;
-    doc.text(`Showing top ${hotspots.length} hotspots within 31 miles`, margin, yPos);
+    const radiusMi = Math.round(searchRadiusKm * 0.621371);
+    doc.text(`Showing top ${hotspots.length} hotspots within ${radiusMi} miles`, margin, yPos);
     yPos += 10;
 
     // ========== MAP ==========
@@ -340,12 +346,7 @@ export async function generateRoutePDFReport(data, onProgress = () => {}) {
     const contentWidth = pageWidth - (margin * 2);
     let yPos = margin;
 
-    // Colors
-    const primaryColor = [46, 125, 50];     // Forest green
-    const textPrimary = [33, 33, 33];       // Dark gray
-    const textSecondary = [117, 117, 117];  // Medium gray
-    const notableColor = [255, 87, 34];     // Orange for rare species
-    const linkColor = [0, 102, 204];        // Blue for links
+    const { primary: primaryColor, textPrimary, textSecondary, notable: notableColor, link: linkColor } = PDF_COLORS;
 
     // Helper to check if we need a new page
     function checkNewPage(neededSpace) {

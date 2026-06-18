@@ -159,12 +159,16 @@ export function getGoogleMapsSearchUrl(lat, lng) {
  * @returns {number} Distance in kilometers
  */
 export function calculateDistance(lat1, lng1, lat2, lng2) {
+    if (lat1 == null || lng1 == null || lat2 == null || lng2 == null) return 0;
+    const [n1, e1, n2, e2] = [Number(lat1), Number(lng1), Number(lat2), Number(lng2)];
+    if (!isFinite(n1) || !isFinite(e1) || !isFinite(n2) || !isFinite(e2)) return 0;
+
     const R = 6371; // Earth's radius in km
-    const dLat = toRad(lat2 - lat1);
-    const dLng = toRad(lng2 - lng1);
+    const dLat = toRad(n2 - n1);
+    const dLng = toRad(e2 - e1);
 
     const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+        Math.cos(toRad(n1)) * Math.cos(toRad(n2)) *
         Math.sin(dLng / 2) * Math.sin(dLng / 2);
 
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
