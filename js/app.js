@@ -2,7 +2,7 @@
  * Birding Hotspots Finder - Main Application
  */
 
-import { CONFIG, ErrorMessages, ErrorTypes } from './utils/constants.js';
+import { CONFIG, ErrorMessages, ErrorTypes, EXPECTED_USER_ERRORS } from './utils/constants.js';
 import { validateCoordinates, validateApiKey, validateAddress, validateFavoriteName } from './utils/validators.js';
 import { calculateDistance, formatDistance, formatDuration, distanceToRouteLine, getGoogleMapsSearchUrl, getGoogleMapsDirectionsUrl, getGoogleMapsRouteUrl } from './utils/formatters.js';
 import { createSVGIcon, ICONS } from './utils/icons.js';
@@ -6748,7 +6748,7 @@ class BirdingHotspotsApp {
      *   so the error badge only counts real runtime failures.
      */
     showError(message, { report = true } = {}) {
-        if (report) {
+        if (report && !EXPECTED_USER_ERRORS.has(message)) {
             errorReporter.capture({
                 type: 'app_error',
                 message: message

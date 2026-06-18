@@ -96,3 +96,18 @@ export const ErrorMessages = {
     [ErrorTypes.INVALID_COORDINATES]: 'Invalid coordinates. Latitude must be -90 to 90, longitude must be -180 to 180.',
     [ErrorTypes.LOCATION_DENIED]: 'Location access was denied. Please enter your location manually.'
 };
+
+/**
+ * Expected user-driven messages that should NOT be auto-reported as bugs.
+ * These are normal validation/permission outcomes, not code defects.
+ * Referenced by showError() in app.js to skip error-reporter capture.
+ */
+export const EXPECTED_USER_ERRORS = new Set([
+    ErrorMessages[ErrorTypes.LOCATION_DENIED],
+    ErrorMessages[ErrorTypes.INVALID_API_KEY],
+    ErrorMessages[ErrorTypes.GEOCODING_FAILED],
+    ErrorMessages[ErrorTypes.INVALID_COORDINATES],
+    ErrorMessages[ErrorTypes.NO_HOTSPOTS],
+    'API key is required',             // from validators.js — surfaced before ErrorMessages lookup
+    'Geolocation is not supported by your browser'
+]);
