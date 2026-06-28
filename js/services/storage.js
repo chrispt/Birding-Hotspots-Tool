@@ -277,6 +277,16 @@ export const storage = {
     },
 
     /**
+     * Return a Set of all favorited hotspot locIds.
+     * Use this when checking multiple hotspots at once to avoid repeated
+     * localStorage reads — parse once, test membership with Set.has().
+     * @returns {Set<string>}
+     */
+    getFavoriteHotspotIds() {
+        return new Set(this.getFavoriteHotspots().map(f => f.locId));
+    },
+
+    /**
      * Add a hotspot to favorites
      * @param {Object} hotspot - Hotspot object with locId, name, lat, lng
      * @returns {boolean} Success

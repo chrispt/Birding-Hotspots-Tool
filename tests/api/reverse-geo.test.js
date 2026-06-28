@@ -1,5 +1,5 @@
 import { assert } from '../run-tests.js';
-import { batchReverseGeocode } from '../../js/api/reverse-geo.js';
+import { batchReverseGeocode, reverseGeocode } from '../../js/api/reverse-geo.js';
 
 /**
  * Basic mock for global fetch; individual tests can override behavior.
@@ -86,5 +86,52 @@ export async function testBatchReverseGeocodeRespectsCaching() {
 
     // Due to in-module caching, only one network call should be needed for identical coordinates.
     assert(fetchCount === 1, `Expected 1 fetch call for cached coordinates, got ${fetchCount}`);
+}
+
+export async function testBatchReverseGeocodeWithAbortedSignalReturnsFallbacks() {
+    let fetchCount = 0;
+    installFetchMock(async () => {
+        fetchCount++;
+        return {
+            ok: true,
+            json: async () => ({ display_name: 'Should not appear', address: { road: 'Rd' } })
+        };
+    });
+
+    // Use unique coordinates so the in-memory cache doesn't interfere
+    const locations = [
+        { lat: 71.0, lng: 171.0 },
+        { lat: 72.0, lng: 172.0 },
+        { lat: 73.0, lng: 173.0 }
+    ];
+
+    const controller = new AbortController();
+    controller.abort(); // pre-abort the signal
+
+    const results = await batchReverseGeocode(locations, null, controller.signal);
+
+    assert(Array.isArray(results), 'Should return an array even when aborted');
+    assert(results.length === locations.length, 'Array length should match input');
+    // No fetch calls should have been fired because signal was already aborted
+    assert(fetchCount === 0, `Expected 0 fetches for pre-aborted signal, got ${fetchCount}`);
+    // All results should be fallback values
+    results.forEach((r, i) => {
+        assert(r.address === 'Address unavailable', `Result ${i} should be fallback when aborted`);
+    });
+}
+
+export async function testReverseGeocodeWithAbortedSignalReturnsFallback() {
+    installFetchMock(async () => ({
+        ok: true,
+        json: async () => ({ display_name: 'Unreachable', address: {} })
+    }));
+
+    const controller = new AbortController();
+    controller.abort();
+
+    // Use unique coords to avoid hitting the in-memory cache from other tests
+    const result = await reverseGeocode(89.0, 179.0, controller.signal);
+
+    assert(result.address === 'Address unavailable', 'Aborted reverseGeocode should return fallback');
 }
 

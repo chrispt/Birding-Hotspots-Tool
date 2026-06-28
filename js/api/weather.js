@@ -6,6 +6,70 @@ import { CONFIG } from '../utils/constants.js';
 
 const OPEN_METEO_BASE = CONFIG.OPEN_METEO_BASE;
 
+// localStorage key for persisted weather cache
+const WEATHER_CACHE_KEY = 'birding_weather_cache';
+// TTL for weather data: 1 hour (conditions change meaningfully over this window)
+const WEATHER_CACHE_TTL_MS = 60 * 60 * 1000;
+// Maximum number of entries to persist
+const WEATHER_MAX_ENTRIES = 50;
+
+/**
+ * Build a weather cache key from coordinates and the current hour.
+ * @param {number} lat
+ * @param {number} lng
+ * @returns {string}
+ */
+function getWeatherCacheKey(lat, lng) {
+    const hour = new Date().getHours();
+    return `${lat.toFixed(2)},${lng.toFixed(2)},${hour}`;
+}
+
+/**
+ * Read a weather entry from localStorage cache.
+ * Returns null if not found, expired, or on any error.
+ * @param {string} key
+ * @returns {Object|null}
+ */
+function getWeatherFromCache(key) {
+    try {
+        const raw = localStorage.getItem(WEATHER_CACHE_KEY);
+        if (!raw) return null;
+        const stored = JSON.parse(raw);
+        const entry = stored[key];
+        if (!entry) return null;
+        if (Date.now() > entry.expiresAt) return null;
+        // Re-hydrate Date objects that were stringified by JSON
+        const data = entry.value;
+        if (data) {
+            if (data.sunriseDate) data.sunriseDate = new Date(data.sunriseDate);
+            if (data.sunsetDate) data.sunsetDate = new Date(data.sunsetDate);
+        }
+        return data;
+    } catch (_) {
+        return null;
+    }
+}
+
+/**
+ * Write a weather result to localStorage cache.
+ * @param {string} key
+ * @param {Object|null} value
+ */
+function setWeatherInCache(key, value) {
+    try {
+        const raw = localStorage.getItem(WEATHER_CACHE_KEY);
+        const stored = raw ? JSON.parse(raw) : {};
+        const keys = Object.keys(stored);
+        if (keys.length >= WEATHER_MAX_ENTRIES) {
+            delete stored[keys[0]];
+        }
+        stored[key] = { value, expiresAt: Date.now() + WEATHER_CACHE_TTL_MS };
+        localStorage.setItem(WEATHER_CACHE_KEY, JSON.stringify(stored));
+    } catch (_) {
+        // Storage unavailable — in-session caching still helps
+    }
+}
+
 /**
  * WMO Weather interpretation codes
  * https://open-meteo.com/en/docs#weathervariables
@@ -193,9 +257,15 @@ export function getGoldenHourStatus(weather) {
  * Fetch weather data for a single location
  * @param {number} lat - Latitude
  * @param {number} lng - Longitude
+ * @param {AbortSignal} [signal] - Optional external abort signal
  * @returns {Promise<Object>} Weather data
  */
-export async function getWeatherForLocation(lat, lng) {
+export async function getWeatherForLocation(lat, lng, signal) {
+    // Check localStorage cache first (persists across page reloads within the hour)
+    const cacheKey = getWeatherCacheKey(lat, lng);
+    const cached = getWeatherFromCache(cacheKey);
+    if (cached !== null) return cached;
+
     const params = new URLSearchParams({
         latitude: lat.toFixed(4),
         longitude: lng.toFixed(4),
@@ -209,7 +279,10 @@ export async function getWeatherForLocation(lat, lng) {
     });
 
     try {
-        const response = await fetch(`${OPEN_METEO_BASE}?${params}`);
+        const response = await fetch(
+            `${OPEN_METEO_BASE}?${params}`,
+            signal ? { signal } : undefined
+        );
 
         if (!response.ok) {
             throw new Error(`Weather API error: ${response.status}`);
@@ -226,7 +299,7 @@ export async function getWeatherForLocation(lat, lng) {
         // Parse sunrise/sunset from daily data
         const sunData = parseSunTimes(data.daily);
 
-        return {
+        const result = {
             temperatureC: Math.round(data.current.temperature_2m),
             temperatureF: celsiusToFahrenheit(data.current.temperature_2m),
             humidity: Math.round(data.current.relative_humidity_2m),
@@ -242,7 +315,10 @@ export async function getWeatherForLocation(lat, lng) {
             windDirectionDegrees: data.current.wind_direction_10m,
             ...sunData
         };
+        setWeatherInCache(cacheKey, result);
+        return result;
     } catch (error) {
+        if (error.name === 'AbortError') throw error; // propagate cancel
         console.warn(`Weather fetch failed for ${lat}, ${lng}:`, error);
         return null;
     }
@@ -252,16 +328,18 @@ export async function getWeatherForLocation(lat, lng) {
  * Fetch weather data for multiple locations in parallel
  * @param {Array<{lat: number, lng: number}>} locations - Array of locations
  * @param {Function} onProgress - Progress callback (current, total)
+ * @param {AbortSignal} [signal] - Optional external abort signal
  * @returns {Promise<Array>} Array of weather data (or null for failed requests)
  */
-export async function getWeatherForLocations(locations, onProgress = null) {
+export async function getWeatherForLocations(locations, onProgress = null, signal = null) {
     // Process in batches to avoid overwhelming the API
     const batchSize = 10;
     const results = [];
 
     for (let i = 0; i < locations.length; i += batchSize) {
+        if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
         const batch = locations.slice(i, i + batchSize);
-        const batchPromises = batch.map(loc => getWeatherForLocation(loc.lat, loc.lng));
+        const batchPromises = batch.map(loc => getWeatherForLocation(loc.lat, loc.lng, signal));
         const batchResults = await Promise.all(batchPromises);
         results.push(...batchResults);
 

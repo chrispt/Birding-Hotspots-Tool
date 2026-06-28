@@ -4,7 +4,7 @@
 
 import { CONFIG, ErrorMessages, ErrorTypes, EXPECTED_USER_ERRORS } from './utils/constants.js';
 import { validateCoordinates, validateApiKey, validateAddress, validateFavoriteName } from './utils/validators.js';
-import { calculateDistance, formatDistance, formatDuration, distanceToRouteLine, getGoogleMapsSearchUrl, getGoogleMapsDirectionsUrl, getGoogleMapsRouteUrl } from './utils/formatters.js';
+import { calculateDistance, formatDistance, formatDuration, distanceToRouteLine, getGoogleMapsSearchUrl, getGoogleMapsDirectionsUrl, getGoogleMapsRouteUrl, getEbirdHotspotUrl } from './utils/formatters.js';
 import { createSVGIcon, ICONS } from './utils/icons.js';
 import { clearElement } from './utils/dom-helpers.js';
 import { storage } from './services/storage.js';
@@ -1928,7 +1928,7 @@ class BirdingHotspotsApp {
 
             const info = document.createElement('a');
             info.className = 'favorite-hotspot-info';
-            info.href = `https://ebird.org/hotspot/${fav.locId}`;
+            info.href = getEbirdHotspotUrl(fav.locId);
             info.target = '_blank';
             info.rel = 'noopener noreferrer';
 
@@ -2264,10 +2264,14 @@ class BirdingHotspotsApp {
         // Fetch addresses with rate limiting to avoid 429 errors
         this.updateLoading('Fetching hotspot addresses...', 55);
         const locations = hotspots.map(h => ({ lat: h.lat, lng: h.lng }));
-        const allAddresses = await batchReverseGeocode(locations, (current, total) => {
-            const progress = 55 + (current / total) * 15; // 55% to 70%
-            this.updateLoading(`Fetching address ${current}/${total}...`, progress);
-        });
+        const allAddresses = await batchReverseGeocode(
+            locations,
+            (current, total) => {
+                const progress = 55 + (current / total) * 15; // 55% to 70%
+                this.updateLoading(`Fetching address ${current}/${total}...`, progress);
+            },
+            this.abortController?.signal
+        );
 
         // Count address failures
         allAddresses.forEach(result => {
@@ -2276,7 +2280,7 @@ class BirdingHotspotsApp {
 
         // Fetch driving distances
         this.updateLoading('Calculating driving distances...', 70);
-        const drivingRoutes = await getDrivingRoutes(origin.lat, origin.lng, locations);
+        const drivingRoutes = await getDrivingRoutes(origin.lat, origin.lng, locations, this.abortController?.signal);
 
         // Count driving route failures
         drivingRoutes.forEach(route => {
@@ -2287,10 +2291,14 @@ class BirdingHotspotsApp {
         this.updateLoading('Fetching weather data...', 80);
         let weatherData = [];
         try {
-            weatherData = await getWeatherForLocations(locations, (current, total) => {
-                const progress = 80 + (current / total) * 10; // 80% to 90%
-                this.updateLoading(`Fetching weather ${current}/${total}...`, progress);
-            });
+            weatherData = await getWeatherForLocations(
+                locations,
+                (current, total) => {
+                    const progress = 80 + (current / total) * 10; // 80% to 90%
+                    this.updateLoading(`Fetching weather ${current}/${total}...`, progress);
+                },
+                this.abortController?.signal
+            );
         } catch (e) {
             console.warn('Could not fetch weather data:', e);
             weatherFailed = true;
@@ -2373,56 +2381,86 @@ class BirdingHotspotsApp {
      * Display results on screen
      * @param {Object} data - Results data object
      */
+    /**
+     * Synchronize sort-toggle button states with the current sort method.
+     * Extracted so that both the initial display and cheap card-only re-renders
+     * can keep buttons in sync without duplicating the six toggle/aria lines.
+     * @param {string} method - 'species', 'distance', or 'driving'
+     */
+    syncSortToggles(method) {
+        this.elements.sortBySpecies.classList.toggle('active', method === 'species');
+        this.elements.sortByDistance.classList.toggle('active', method === 'distance');
+        this.elements.sortByDriving.classList.toggle('active', method === 'driving');
+        this.elements.sortBySpecies.setAttribute('aria-pressed', String(method === 'species'));
+        this.elements.sortByDistance.setAttribute('aria-pressed', String(method === 'distance'));
+        this.elements.sortByDriving.setAttribute('aria-pressed', String(method === 'driving'));
+    }
+
+    /**
+     * Render hotspot cards for the current results. Called on initial display and
+     * whenever only the sort order changes — without rebuilding the map or
+     * re-fetching regional activity.
+     *
+     * Reads the favorite-hotspot Set once before the loop so that a 50-hotspot
+     * result doesn't trigger 50 separate localStorage reads (B2 optimization).
+     */
+    renderHotspotCards() {
+        if (!this.currentResults) return;
+        const { hotspots, sortMethod, origin } = this.currentResults;
+
+        // Keep sort-toggle buttons in sync
+        this.syncSortToggles(sortMethod);
+
+        // Read favorites once — avoids repeated localStorage.getItem + JSON.parse per card
+        const favoriteIds = storage.getFavoriteHotspotIds();
+
+        clearElement(this.elements.hotspotCards);
+
+        if (hotspots.length === 0) {
+            this.renderEmptyState();
+        } else {
+            // DocumentFragment for batch append (reduces reflows)
+            const fragment = document.createDocumentFragment();
+            hotspots.forEach((hotspot, index) => {
+                const card = this.createHotspotCard(hotspot, index + 1, origin, favoriteIds.has(hotspot.locId));
+                fragment.appendChild(card);
+            });
+            this.elements.hotspotCards.appendChild(fragment);
+        }
+    }
+
+    /**
+     * Display search results — one-time setup per search: layout switch, map
+     * initialization, alert banners, weather summary, scroll/focus/announce, and
+     * regional activity fetch. Card rendering is delegated to renderHotspotCards()
+     * so that re-sorting can cheaply redraw cards without rebuilding the map or
+     * re-firing network calls (B1 optimization).
+     */
     displayResults(data) {
         const { origin, hotspots, sortMethod, generatedDate } = data;
 
         // Switch to two-column layout
         this.elements.mainContent.classList.add('has-results');
 
-        // Sync sort toggle buttons with current sort method
-        this.elements.sortBySpecies.classList.toggle('active', sortMethod === 'species');
-        this.elements.sortByDistance.classList.toggle('active', sortMethod === 'distance');
-        this.elements.sortByDriving.classList.toggle('active', sortMethod === 'driving');
-        this.elements.sortBySpecies.setAttribute('aria-pressed', String(sortMethod === 'species'));
-        this.elements.sortByDistance.setAttribute('aria-pressed', String(sortMethod === 'distance'));
-        this.elements.sortByDriving.setAttribute('aria-pressed', String(sortMethod === 'driving'));
-
         // Ensure export PDF button is visible (may have been hidden in route mode)
         this.elements.exportPdfBtn.classList.remove('hidden');
 
-        // Update meta information (sort is now shown in toggle, so removed from text)
+        // Update meta information
         this.elements.resultsMeta.textContent = `${hotspots.length} hotspots found | ${generatedDate}`;
 
-        // Render rare bird alert banner if there are notable observations
+        // Render alert banners
         this.renderRareBirdAlert();
-
-        // Render lifer alert banner if user has a life list
         this.renderLiferAlert(hotspots);
-
-        // Render migration alert banner
         this.renderMigrationAlert();
 
         // Render weather summary
         this.renderWeatherSummary(hotspots);
 
-        // Initialize results map
+        // Initialize results map (expensive — only done once per search result)
         this.initResultsMap(origin, hotspots);
 
-        // Clear existing cards
-        clearElement(this.elements.hotspotCards);
-
-        // Handle empty results
-        if (hotspots.length === 0) {
-            this.renderEmptyState();
-        } else {
-            // Generate hotspot cards using DocumentFragment for batch append (reduces reflows)
-            const fragment = document.createDocumentFragment();
-            hotspots.forEach((hotspot, index) => {
-                const card = this.createHotspotCard(hotspot, index + 1, origin);
-                fragment.appendChild(card);
-            });
-            this.elements.hotspotCards.appendChild(fragment);
-        }
+        // Build and sync sort buttons
+        this.renderHotspotCards();
 
         // Show results section
         this.elements.resultsSection.classList.remove('hidden');
@@ -4883,10 +4921,10 @@ class BirdingHotspotsApp {
         card.className = 'species-sighting-card';
 
         const distanceText = formatDistance(sighting.distance);
-        const directionsUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin.lat},${origin.lng}&destination=${sighting.lat},${sighting.lng}`;
+        const directionsUrl = getGoogleMapsDirectionsUrl(origin.lat, origin.lng, sighting.lat, sighting.lng);
         const ebirdUrl = sighting.locId.startsWith('L')
-            ? `https://ebird.org/hotspot/${sighting.locId}`
-            : `https://www.google.com/maps/search/?api=1&query=${sighting.lat},${sighting.lng}`;
+            ? getEbirdHotspotUrl(sighting.locId)
+            : getGoogleMapsSearchUrl(sighting.lat, sighting.lng);
 
         // Header section
         const header = document.createElement('div');
@@ -4977,7 +5015,7 @@ class BirdingHotspotsApp {
      * @param {Object} origin - Origin coordinates
      * @returns {HTMLElement} Card element
      */
-    createHotspotCard(hotspot, number, origin) {
+    createHotspotCard(hotspot, number, origin, isFavorite = false) {
         const card = document.createElement('article');
         card.className = 'hotspot-card';
 
@@ -4986,7 +5024,7 @@ class BirdingHotspotsApp {
         favoriteBtn.className = 'favorite-hotspot-btn';
         favoriteBtn.dataset.locId = hotspot.locId;
         favoriteBtn.setAttribute('aria-label', 'Add to favorites');
-        if (storage.isFavoriteHotspot(hotspot.locId)) {
+        if (isFavorite) {
             favoriteBtn.classList.add('is-favorite');
             favoriteBtn.setAttribute('aria-label', 'Remove from favorites');
         }
@@ -5015,8 +5053,8 @@ class BirdingHotspotsApp {
         card.appendChild(favoriteBtn);
 
         const distanceText = formatDistance(hotspot.distance);
-        const directionsUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin.lat},${origin.lng}&destination=${hotspot.lat},${hotspot.lng}`;
-        const ebirdUrl = `https://ebird.org/hotspot/${hotspot.locId}`;
+        const directionsUrl = getGoogleMapsDirectionsUrl(origin.lat, origin.lng, hotspot.lat, hotspot.lng);
+        const ebirdUrl = getEbirdHotspotUrl(hotspot.locId);
 
         // Check if there are notable species or lifers
         const hasNotable = hotspot.birds.some(b => b.isNotable);
@@ -6608,14 +6646,6 @@ class BirdingHotspotsApp {
     handleSortChange(method) {
         if (method === this.currentSortMethod || !this.currentResults) return;
 
-        // Update button states
-        this.elements.sortBySpecies.classList.toggle('active', method === 'species');
-        this.elements.sortByDistance.classList.toggle('active', method === 'distance');
-        this.elements.sortByDriving.classList.toggle('active', method === 'driving');
-        this.elements.sortBySpecies.setAttribute('aria-pressed', String(method === 'species'));
-        this.elements.sortByDistance.setAttribute('aria-pressed', String(method === 'distance'));
-        this.elements.sortByDriving.setAttribute('aria-pressed', String(method === 'driving'));
-
         // Re-sort the hotspots
         const sortedHotspots = this.sortHotspots(
             this.currentResults.hotspots,
@@ -6628,8 +6658,29 @@ class BirdingHotspotsApp {
         this.currentResults.sortMethod = method;
         this.currentSortMethod = method;
 
-        // Re-display results
-        this.displayResults(this.currentResults);
+        // Re-render cards only — map and regional activity remain unchanged
+        this.renderHotspotCards();
+    }
+
+    /**
+     * Dynamically inject a third-party script tag and resolve when loaded.
+     * Used for lazy-loading CDN libraries that are only needed on first use,
+     * avoiding ~350KB of parse work on every page load for most users.
+     * @param {string} src - Script URL (must already be in script-src CSP)
+     * @param {string} integrity - SRI integrity hash
+     * @returns {Promise<void>}
+     */
+    _loadScript(src, integrity) {
+        return new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = src;
+            script.integrity = integrity;
+            script.crossOrigin = 'anonymous';
+            script.referrerPolicy = 'no-referrer';
+            script.onload = resolve;
+            script.onerror = () => reject(new Error(`Failed to load script: ${src}`));
+            document.head.appendChild(script);
+        });
     }
 
     /**
@@ -6644,6 +6695,19 @@ class BirdingHotspotsApp {
         this.showLoading('Generating PDF report...', 0);
 
         try {
+            // Lazy-load jsPDF and QRCode on first use — avoids ~350KB of parse
+            // work on every page load for users who never trigger PDF export.
+            await Promise.all([
+                window.jspdf ? Promise.resolve() : this._loadScript(
+                    'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+                    'sha512-qZvrmS2ekKPF2mSznTQsxqPgnpkI4DNTlrdUmTzrDgektczlKNRRhy5X5AAOnx5S09ydFYWWNSfcEqDTTHgtNA=='
+                ),
+                typeof QRCode !== 'undefined' ? Promise.resolve() : this._loadScript(
+                    'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js',
+                    'sha512-CNgIRecGo7nphbeZ04Sc13ka07paqdeTu0WR1IM4kNcpmBAUSHSQX0FslNhTDadL4O5SAGapGt4FodqL8My0mA=='
+                )
+            ]);
+
             const pdf = await generatePDFReport(this.currentResults, (message, percent) => {
                 this.updateLoading(message, percent);
             });
@@ -6956,7 +7020,7 @@ class BirdingHotspotsApp {
 
                 const name = document.createElement('span');
                 name.className = 'observer-name';
-                name.textContent = sanitizeHTML(obs.userDisplayName || obs.name || 'Unknown');
+                name.textContent = obs.userDisplayName || obs.name || 'Unknown';
 
                 const count = document.createElement('span');
                 count.className = 'observer-count';
@@ -6983,7 +7047,9 @@ class BirdingHotspotsApp {
 
             checklists.slice(0, 5).forEach(cl => {
                 const item = document.createElement('li');
-                const locName = sanitizeHTML(cl.loc?.name || cl.locName || 'Unknown location');
+                // Raw value for DOM property/textContent — no sanitization needed; the DOM APIs
+                // handle encoding. sanitizeHTML here would cause double-encoded entities (&amp;, etc.)
+                const locName = cl.loc?.name || cl.locName || 'Unknown location';
 
                 const locationEl = document.createElement('span');
                 locationEl.className = 'checklist-location';
@@ -6994,7 +7060,9 @@ class BirdingHotspotsApp {
                 speciesEl.textContent = `${cl.numSpecies || '?'} sp.`;
 
                 const link = document.createElement('a');
-                link.href = `https://ebird.org/checklist/${sanitizeHTML(cl.subId || '')}`;
+                // Sanitize subId for path safety (eBird IDs are alphanumeric, but be explicit)
+                const safeSubId = String(cl.subId || '').replace(/[^a-zA-Z0-9]/g, '');
+                link.href = `https://ebird.org/checklist/${safeSubId}`;
                 link.target = '_blank';
                 link.rel = 'noopener noreferrer';
                 link.className = 'checklist-link';
@@ -7014,7 +7082,9 @@ class BirdingHotspotsApp {
         const footer = document.createElement('div');
         footer.className = 'regional-activity-footer';
         const ebirdLink = document.createElement('a');
-        const safeRegionCode = sanitizeHTML(regionCode);
+        // eBird region codes are alphanumeric (e.g. "US-CA") — strip anything unexpected
+        // before embedding in a URL path. No HTML escaping: .href/.setAttribute don't parse HTML.
+        const safeRegionCode = String(regionCode || '').replace(/[^a-zA-Z0-9\-]/g, '');
         ebirdLink.href = `https://ebird.org/region/${safeRegionCode}/recent-checklists`;
         ebirdLink.target = '_blank';
         ebirdLink.rel = 'noopener noreferrer';
@@ -7058,6 +7128,11 @@ class BirdingHotspotsApp {
         const list = this.elements.savedItinerariesList;
         if (!section || !list) return;
 
+        // Guard against stale-cache scenarios where a browser is running an older
+        // storage.js that predates the getSavedItineraries method. Without this,
+        // the TypeError aborts the entire app constructor (issue #28).
+        if (typeof storage.getSavedItineraries !== 'function') return;
+
         const itineraries = storage.getSavedItineraries();
         clearElement(list);
 
@@ -7077,7 +7152,7 @@ class BirdingHotspotsApp {
 
             const name = document.createElement('span');
             name.className = 'saved-itinerary-name';
-            name.textContent = sanitizeHTML(it.name);
+            name.textContent = it.name;
 
             const meta = document.createElement('span');
             meta.className = 'saved-itinerary-meta';
@@ -7090,10 +7165,12 @@ class BirdingHotspotsApp {
             const deleteBtn = document.createElement('button');
             deleteBtn.type = 'button';
             deleteBtn.className = 'btn-icon favorite-delete';
-            deleteBtn.setAttribute('aria-label', `Delete saved itinerary: ${sanitizeHTML(it.name)}`);
+            // setAttribute and template literals to showConfirmDialog pass text through the DOM
+            // text node — no HTML parsing occurs, so sanitizeHTML here double-encodes (&amp; etc.)
+            deleteBtn.setAttribute('aria-label', `Delete saved itinerary: ${it.name}`);
             deleteBtn.innerHTML = `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>`;
             deleteBtn.addEventListener('click', async () => {
-                const confirmed = await this.showConfirmDialog(`Delete "${sanitizeHTML(it.name)}"?`, {
+                const confirmed = await this.showConfirmDialog(`Delete "${it.name}"?`, {
                     title: 'Delete Itinerary',
                     okText: 'Delete',
                     cancelText: 'Cancel'

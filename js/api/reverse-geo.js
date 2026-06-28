@@ -8,24 +8,73 @@ import { CONFIG } from '../utils/constants.js';
 // Keyed by 'lat,lng' string to avoid repeated API calls for the same coordinates.
 const reverseGeocodeCache = new Map();
 
+// localStorage key for the persisted reverse-geocode cache
+const STORAGE_KEY = 'birding_rgeo_cache';
+// Maximum number of entries to persist (prevents unbounded localStorage growth)
+const MAX_PERSISTED_ENTRIES = 200;
+
+/**
+ * Load the persisted cache from localStorage into the in-memory Map on startup.
+ * Uses 4-decimal-place keys (~11m precision) for cross-session matching.
+ */
+function loadPersistedCache() {
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        const stored = JSON.parse(raw);
+        for (const [key, value] of Object.entries(stored)) {
+            reverseGeocodeCache.set(key, value);
+        }
+    } catch (_) {
+        // Corrupt or unavailable — just start fresh
+    }
+}
+
+/**
+ * Persist an entry to localStorage. Uses the same 4-decimal-place key.
+ * Evicts the oldest entry when the cap is reached.
+ * @param {string} key
+ * @param {Object} value
+ */
+function persistCacheEntry(key, value) {
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        const stored = raw ? JSON.parse(raw) : {};
+        const keys = Object.keys(stored);
+        if (keys.length >= MAX_PERSISTED_ENTRIES) {
+            // Evict the first (oldest) entry
+            delete stored[keys[0]];
+        }
+        stored[key] = value;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
+    } catch (_) {
+        // Storage full or unavailable — skip persistence, in-memory cache still works
+    }
+}
+
 /**
  * Helper to build a stable cache key from coordinates.
+ * Uses 4 decimal places (~11m precision) to maximise cross-session cache hits
+ * while keeping distinct enough for practical birding use.
  * @param {number} lat
  * @param {number} lng
  * @returns {string}
  */
 function getCacheKey(lat, lng) {
-    // Use fixed precision to avoid tiny floating point differences
-    return `${lat.toFixed(6)},${lng.toFixed(6)}`;
+    return `${lat.toFixed(4)},${lng.toFixed(4)}`;
 }
+
+// Populate in-memory cache from localStorage on module load
+loadPersistedCache();
 
 /**
  * Reverse geocode coordinates to an address using LocationIQ API
  * @param {number} lat - Latitude
  * @param {number} lng - Longitude
+ * @param {AbortSignal} [signal] - Optional external abort signal (e.g. search cancel)
  * @returns {Promise<Object>} Object with address information
  */
-export async function reverseGeocode(lat, lng) {
+export async function reverseGeocode(lat, lng, signal) {
     const cacheKey = getCacheKey(lat, lng);
     if (reverseGeocodeCache.has(cacheKey)) {
         return reverseGeocodeCache.get(cacheKey);
@@ -37,6 +86,9 @@ export async function reverseGeocode(lat, lng) {
         raw: null
     };
 
+    // Bail early if the search was already cancelled
+    if (signal?.aborted) return fallback;
+
     const params = new URLSearchParams({
         key: CONFIG.LOCATIONIQ_API_KEY,
         lat: lat.toString(),
@@ -44,13 +96,18 @@ export async function reverseGeocode(lat, lng) {
         format: 'json'
     });
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), CONFIG.GEOCODE_TIMEOUT);
+    const timeoutController = new AbortController();
+    const timeoutId = setTimeout(() => timeoutController.abort(), CONFIG.GEOCODE_TIMEOUT);
+
+    // Combine the internal timeout with any external cancel signal
+    const fetchSignal = (signal && typeof AbortSignal.any === 'function')
+        ? AbortSignal.any([timeoutController.signal, signal])
+        : timeoutController.signal;
 
     try {
         const response = await fetch(
             `${CONFIG.LOCATIONIQ_BASE}/reverse?${params}`,
-            { signal: controller.signal }
+            { signal: fetchSignal }
         );
         clearTimeout(timeoutId);
 
@@ -63,6 +120,7 @@ export async function reverseGeocode(lat, lng) {
 
         if (!data || !data.display_name) {
             reverseGeocodeCache.set(cacheKey, fallback);
+            persistCacheEntry(cacheKey, fallback);
             return fallback;
         }
 
@@ -72,11 +130,16 @@ export async function reverseGeocode(lat, lng) {
             raw: data.address
         };
         reverseGeocodeCache.set(cacheKey, result);
+        persistCacheEntry(cacheKey, result);
         return result;
 
     } catch (error) {
         clearTimeout(timeoutId);
         if (error.name === 'AbortError') {
+            if (signal?.aborted) {
+                // External cancel — don't cache the fallback; let it retry on next search
+                return fallback;
+            }
             console.warn('Reverse geocoding timed out');
         } else {
             console.warn('Reverse geocoding failed:', error);
@@ -146,9 +209,10 @@ async function runWithConcurrencyLimit(tasks, maxConcurrent, minIntervalMs) {
  * a concurrency limit and minimum spacing between request starts.
  * @param {Array} locations - Array of {lat, lng} objects
  * @param {Function} onProgress - Progress callback (current, total)
+ * @param {AbortSignal} [signal] - Optional external abort signal
  * @returns {Promise<Array>} Array of address results
  */
-export async function batchReverseGeocode(locations, onProgress) {
+export async function batchReverseGeocode(locations, onProgress, signal) {
     if (!Array.isArray(locations) || locations.length === 0) {
         return [];
     }
@@ -159,8 +223,16 @@ export async function batchReverseGeocode(locations, onProgress) {
     const total = locations.length;
     let completed = 0;
 
+    const fallbackResult = (loc) => ({
+        displayName: `${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)}`,
+        address: 'Address unavailable',
+        raw: null
+    });
+
     const tasks = locations.map((loc) => async () => {
-        const result = await reverseGeocode(loc.lat, loc.lng);
+        // Skip remaining requests if the search was cancelled
+        if (signal?.aborted) return fallbackResult(loc);
+        const result = await reverseGeocode(loc.lat, loc.lng, signal);
         completed++;
         if (onProgress) {
             onProgress(completed, total);

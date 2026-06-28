@@ -2,18 +2,20 @@
  * Data formatting utilities
  */
 
+// Reuse a single Intl.DateTimeFormat instance across calls (avoids per-call object creation)
+const _dateFormatter = new Intl.DateTimeFormat('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+});
+
 /**
  * Format a date for display
  * @param {string|Date} date - Date to format
  * @returns {string} Formatted date string
  */
 export function formatDate(date) {
-    const d = new Date(date);
-    return d.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-    });
+    return _dateFormatter.format(new Date(date));
 }
 
 /**

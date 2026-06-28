@@ -878,17 +878,9 @@
         </div>
     </div>
 
-    <!-- External Libraries (defer for non-blocking load) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
-            integrity="sha512-qZvrmS2ekKPF2mSznTQsxqPgnpkI4DNTlrdUmTzrDgektczlKNRRhy5X5AAOnx5S09ydFYWWNSfcEqDTTHgtNA=="
-            crossorigin="anonymous"
-            referrerpolicy="no-referrer"
-            defer></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"
-            integrity="sha512-CNgIRecGo7nphbeZ04Sc13ka07paqdeTu0WR1IM4kNcpmBAUSHSQX0FslNhTDadL4O5SAGapGt4FodqL8My0mA=="
-            crossorigin="anonymous"
-            referrerpolicy="no-referrer"
-            defer></script>
+    <!-- External Libraries -->
+    <!-- jsPDF and QRCode.js are lazy-loaded on first PDF export via _loadScript()
+         in app.js, saving ~350KB of parse work for users who never export. -->
     <!-- Leaflet JS for map preview -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
             integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="

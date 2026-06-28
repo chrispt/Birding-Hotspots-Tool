@@ -15,6 +15,33 @@ export class EBirdAPI {
         this.apiKey = apiKey;
         this.baseUrl = CONFIG.EBIRD_API_BASE;
         this.abortSignal = null;
+        // In-memory TTL cache: Map<string, {value, expiresAt}>
+        this._cache = new Map();
+    }
+
+    /**
+     * Retrieve a cached value by key, or undefined if missing/expired.
+     * @param {string} key
+     * @returns {any|undefined}
+     */
+    _getCached(key) {
+        const entry = this._cache.get(key);
+        if (!entry) return undefined;
+        if (Date.now() > entry.expiresAt) {
+            this._cache.delete(key);
+            return undefined;
+        }
+        return entry.value;
+    }
+
+    /**
+     * Store a value in the TTL cache.
+     * @param {string} key
+     * @param {any} value
+     * @param {number} ttlMs - Time to live in milliseconds
+     */
+    _setCached(key, value, ttlMs) {
+        this._cache.set(key, { value, expiresAt: Date.now() + ttlMs });
     }
 
     /**
@@ -125,11 +152,16 @@ export class EBirdAPI {
      * @returns {Promise<Array>} Array of observation objects
      */
     async getRecentObservations(locId, back = 30) {
+        const cacheKey = `obs:${locId}:${back}`;
+        const cached = this._getCached(cacheKey);
+        if (cached !== undefined) return cached;
+
         const data = await this.fetchWithAuth(`/data/obs/${locId}/recent`, {
             back: Math.min(Math.max(back, 1), 30)
         });
-
-        return data || [];
+        const result = data || [];
+        this._setCached(cacheKey, result, 30 * 60 * 1000); // 30-minute TTL
+        return result;
     }
 
     /**
@@ -250,11 +282,17 @@ export class EBirdAPI {
      * @returns {Promise<Object|null>} Hotspot info object or null if not found
      */
     async getHotspotInfo(locId) {
+        const cacheKey = `info:${locId}`;
+        const cached = this._getCached(cacheKey);
+        if (cached !== undefined) return cached;
+
         try {
             const data = await this.fetchWithAuth(`/ref/hotspot/info/${locId}`);
-            return data || null;
+            const result = data || null;
+            this._setCached(cacheKey, result, 4 * 60 * 60 * 1000); // 4-hour TTL (near-static metadata)
+            return result;
         } catch (error) {
-            // Return null for 404s or other errors - hotspot info is supplementary
+            // Return null for 404s or other errors — hotspot info is supplementary
             console.warn(`Could not fetch hotspot info for ${locId}:`, error.message);
             return null;
         }
