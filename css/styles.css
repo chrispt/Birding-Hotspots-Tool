@@ -2463,6 +2463,7 @@ details.about-section[open] .about-chevron {
 /* Results Section Mobile Responsive */
 @media (max-width: 600px) {
     .results-header {
+        position: static;
         flex-direction: column;
         align-items: stretch;
     }
