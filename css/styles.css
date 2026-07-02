@@ -1916,16 +1916,8 @@ details.about-section[open] .about-chevron {
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* Results Header - Sticky */
+/* Results Header */
 .results-header {
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    /* Promote to its own compositor layer so mobile browsers (notably Android
-       Chrome/WebView) don't leave stale/blank patches when repainting this
-       sticky element mid-scroll — a known artifact when position: sticky is
-       combined with border-radius + box-shadow without layer promotion. */
-    transform: translateZ(0);
     background: var(--card-bg);
     padding: 16px 20px;
     border-radius: var(--radius-large);
@@ -2521,10 +2513,6 @@ details.about-section[open] .about-chevron {
 
 /* Print styles for results */
 @media print {
-    .results-header {
-        position: static;
-    }
-
     .results-actions {
         display: none !important;
     }
