@@ -41,6 +41,17 @@ export const CONFIG = {
         TRIP_URL: 'https://router.project-osrm.org/trip/v1/driving'
     },
 
+    // Route-mode hotspot search (multi-point sampling along the route)
+    ROUTE_SEARCH: {
+        HOTSPOT_RADIUS_KM: 50,        // eBird /ref/hotspot/geo hard cap
+        SAMPLE_INTERVAL_KM: 70,       // target spacing between search circles along the route
+        MAX_SAMPLE_POINTS: 8,        // cap on eBird geo-search calls for a real "Plan Route" search
+        PREVIEW_MAX_SAMPLE_POINTS: 4, // lighter cap for the auto-firing route preview
+        MAX_ENRICHMENT_HOTSPOTS: 25, // hotspots enriched with species data and shown for selection
+        PREVIEW_MAX_HOTSPOTS: 15,    // preview map marker cap
+        MAX_DETOUR_SAFE_KM: 24       // ~15 mi, the "Max Detour" slider's max setting
+    },
+
     // Open-Meteo weather (no key required)
     OPEN_METEO_BASE: 'https://api.open-meteo.com/v1/forecast',
 

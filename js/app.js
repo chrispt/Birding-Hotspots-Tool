@@ -4,7 +4,7 @@
 
 import { CONFIG, ErrorMessages, ErrorTypes, EXPECTED_USER_ERRORS } from './utils/constants.js';
 import { validateCoordinates, validateApiKey, validateAddress, validateFavoriteName } from './utils/validators.js';
-import { calculateDistance, formatDistance, formatDuration, distanceToRouteLine, getGoogleMapsSearchUrl, getGoogleMapsDirectionsUrl, getGoogleMapsRouteUrl, getEbirdHotspotUrl } from './utils/formatters.js';
+import { calculateDistance, formatDistance, formatDuration, getGoogleMapsSearchUrl, getGoogleMapsDirectionsUrl, getGoogleMapsRouteUrl, getEbirdHotspotUrl } from './utils/formatters.js';
 import { createSVGIcon, ICONS } from './utils/icons.js';
 import { clearElement } from './utils/dom-helpers.js';
 import { storage } from './services/storage.js';
@@ -16,7 +16,8 @@ import { getDrivingRoutes, getRouteThrough } from './api/routing.js';
 import { getWeatherForLocations, getOverallBirdingConditions, getBirdingConditionScore, getGoldenHourStatus } from './api/weather.js';
 import { SpeciesSearch } from './services/species-search.js';
 import { getSeasonalInsights, getOptimalBirdingTimes, getCurrentSeason, analyzeHotspotActivity } from './services/seasonal-insights.js';
-import { buildItinerary, formatItineraryDuration, formatItineraryTime, calculateUniquenessScore, getSeenSpeciesFromHotspots } from './services/itinerary-builder.js';
+import { buildItinerary, formatItineraryDuration, formatItineraryTime, calculateUniquenessScore, getSeenSpeciesFromHotspots, canShowGenericItineraryButton } from './services/itinerary-builder.js';
+import { buildRouteSamplePoints, dedupeHotspotsById, filterHotspotsByRouteDistance, rankHotspotsForEnrichment, sortEnrichedRouteHotspots } from './services/route-hotspot-search.js';
 import { generateGPX, downloadGPX } from './services/gpx-generator.js';
 import { LifeListService } from './services/life-list.js';
 import { errorReporter } from './services/error-reporter.js';
@@ -293,6 +294,12 @@ class BirdingHotspotsApp {
         this.routePreviewMapInstance = null;
         this.routePreviewLine = null;
         this.routePreviewMarkers = [];
+
+        // Cached route geometry (set by showRoutePreview, reused by handleRouteSearch)
+        this.currentRouteCoords = null;
+        this.currentRouteData = null;
+        this.currentRouteDataStart = null;
+        this.currentRouteDataEnd = null;
 
         // Track if search was cancelled
         this.searchCancelled = false;
@@ -853,6 +860,10 @@ class BirdingHotspotsApp {
         this.routeStartAddress = null;
         this.routeEndAddressText = null;
         this.currentRouteHotspots = [];
+        this.currentRouteCoords = null;
+        this.currentRouteData = null;
+        this.currentRouteDataStart = null;
+        this.currentRouteDataEnd = null;
 
         // Clear target species
         this.routeTargetSpeciesList = [];
@@ -2445,6 +2456,9 @@ class BirdingHotspotsApp {
         // Ensure export PDF button is visible (may have been hidden in route mode)
         this.elements.exportPdfBtn.classList.remove('hidden');
 
+        // Generic "Build Itinerary" panel only supports location+hotspot results
+        this.updateGenericItineraryButtonVisibility();
+
         // Update meta information
         this.elements.resultsMeta.textContent = `${hotspots.length} hotspots found | ${generatedDate}`;
 
@@ -3801,6 +3815,39 @@ class BirdingHotspotsApp {
     }
 
     /**
+     * Find birding hotspots along a route by sampling multiple points along
+     * the route polyline (rather than a single circle from the midpoint), so
+     * coverage near the start/end doesn't depend on how long the route is.
+     * Shared by showRoutePreview() and handleRouteSearch().
+     * @param {Array} routeCoords - Route geometry coordinates [[lng, lat], ...]
+     * @param {number} routeDistanceKm - Total route distance in km
+     * @param {number} maxDetourKm - Max allowed distance from the route line
+     * @param {{maxSamplePoints: number, maxResultHotspots: number}} options
+     * @returns {Promise<{hotspots: Array, isPartialCoverage: boolean}>}
+     */
+    async findHotspotsAlongRoute(routeCoords, routeDistanceKm, maxDetourKm, options) {
+        const { maxSamplePoints, maxResultHotspots } = options;
+        const { points, isPartialCoverage } = buildRouteSamplePoints(
+            routeCoords, routeDistanceKm, maxSamplePoints, CONFIG.ROUTE_SEARCH.SAMPLE_INTERVAL_KM
+        );
+
+        const radius = CONFIG.ROUTE_SEARCH.HOTSPOT_RADIUS_KM;
+        const perPointResults = await Promise.all(points.map(p =>
+            this.ebirdApi.getNearbyHotspots(p.lat, p.lng, radius, CONFIG.DEFAULT_DAYS_BACK)
+                .catch(e => {
+                    console.warn('Sample-point hotspot fetch failed:', e);
+                    return [];
+                })
+        ));
+
+        const merged = dedupeHotspotsById(perPointResults);
+        const nearRoute = filterHotspotsByRouteDistance(merged, routeCoords, maxDetourKm);
+        const hotspots = rankHotspotsForEnrichment(nearRoute, maxResultHotspots);
+
+        return { hotspots, isPartialCoverage };
+    }
+
+    /**
      * Handle route planning search (called from handleGenerateReport)
      * Finds birding hotspots along a route between two addresses
      */
@@ -3864,14 +3911,34 @@ class BirdingHotspotsApp {
         this.updateLoading('Finding hotspots along route...', 20);
 
         try {
-            // Calculate midpoint of the route for hotspot search
+            // Reuse route geometry from the preview stage if it matches the
+            // validated addresses; otherwise fetch it fresh as a fallback.
+            let routeData = this.currentRouteData;
+            const routeMatchesCoords = routeData
+                && this.currentRouteDataStart?.lat === startCoords.lat
+                && this.currentRouteDataStart?.lng === startCoords.lng
+                && this.currentRouteDataEnd?.lat === endCoords.lat
+                && this.currentRouteDataEnd?.lng === endCoords.lng;
+
+            if (!routeMatchesCoords) {
+                routeData = await getRouteThrough([
+                    { lat: startCoords.lat, lng: startCoords.lng },
+                    { lat: endCoords.lat, lng: endCoords.lng }
+                ]);
+            }
+
+            if (!routeData) {
+                this.hideLoading();
+                this.showError('Could not calculate a driving route between these locations. Please check the addresses and try again.');
+                this.isProcessing = false;
+                return;
+            }
+
+            const routeCoords = routeData.geometry.coordinates;
+            this.currentRouteCoords = routeCoords;
+            const routeDistance = routeData.totalDistance;
             const midLat = (startCoords.lat + endCoords.lat) / 2;
             const midLng = (startCoords.lng + endCoords.lng) / 2;
-
-            // Calculate distance between start and end to determine search radius
-            const routeDistance = calculateDistance(startCoords.lat, startCoords.lng, endCoords.lat, endCoords.lng);
-            // Search radius should cover the route - use half the distance plus a buffer
-            const searchRadius = Math.min(Math.max(routeDistance / 2 + 10, 20), 50); // Between 20-50 km
 
             // Fetch notable species in the route area for key bird highlighting
             this.updateLoading('Fetching notable species...', 25);
@@ -3880,12 +3947,13 @@ class BirdingHotspotsApp {
                 const notable = await this.ebirdApi.getNotableObservationsNearby(
                     midLat,
                     midLng,
-                    searchRadius,
+                    Math.min(Math.max(routeDistance / 2 + 10, 20), 50),
                     CONFIG.DEFAULT_DAYS_BACK
                 );
                 notableSpecies = new Set(notable.map(o => o.speciesCode));
             } catch (e) {
                 console.warn('Could not fetch notable species for route:', e);
+                this.partialFailures.push('notable species data');
             }
 
             // Get life list codes for lifer detection
@@ -3897,19 +3965,27 @@ class BirdingHotspotsApp {
             // Also keep names for display purposes
             this.routeTargetSpeciesNames = this.routeTargetSpeciesList?.map(s => s.commonName.toLowerCase()) || [];
 
-            this.updateLoading('Finding hotspots along route...', 30);
+            this.updateLoading('Searching along route...', 30);
 
-            // Fetch hotspots near the midpoint
-            let hotspots = await this.ebirdApi.getNearbyHotspots(
-                midLat,
-                midLng,
-                searchRadius,
-                CONFIG.DEFAULT_DAYS_BACK
+            // Get max detour from slider (in miles), convert to km for calculations
+            const maxDetourMiles = parseInt(this.elements.routeMaxDetour.value);
+            const maxDetour = maxDetourMiles * 1.60934;
+
+            const { hotspots, isPartialCoverage } = await this.findHotspotsAlongRoute(
+                routeCoords, routeDistance, maxDetour,
+                {
+                    maxSamplePoints: CONFIG.ROUTE_SEARCH.MAX_SAMPLE_POINTS,
+                    maxResultHotspots: CONFIG.ROUTE_SEARCH.MAX_ENRICHMENT_HOTSPOTS
+                }
             );
 
             if (this.searchCancelled) {
                 this.isProcessing = false;
                 return;
+            }
+
+            if (isPartialCoverage) {
+                this.partialFailures.push(`even coverage on this ${(routeDistance * 0.621371).toFixed(0)} mi route (hotspots near the middle of the route may be less complete)`);
             }
 
             if (!hotspots || hotspots.length === 0) {
@@ -3919,62 +3995,46 @@ class BirdingHotspotsApp {
                 return;
             }
 
-            this.updateLoading('Loading hotspot details...', 40);
+            this.updateLoading(`Loading details for ${hotspots.length} hotspots...`, 40);
 
-            // Filter hotspots to those reasonably close to the route line
-            // Get max detour from slider (in miles), convert to km for calculations
-            const maxDetourMiles = parseInt(this.elements.routeMaxDetour.value);
-            const maxDetour = maxDetourMiles * 1.60934;
-            hotspots = hotspots.filter(h => {
-                const distFromStart = calculateDistance(startCoords.lat, startCoords.lng, h.lat, h.lng);
-                const distFromEnd = calculateDistance(endCoords.lat, endCoords.lng, h.lat, h.lng);
-                // Total detour should be reasonable
-                return (distFromStart + distFromEnd) <= (routeDistance + maxDetour * 2);
-            });
-
-            if (hotspots.length === 0) {
-                this.hideLoading();
-                this.showError('No birding hotspots found along this route. Try a longer route or different locations.');
-                this.isProcessing = false;
-                return;
-            }
-
-            // Limit hotspots and get species data
-            hotspots = hotspots.slice(0, 10);
-
-            // Enrich hotspots with species data
-            const enrichedHotspots = [];
-            for (let i = 0; i < hotspots.length; i++) {
-                if (this.searchCancelled) {
-                    this.isProcessing = false;
-                    return;
-                }
-
-                this.updateLoading(`Loading details for ${hotspots[i].locName}...`, 40 + (i / hotspots.length) * 30);
-
+            // Enrich hotspots with species data (in parallel for speed)
+            const enrichmentResults = await Promise.all(hotspots.map(async hotspot => {
                 try {
                     const observations = await this.ebirdApi.getRecentObservations(
-                        hotspots[i].locId,
+                        hotspot.locId,
                         CONFIG.DEFAULT_DAYS_BACK
                     );
                     const birds = processObservations(observations, notableSpecies, lifeListCodes, lifeListNames);
 
-                    enrichedHotspots.push({
-                        ...hotspots[i],
-                        name: hotspots[i].locName,
-                        lat: hotspots[i].lat,
-                        lng: hotspots[i].lng,
-                        locId: hotspots[i].locId,
+                    return {
+                        ...hotspot,
+                        name: hotspot.locName,
+                        lat: hotspot.lat,
+                        lng: hotspot.lng,
+                        locId: hotspot.locId,
                         speciesCount: birds.length,
                         birds: birds,
-                        distance: this.currentRouteCoords
-                            ? distanceToRouteLine(hotspots[i].lat, hotspots[i].lng, this.currentRouteCoords)
-                            : calculateDistance(startCoords.lat, startCoords.lng, hotspots[i].lat, hotspots[i].lng)
-                    });
+                        distance: hotspot.distance
+                    };
                 } catch (e) {
-                    console.warn(`Failed to get details for hotspot ${hotspots[i].locId}:`, e);
+                    console.warn(`Failed to get details for hotspot ${hotspot.locId}:`, e);
+                    return null;
                 }
+            }));
+
+            if (this.searchCancelled) {
+                this.isProcessing = false;
+                return;
             }
+
+            this.updateLoading('Preparing results...', 75);
+
+            const enrichedFailures = enrichmentResults.filter(h => h === null).length;
+            if (enrichedFailures > 0) {
+                this.partialFailures.push(`details for ${enrichedFailures} hotspot${enrichedFailures > 1 ? 's' : ''}`);
+            }
+
+            let enrichedHotspots = enrichmentResults.filter(Boolean);
 
             if (enrichedHotspots.length === 0) {
                 this.hideLoading();
@@ -3984,9 +4044,10 @@ class BirdingHotspotsApp {
             }
 
             // Sort hotspots by species count (highest first)
-            enrichedHotspots.sort((a, b) => b.speciesCount - a.speciesCount);
+            enrichedHotspots = sortEnrichedRouteHotspots(enrichedHotspots);
 
             this.hideLoading();
+            this.showPartialFailureWarning();
 
             // Store route data for later itinerary building
             this.routeHotspots = enrichedHotspots;
@@ -4550,6 +4611,9 @@ class BirdingHotspotsApp {
         // Hide export PDF button (route has its own export button)
         this.elements.exportPdfBtn.classList.add('hidden');
 
+        // Route mode has its own dedicated stop-picker; hide the generic panel
+        this.updateGenericItineraryButtonVisibility();
+
         // Update results header
         const hotspotCount = itinerary.stops.filter(s => s.type === 'hotspot').length;
         this.elements.resultsMeta.textContent = `${hotspotCount} birding stops along your route`;
@@ -4845,6 +4909,9 @@ class BirdingHotspotsApp {
 
         // Hide sort buttons for species search
         this.elements.sortBySpecies.parentElement.classList.add('hidden');
+
+        // Species search doesn't populate currentResults.hotspots; hide the generic panel
+        this.updateGenericItineraryButtonVisibility();
 
         // Create species results header
         const resultsHeader = document.createElement('div');
@@ -5614,6 +5681,20 @@ class BirdingHotspotsApp {
     }
 
     /**
+     * Show/hide the generic "Build Itinerary" trigger based on current search
+     * mode (only location+hotspot results support it). If the button is about
+     * to be hidden while it holds keyboard focus, move focus to the results
+     * section first so it isn't stranded on <body>.
+     */
+    updateGenericItineraryButtonVisibility() {
+        const shouldShow = canShowGenericItineraryButton(this.searchType, this.searchSubMode);
+        if (!shouldShow && document.activeElement === this.elements.buildItineraryBtn) {
+            this.elements.resultsSection.focus();
+        }
+        this.elements.buildItineraryBtn.classList.toggle('hidden', !shouldShow);
+    }
+
+    /**
      * Handle end location select change
      */
     handleEndLocationChange() {
@@ -5834,6 +5915,10 @@ class BirdingHotspotsApp {
         // Add route line (convert GeoJSON coordinates to Leaflet format)
         const routeCoords = route.geometry.coordinates.map(c => [c[1], c[0]]);
         this.currentRouteCoords = route.geometry.coordinates; // raw [lng, lat] for distanceToRouteLine
+        // Cache route data so handleRouteSearch() can reuse it instead of re-fetching
+        this.currentRouteData = route;
+        this.currentRouteDataStart = { lat: start.lat, lng: start.lng };
+        this.currentRouteDataEnd = { lat: end.lat, lng: end.lng };
         this.routePreviewLine = L.polyline(routeCoords, {
             color: '#3A6B35',
             weight: 4,
@@ -5855,24 +5940,17 @@ class BirdingHotspotsApp {
         // Fetch and display preview hotspots along the route
         if (this.ebirdApi) {
             try {
-                const midLat = (start.lat + end.lat) / 2;
-                const midLng = (start.lng + end.lng) / 2;
-                const routeDistance = calculateDistance(start.lat, start.lng, end.lat, end.lng);
-                const searchRadius = Math.min(Math.max(routeDistance / 2 + 10, 20), 50);
-
-                const previewHotspots = await this.ebirdApi.getNearbyHotspots(
-                    midLat, midLng, searchRadius, CONFIG.DEFAULT_DAYS_BACK
-                );
-
                 // Filter to those near the route based on max detour setting
                 const maxDetourMiles = parseInt(this.elements.routeMaxDetour.value);
                 const maxDetour = maxDetourMiles * 1.60934; // Convert to km
 
-                const nearRouteHotspots = previewHotspots.filter(h => {
-                    const distFromStart = calculateDistance(start.lat, start.lng, h.lat, h.lng);
-                    const distFromEnd = calculateDistance(end.lat, end.lng, h.lat, h.lng);
-                    return (distFromStart + distFromEnd) <= (routeDistance + maxDetour * 2);
-                }).slice(0, 15); // Limit for performance
+                const { hotspots: nearRouteHotspots } = await this.findHotspotsAlongRoute(
+                    route.geometry.coordinates, route.totalDistance, maxDetour,
+                    {
+                        maxSamplePoints: CONFIG.ROUTE_SEARCH.PREVIEW_MAX_SAMPLE_POINTS,
+                        maxResultHotspots: CONFIG.ROUTE_SEARCH.PREVIEW_MAX_HOTSPOTS
+                    }
+                );
 
                 // Initialize selected preview hotspots set if not exists
                 if (!this.selectedPreviewHotspots) {
@@ -6634,6 +6712,9 @@ class BirdingHotspotsApp {
 
         // Show export PDF button again (may have been hidden for route mode)
         this.elements.exportPdfBtn.classList.remove('hidden');
+
+        // Reset generic "Build Itinerary" panel visibility (next display path re-asserts it)
+        this.updateGenericItineraryButtonVisibility();
 
         // Scroll to top of form
         document.querySelector('.header').scrollIntoView({ behavior: 'smooth', block: 'start' });
