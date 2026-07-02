@@ -118,6 +118,20 @@ export function selectHotspots(hotspots, maxStops, priority = 'balanced') {
 }
 
 /**
+ * Whether the generic "Build Itinerary" panel (which auto-selects hotspots
+ * by score, with no per-hotspot picker) should be shown. It only makes sense
+ * for location-mode hotspot searches: route mode has its own dedicated
+ * pick-your-stops flow, and species-mode searches don't populate
+ * `currentResults.hotspots` at all.
+ * @param {string} searchType - 'location' or 'route'
+ * @param {string} searchSubMode - 'hotspot' or 'species' (only meaningful for 'location')
+ * @returns {boolean}
+ */
+export function canShowGenericItineraryButton(searchType, searchSubMode) {
+    return searchType === 'location' && searchSubMode === 'hotspot';
+}
+
+/**
  * Build an optimized itinerary
  * @param {Object} start - Start location {lat, lng, address}
  * @param {Object} end - End location {lat, lng, address} (can be same as start for round trip)
