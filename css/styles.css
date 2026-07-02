@@ -1173,9 +1173,6 @@ body {
     flex-direction: column;
     gap: 12px;
     margin-bottom: 16px;
-    max-height: 560px;
-    overflow-y: auto;
-    isolation: isolate;
 }
 
 .route-hotspot-card {
@@ -1188,11 +1185,6 @@ body {
     border: 2px solid transparent;
     transition: border-color var(--transition), background var(--transition);
     cursor: pointer;
-    /* Promote to its own compositor layer so mobile browsers (notably Android
-       Chrome/WebView) don't leave stale/blank patches when repainting this
-       card mid-scroll — a known artifact when rounded, background-colored
-       elements scroll inside a container without layer promotion. */
-    transform: translateZ(0);
 }
 
 .route-hotspot-card:hover {
