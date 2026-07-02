@@ -4,7 +4,7 @@
  */
 import { CONFIG } from '../utils/constants.js';
 
-const { STORAGE_KEYS } = CONFIG;
+const { STORAGE_KEYS, LIFE_LIST_IMPORT } = CONFIG;
 
 export class LifeListService {
     constructor() {
@@ -91,18 +91,26 @@ export class LifeListService {
     importFromCSV(csvContent, taxonomy = []) {
         const result = { imported: 0, errors: [], duplicates: 0, notMatched: [] };
 
-        // Validate file size (max 1MB - life lists shouldn't exceed this)
-        const MAX_FILE_SIZE = 1 * 1024 * 1024;
-        if (csvContent.length > MAX_FILE_SIZE) {
-            result.errors.push('File too large (maximum 1MB). Export only your life list, not full checklists.');
+        // Validate file size
+        if (csvContent.length > LIFE_LIST_IMPORT.MAX_FILE_SIZE_BYTES) {
+            result.errors.push(
+                `File too large (maximum ${LIFE_LIST_IMPORT.MAX_FILE_SIZE_BYTES / (1024 * 1024)}MB). ` +
+                'On eBird, use the "Download" button on your Life List page, not "Download My Data" ' +
+                '(which exports your full checklist history, not just your life list).'
+            );
             return result;
         }
 
-        // Validate row count (max 50,000 species)
-        const MAX_ROWS = 50000;
+        // Validate row count - a genuine life list can't exceed the total number
+        // of species in eBird's taxonomy, so this also catches full-checklist
+        // exports (one row per species per checklist) mistakenly uploaded here.
         const roughRowCount = (csvContent.match(/\n/g) || []).length;
-        if (roughRowCount > MAX_ROWS) {
-            result.errors.push(`Too many rows (maximum ${MAX_ROWS.toLocaleString()})`);
+        if (roughRowCount > LIFE_LIST_IMPORT.MAX_ROWS) {
+            result.errors.push(
+                `Too many rows (maximum ${LIFE_LIST_IMPORT.MAX_ROWS.toLocaleString()}). ` +
+                'This looks like a full checklist history export rather than a life list - ' +
+                'use the "Download" button on your eBird Life List page instead.'
+            );
             return result;
         }
 

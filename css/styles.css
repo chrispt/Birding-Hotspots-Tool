@@ -1173,8 +1173,6 @@ body {
     flex-direction: column;
     gap: 12px;
     margin-bottom: 16px;
-    max-height: 560px;
-    overflow-y: auto;
 }
 
 .route-hotspot-card {
@@ -1222,6 +1220,7 @@ body {
     font-size: 1rem;
     color: var(--text-primary);
     margin-bottom: 4px;
+    word-wrap: break-word;
 }
 
 .route-hotspot-details {
@@ -1320,6 +1319,7 @@ body {
     font-size: 0.85rem;
     padding: 2px 0;
     color: var(--text-primary);
+    word-wrap: break-word;
 }
 
 .route-key-bird.notable {

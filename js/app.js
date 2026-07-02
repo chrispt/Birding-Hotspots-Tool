@@ -1419,6 +1419,18 @@ class BirdingHotspotsApp {
             return;
         }
 
+        // Reject oversized files before reading them fully into memory
+        if (file.size > CONFIG.LIFE_LIST_IMPORT.MAX_FILE_SIZE_BYTES) {
+            this.showError(
+                `File too large (maximum ${CONFIG.LIFE_LIST_IMPORT.MAX_FILE_SIZE_BYTES / (1024 * 1024)}MB). ` +
+                'On eBird, use the "Download" button on your Life List page, not "Download My Data" ' +
+                '(which exports your full checklist history, not just your life list).',
+                { report: false }
+            );
+            e.target.value = '';
+            return;
+        }
+
         try {
             const content = await file.text();
 
@@ -1441,7 +1453,7 @@ class BirdingHotspotsApp {
             } else if (result.duplicates > 0) {
                 this.showSuccessToast(`All ${result.duplicates} species were already on your list`);
             } else if (result.errors.length > 0) {
-                this.showError(result.errors.join('. '));
+                this.showError(result.errors.join('. '), { report: false });
             } else {
                 this.showError('No species found in the CSV file');
             }
@@ -3929,7 +3941,7 @@ class BirdingHotspotsApp {
 
             if (!routeData) {
                 this.hideLoading();
-                this.showError('Could not calculate a driving route between these locations. Please check the addresses and try again.');
+                this.showError('Could not calculate a driving route right now. This can happen if the routing service is temporarily unavailable - please try again in a moment, or double-check both addresses.');
                 this.isProcessing = false;
                 return;
             }

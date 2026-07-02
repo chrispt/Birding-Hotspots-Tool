@@ -217,49 +217,70 @@ export async function getOptimizedTrip(waypoints, options = {}) {
 /**
  * Get a simple route through waypoints in order (not optimized)
  * @param {Array<{lat: number, lng: number}>} waypoints - Array of waypoint coordinates
+ * @param {number} retries - Number of attempts before giving up (default 3)
  * @returns {Promise<Object|null>} Route data or null if failed
  */
-export async function getRouteThrough(waypoints) {
+export async function getRouteThrough(waypoints, retries = 3) {
     if (!waypoints || waypoints.length < 2) {
         return null;
     }
 
-    try {
-        // Build coordinates string (lng,lat format for OSRM)
-        const coordsStr = waypoints
-            .map(wp => `${wp.lng},${wp.lat}`)
-            .join(';');
+    // Build coordinates string (lng,lat format for OSRM)
+    const coordsStr = waypoints
+        .map(wp => `${wp.lng},${wp.lat}`)
+        .join(';');
+    const url = `${OSRM_BASE_URL}/${coordsStr}?overview=full&geometries=geojson&annotations=duration,distance`;
 
-        const url = `${OSRM_BASE_URL}/${coordsStr}?overview=full&geometries=geojson&annotations=duration,distance`;
-        const response = await fetch(url);
+    for (let attempt = 0; attempt < retries; attempt++) {
+        try {
+            const response = await fetch(url);
 
-        if (!response.ok) {
+            if (!response.ok) {
+                // The public OSRM demo instance has no uptime SLA and applies
+                // informal rate limiting - retry transient server-side failures
+                // with backoff before giving up, rather than failing immediately.
+                if ((response.status === 429 || response.status >= 500) && attempt < retries - 1) {
+                    const delay = Math.pow(2, attempt) * 1000; // 1s, 2s, 4s
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    continue;
+                }
+                return null;
+            }
+
+            const data = await response.json();
+
+            if (data.code !== 'Ok' || !data.routes || data.routes.length === 0) {
+                return null;
+            }
+
+            const route = data.routes[0];
+
+            const legs = route.legs.map((leg, index) => ({
+                fromIndex: index,
+                toIndex: index + 1,
+                distance: leg.distance / 1000, // meters to km
+                duration: leg.duration // seconds
+            }));
+
+            return {
+                totalDistance: route.distance / 1000,
+                totalDuration: route.duration,
+                legs,
+                geometry: route.geometry
+            };
+        } catch (error) {
+            console.warn('Routing API error:', error.message);
+            // Only retry actual network failures - a malformed/unparseable
+            // response body won't be fixed by trying again.
+            const isNetworkError = error.message.includes('fetch') || error.message.includes('network');
+            if (isNetworkError && attempt < retries - 1) {
+                const delay = Math.pow(2, attempt) * 1000;
+                await new Promise(resolve => setTimeout(resolve, delay));
+                continue;
+            }
             return null;
         }
-
-        const data = await response.json();
-
-        if (data.code !== 'Ok' || !data.routes || data.routes.length === 0) {
-            return null;
-        }
-
-        const route = data.routes[0];
-
-        const legs = route.legs.map((leg, index) => ({
-            fromIndex: index,
-            toIndex: index + 1,
-            distance: leg.distance / 1000, // meters to km
-            duration: leg.duration // seconds
-        }));
-
-        return {
-            totalDistance: route.distance / 1000,
-            totalDuration: route.duration,
-            legs,
-            geometry: route.geometry
-        };
-    } catch (error) {
-        console.warn('Routing API error:', error.message);
-        return null;
     }
+
+    return null;
 }

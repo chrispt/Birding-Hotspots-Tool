@@ -52,6 +52,14 @@ export const CONFIG = {
         MAX_DETOUR_SAFE_KM: 24       // ~15 mi, the "Max Detour" slider's max setting
     },
 
+    // Life list CSV import limits
+    LIFE_LIST_IMPORT: {
+        MAX_FILE_SIZE_BYTES: 5 * 1024 * 1024, // 5MB - generous for large world life lists
+        MAX_ROWS: 15000 // eBird's taxonomy is ~11,000 species; buffer for subspecies/forms.
+                         // A genuine life list can't exceed this - a full checklist-history
+                         // export (one row per species per checklist) almost always will.
+    },
+
     // Open-Meteo weather (no key required)
     OPEN_METEO_BASE: 'https://api.open-meteo.com/v1/forecast',
 
