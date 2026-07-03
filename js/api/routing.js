@@ -133,9 +133,10 @@ export async function getDrivingRoutes(originLat, originLng, destinations, signa
  * @param {boolean} options.roundtrip - Whether to return to start (default: false)
  * @param {string} options.source - 'first' to fix first waypoint (default: 'first')
  * @param {string} options.destination - 'last' to fix last waypoint (default: 'last')
+ * @param {number} retries - Number of attempts before giving up (default 3)
  * @returns {Promise<Object|null>} Optimized trip data or null if failed
  */
-export async function getOptimizedTrip(waypoints, options = {}) {
+export async function getOptimizedTrip(waypoints, options = {}, retries = 3) {
     if (!waypoints || waypoints.length < 2) {
         return null;
     }
@@ -146,72 +147,93 @@ export async function getOptimizedTrip(waypoints, options = {}) {
         destination = 'last'
     } = options;
 
-    try {
-        // Build coordinates string (lng,lat format for OSRM)
-        const coordsStr = waypoints
-            .map(wp => `${wp.lng},${wp.lat}`)
-            .join(';');
+    // Build coordinates string (lng,lat format for OSRM)
+    const coordsStr = waypoints
+        .map(wp => `${wp.lng},${wp.lat}`)
+        .join(';');
 
-        const params = new URLSearchParams({
-            roundtrip: roundtrip.toString(),
-            source,
-            destination,
-            geometries: 'geojson',
-            overview: 'full',
-            annotations: 'duration,distance'
-        });
+    const params = new URLSearchParams({
+        roundtrip: roundtrip.toString(),
+        source,
+        destination,
+        geometries: 'geojson',
+        overview: 'full',
+        annotations: 'duration,distance'
+    });
 
-        const url = `${OSRM_TRIP_URL}/${coordsStr}?${params}`;
-        const response = await fetch(url);
+    const url = `${OSRM_TRIP_URL}/${coordsStr}?${params}`;
 
-        if (!response.ok) {
-            console.warn('OSRM Trip API error:', response.status);
-            return null;
-        }
+    for (let attempt = 0; attempt < retries; attempt++) {
+        try {
+            const response = await fetch(url);
 
-        const data = await response.json();
-
-        if (data.code !== 'Ok' || !data.trips || data.trips.length === 0) {
-            console.warn('OSRM Trip response error:', data.code);
-            return null;
-        }
-
-        const trip = data.trips[0];
-        const orderedWaypoints = data.waypoints;
-
-        // Build result with optimized order
-        const optimizedStops = orderedWaypoints.map((wp, index) => {
-            const originalWp = waypoints[wp.waypoint_index];
-            return {
-                ...originalWp,
-                optimizedOrder: index,
-                originalIndex: wp.waypoint_index,
-                snappedLocation: {
-                    lat: wp.location[1],
-                    lng: wp.location[0]
+            if (!response.ok) {
+                // The public OSRM demo instance has no uptime SLA and applies
+                // informal rate limiting - retry transient server-side failures
+                // with backoff before giving up, rather than failing immediately.
+                console.warn('OSRM Trip API error:', response.status);
+                if ((response.status === 429 || response.status >= 500) && attempt < retries - 1) {
+                    const delay = Math.pow(2, attempt) * 1000; // 1s, 2s, 4s
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    continue;
                 }
+                return null;
+            }
+
+            const data = await response.json();
+
+            if (data.code !== 'Ok' || !data.trips || data.trips.length === 0) {
+                console.warn('OSRM Trip response error:', data.code);
+                return null;
+            }
+
+            const trip = data.trips[0];
+            const orderedWaypoints = data.waypoints;
+
+            // Build result with optimized order
+            const optimizedStops = orderedWaypoints.map((wp, index) => {
+                const originalWp = waypoints[wp.waypoint_index];
+                return {
+                    ...originalWp,
+                    optimizedOrder: index,
+                    originalIndex: wp.waypoint_index,
+                    snappedLocation: {
+                        lat: wp.location[1],
+                        lng: wp.location[0]
+                    }
+                };
+            });
+
+            // Calculate leg-by-leg details
+            const legs = trip.legs.map((leg, index) => ({
+                fromIndex: index,
+                toIndex: index + 1,
+                distance: leg.distance / 1000, // meters to km
+                duration: leg.duration // seconds
+            }));
+
+            return {
+                totalDistance: trip.distance / 1000, // meters to km
+                totalDuration: trip.duration, // seconds
+                stops: optimizedStops,
+                legs,
+                geometry: trip.geometry // GeoJSON LineString
             };
-        });
-
-        // Calculate leg-by-leg details
-        const legs = trip.legs.map((leg, index) => ({
-            fromIndex: index,
-            toIndex: index + 1,
-            distance: leg.distance / 1000, // meters to km
-            duration: leg.duration // seconds
-        }));
-
-        return {
-            totalDistance: trip.distance / 1000, // meters to km
-            totalDuration: trip.duration, // seconds
-            stops: optimizedStops,
-            legs,
-            geometry: trip.geometry // GeoJSON LineString
-        };
-    } catch (error) {
-        console.warn('OSRM Trip API error:', error.message);
-        return null;
+        } catch (error) {
+            console.warn('OSRM Trip API error:', error.message);
+            // Only retry actual network failures - a malformed/unparseable
+            // response body won't be fixed by trying again.
+            const isNetworkError = error.message.includes('fetch') || error.message.includes('network');
+            if (isNetworkError && attempt < retries - 1) {
+                const delay = Math.pow(2, attempt) * 1000;
+                await new Promise(resolve => setTimeout(resolve, delay));
+                continue;
+            }
+            return null;
+        }
     }
+
+    return null;
 }
 
 /**
