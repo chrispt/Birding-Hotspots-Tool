@@ -6503,6 +6503,8 @@ class BirdingHotspotsApp {
         this.showLoading('Generating route PDF...', 0);
 
         try {
+            await this._ensurePdfLibsLoaded();
+
             // Get start and end from itinerary stops
             const startStop = this.currentItinerary.stops.find(s => s.type === 'start');
             const endStop = this.currentItinerary.stops.find(s => s.type === 'end') || startStop;
@@ -6777,6 +6779,26 @@ class BirdingHotspotsApp {
     }
 
     /**
+     * Lazy-load jsPDF and QRCode on first use — avoids ~350KB of parse work
+     * on every page load for users who never trigger a PDF export. Shared by
+     * both the location-mode and route-mode export handlers so the two can't
+     * drift out of sync again (this is exactly how the route-mode path ended
+     * up missing this guard the first time).
+     */
+    async _ensurePdfLibsLoaded() {
+        await Promise.all([
+            window.jspdf ? Promise.resolve() : this._loadScript(
+                'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+                'sha512-qZvrmS2ekKPF2mSznTQsxqPgnpkI4DNTlrdUmTzrDgektczlKNRRhy5X5AAOnx5S09ydFYWWNSfcEqDTTHgtNA=='
+            ),
+            typeof QRCode !== 'undefined' ? Promise.resolve() : this._loadScript(
+                'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js',
+                'sha512-CNgIRecGo7nphbeZ04Sc13ka07paqdeTu0WR1IM4kNcpmBAUSHSQX0FslNhTDadL4O5SAGapGt4FodqL8My0mA=='
+            )
+        ]);
+    }
+
+    /**
      * Handle "Export to PDF" button click
      */
     async handleExportPdf() {
@@ -6788,18 +6810,7 @@ class BirdingHotspotsApp {
         this.showLoading('Generating PDF report...', 0);
 
         try {
-            // Lazy-load jsPDF and QRCode on first use — avoids ~350KB of parse
-            // work on every page load for users who never trigger PDF export.
-            await Promise.all([
-                window.jspdf ? Promise.resolve() : this._loadScript(
-                    'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
-                    'sha512-qZvrmS2ekKPF2mSznTQsxqPgnpkI4DNTlrdUmTzrDgektczlKNRRhy5X5AAOnx5S09ydFYWWNSfcEqDTTHgtNA=='
-                ),
-                typeof QRCode !== 'undefined' ? Promise.resolve() : this._loadScript(
-                    'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js',
-                    'sha512-CNgIRecGo7nphbeZ04Sc13ka07paqdeTu0WR1IM4kNcpmBAUSHSQX0FslNhTDadL4O5SAGapGt4FodqL8My0mA=='
-                )
-            ]);
+            await this._ensurePdfLibsLoaded();
 
             const pdf = await generatePDFReport(this.currentResults, (message, percent) => {
                 this.updateLoading(message, percent);
