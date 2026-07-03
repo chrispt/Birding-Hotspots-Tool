@@ -210,7 +210,7 @@ export async function buildItinerary(start, end, hotspots, options = {}) {
         route = await getRouteThrough(waypoints);
 
         if (!route) {
-            throw new Error('Could not calculate route. Please try with fewer stops.');
+            throw new Error('Could not calculate a route for this itinerary right now. This can happen if the routing service is temporarily unavailable - please try again in a moment.');
         }
 
         // Add stops info to fallback route
