@@ -4280,6 +4280,35 @@ class BirdingHotspotsApp {
         info.appendChild(name);
         info.appendChild(details);
 
+        const links = document.createElement('div');
+        links.className = 'hotspot-links';
+
+        const directionsUrl = getGoogleMapsDirectionsUrl(
+            this.validatedRouteStartCoords.lat, this.validatedRouteStartCoords.lng,
+            hotspot.lat, hotspot.lng
+        );
+        const directionsLink = document.createElement('a');
+        directionsLink.href = directionsUrl;
+        directionsLink.target = '_blank';
+        directionsLink.rel = 'noopener noreferrer';
+        directionsLink.className = 'hotspot-link';
+        directionsLink.appendChild(createSVGIcon('directions', 16));
+        directionsLink.appendChild(document.createTextNode(' Get Directions'));
+        directionsLink.addEventListener('click', (e) => e.stopPropagation());
+
+        const ebirdLink = document.createElement('a');
+        ebirdLink.href = getEbirdHotspotUrl(hotspot.locId);
+        ebirdLink.target = '_blank';
+        ebirdLink.rel = 'noopener noreferrer';
+        ebirdLink.className = 'hotspot-link';
+        ebirdLink.appendChild(createSVGIcon('external', 16));
+        ebirdLink.appendChild(document.createTextNode(' View on eBird'));
+        ebirdLink.addEventListener('click', (e) => e.stopPropagation());
+
+        links.appendChild(directionsLink);
+        links.appendChild(ebirdLink);
+        info.appendChild(links);
+
         // Check for key birds (notable + lifers)
         const notableBirds = hotspot.birds ? hotspot.birds.filter(b => b.isNotable) : [];
         const liferBirds = hotspot.birds ? hotspot.birds.filter(b => b.isLifer) : [];
