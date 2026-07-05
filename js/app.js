@@ -4168,6 +4168,13 @@ class BirdingHotspotsApp {
 
                 marker.bindPopup(popupContent);
 
+                // Hover shows the hotspot name
+                marker.bindTooltip(sanitizeHTML(h.name), {
+                    direction: 'top',
+                    offset: [0, -8],
+                    opacity: 0.9
+                });
+
                 // Click on marker toggles selection
                 marker.on('click', () => {
                     this.toggleRouteHotspotFromMap(index);
