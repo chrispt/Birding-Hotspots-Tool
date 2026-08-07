@@ -80,13 +80,20 @@ export function filterHotspotsByRouteDistance(hotspots, routeCoords, maxDetourKm
 /**
  * Rank hotspots before the expensive per-hotspot enrichment call, so the
  * ones chosen for enrichment are the most promising rather than whatever
- * order the eBird API happened to return.
+ * order the eBird API happened to return. Hotspots known to have a
+ * target-species sighting are ranked first so they survive the cap even
+ * when their historical species count is low.
  * @param {Array} hotspots - Hotspots with `.distance` and optional `numSpeciesAllTime`
  * @param {number} maxCount - Number of hotspots to keep
+ * @param {Set<string>} [targetLocIds] - locIds known to have a target species sighting
  * @returns {Array} Top-ranked hotspots, capped to maxCount
  */
-export function rankHotspotsForEnrichment(hotspots, maxCount) {
+export function rankHotspotsForEnrichment(hotspots, maxCount, targetLocIds = new Set()) {
     const ranked = [...hotspots].sort((a, b) => {
+        const aTarget = targetLocIds.has(a.locId);
+        const bTarget = targetLocIds.has(b.locId);
+        if (aTarget !== bTarget) return aTarget ? -1 : 1;
+
         const speciesDiff = (b.numSpeciesAllTime ?? 0) - (a.numSpeciesAllTime ?? 0);
         if (speciesDiff !== 0) return speciesDiff;
         return a.distance - b.distance;
@@ -95,13 +102,27 @@ export function rankHotspotsForEnrichment(hotspots, maxCount) {
 }
 
 /**
- * Final sort of enriched route hotspots for display: richest observed
- * species count first, closest-to-route as tiebreak.
- * @param {Array} hotspots - Enriched hotspots with `.speciesCount` and `.distance`
+ * Final sort of enriched route hotspots for display: hotspots with a target
+ * species first, then (optionally) hotspots with a potential lifer, then
+ * richest observed species count, with closest-to-route as tiebreak.
+ * @param {Array} hotspots - Enriched hotspots with `.speciesCount`, `.distance`, and optional `.birds`
+ * @param {Object} [options]
+ * @param {Set<string>} [options.targetLocIds] - locIds known to have a target species sighting
+ * @param {boolean} [options.boostLifers] - When true, hotspots with a potential lifer sort ahead of others
  * @returns {Array} Sorted hotspots (new array, does not mutate input)
  */
-export function sortEnrichedRouteHotspots(hotspots) {
+export function sortEnrichedRouteHotspots(hotspots, { targetLocIds = new Set(), boostLifers = false } = {}) {
     return [...hotspots].sort((a, b) => {
+        const aTarget = targetLocIds.has(a.locId);
+        const bTarget = targetLocIds.has(b.locId);
+        if (aTarget !== bTarget) return aTarget ? -1 : 1;
+
+        if (boostLifers) {
+            const aLifer = (a.birds || []).some(bird => bird.isLifer) ? 1 : 0;
+            const bLifer = (b.birds || []).some(bird => bird.isLifer) ? 1 : 0;
+            if (aLifer !== bLifer) return bLifer - aLifer;
+        }
+
         const speciesDiff = b.speciesCount - a.speciesCount;
         if (speciesDiff !== 0) return speciesDiff;
         return a.distance - b.distance;

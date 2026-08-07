@@ -192,6 +192,32 @@ export const storage = {
         }
     },
 
+    /**
+     * Get preferred itinerary start time
+     * @returns {string} 'HH:MM' (24-hour), defaults to '07:00'
+     */
+    getItineraryStartTime() {
+        try {
+            return localStorage.getItem(STORAGE_KEYS.ITINERARY_START_TIME) || '07:00';
+        } catch (e) {
+            return '07:00';
+        }
+    },
+
+    /**
+     * Set preferred itinerary start time
+     * @param {string} time - 'HH:MM' (24-hour)
+     */
+    setItineraryStartTime(time) {
+        try {
+            if (/^\d{2}:\d{2}$/.test(time)) {
+                localStorage.setItem(STORAGE_KEYS.ITINERARY_START_TIME, time);
+            }
+        } catch (e) {
+            console.warn('Could not save itinerary start time:', e);
+        }
+    },
+
     // ==================== Recent Searches ====================
 
     /**

@@ -140,13 +140,15 @@ export function canShowGenericItineraryButton(searchType, searchSubMode) {
  * @param {number} options.maxStops - Maximum number of hotspot stops (default: 5)
  * @param {string} options.priority - 'species', 'distance', or 'balanced' (default: 'balanced')
  * @param {Function} options.onProgress - Progress callback
+ * @param {string} [options.startTime] - Itinerary start time as 'HH:MM' (24-hour); defaults to 7:00 AM
  * @returns {Promise<Object>} Itinerary data
  */
 export async function buildItinerary(start, end, hotspots, options = {}) {
     const {
         maxStops = 5,
         priority = 'balanced',
-        onProgress = null
+        onProgress = null,
+        startTime = null
     } = options;
 
     if (onProgress) onProgress('Selecting optimal hotspots...', 10);
@@ -181,7 +183,9 @@ export async function buildItinerary(start, end, hotspots, options = {}) {
             locId: h.locId,
             speciesCount: h.speciesCount,
             address: h.address,
-            birds: h.birds
+            birds: h.birds,
+            weather: h.weather,
+            recentObservations: h.recentObservations
         }))
     ];
 
@@ -225,15 +229,21 @@ export async function buildItinerary(start, end, hotspots, options = {}) {
 
     // Add visit times and arrival/departure estimates
     let currentTime = new Date();
-    currentTime.setHours(7, 0, 0, 0); // Default start at 7 AM
+    if (startTime) {
+        const [startHour, startMinute] = startTime.split(':').map(Number);
+        currentTime.setHours(startHour, startMinute, 0, 0);
+    } else {
+        currentTime.setHours(7, 0, 0, 0); // Default start at 7 AM
+    }
 
     const stops = route.stops.map((stop, index) => {
-        const arrivalTime = new Date(currentTime);
-
-        // Add travel time from previous stop
+        // Add travel time from previous stop before recording arrival, so the
+        // reported arrival time actually reflects the drive to reach this stop
         if (index > 0 && route.legs[index - 1]) {
             currentTime = new Date(currentTime.getTime() + route.legs[index - 1].duration * 1000);
         }
+
+        const arrivalTime = new Date(currentTime);
 
         const visitTime = stop.type === 'hotspot'
             ? calculateVisitTime(stop.speciesCount || 0)

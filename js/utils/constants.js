@@ -83,7 +83,8 @@ export const CONFIG = {
         TEMP_UNIT: 'birding_temp_unit',
         ERROR_QUEUE: 'birding_error_queue',
         SAVED_ITINERARIES: 'birding_saved_itineraries',
-        ONBOARDED: 'birding_onboarded'
+        ONBOARDED: 'birding_onboarded',
+        ITINERARY_START_TIME: 'birding_itinerary_start_time'
     }
 };
 
