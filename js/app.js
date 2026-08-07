@@ -18,7 +18,8 @@ import { SpeciesSearch } from './services/species-search.js';
 import { getSeasonalInsights, getOptimalBirdingTimes, getCurrentSeason, analyzeHotspotActivity } from './services/seasonal-insights.js';
 import { buildItinerary, formatItineraryDuration, formatItineraryTime, calculateUniquenessScore, getSeenSpeciesFromHotspots, canShowGenericItineraryButton } from './services/itinerary-builder.js';
 import { buildRouteSamplePoints, dedupeHotspotsById, filterHotspotsByRouteDistance, rankHotspotsForEnrichment, sortEnrichedRouteHotspots } from './services/route-hotspot-search.js';
-import { generateGPX, downloadGPX } from './services/gpx-generator.js';
+import { generateGPX, generateHotspotsGPX, downloadGPX } from './services/gpx-generator.js';
+import { applyHotspotFilters } from './services/hotspot-filters.js';
 import { LifeListService } from './services/life-list.js';
 import { errorReporter } from './services/error-reporter.js';
 
@@ -130,10 +131,15 @@ class BirdingHotspotsApp {
             hotspotCards: document.getElementById('hotspotCards'),
             newSearchBtn: document.getElementById('newSearchBtn'),
             exportPdfBtn: document.getElementById('exportPdfBtn'),
+            exportGpxBtn: document.getElementById('exportGpxBtn'),
             shareLinkBtn: document.getElementById('shareLinkBtn'),
             sortBySpecies: document.getElementById('sortBySpecies'),
             sortByDistance: document.getElementById('sortByDistance'),
             sortByDriving: document.getElementById('sortByDriving'),
+            resultsFilterBar: document.getElementById('resultsFilterBar'),
+            filterNotable: document.getElementById('filterNotable'),
+            filterLifers: document.getElementById('filterLifers'),
+            filterMinSpecies: document.getElementById('filterMinSpecies'),
             resultsMap: document.getElementById('resultsMap'),
             rareBirdAlert: document.getElementById('rareBirdAlert'),
             liferAlert: document.getElementById('liferAlert'),
@@ -189,7 +195,12 @@ class BirdingHotspotsApp {
             routeHotspotsList: document.getElementById('routeHotspotsList'),
             selectAllRouteHotspots: document.getElementById('selectAllRouteHotspots'),
             deselectAllRouteHotspots: document.getElementById('deselectAllRouteHotspots'),
+            routeFilterNotable: document.getElementById('routeFilterNotable'),
+            routeFilterLifers: document.getElementById('routeFilterLifers'),
+            routeFilterTarget: document.getElementById('routeFilterTarget'),
+            routeFilterMinSpecies: document.getElementById('routeFilterMinSpecies'),
             selectedHotspotsCount: document.getElementById('selectedHotspotsCount'),
+            routeItineraryStartTime: document.getElementById('routeItineraryStartTime'),
             buildRouteItinerary: document.getElementById('buildRouteItinerary'),
             sortOptionsSection: document.getElementById('sortOptionsSection'),
             searchRangeSection: document.getElementById('searchRangeSection'),
@@ -204,6 +215,7 @@ class BirdingHotspotsApp {
             endAddressError: document.getElementById('endAddressError'),
             maxStops: document.getElementById('maxStops'),
             maxStopsValue: document.getElementById('maxStopsValue'),
+            itineraryStartTime: document.getElementById('itineraryStartTime'),
             generateItinerary: document.getElementById('generateItinerary'),
             itineraryResults: document.getElementById('itineraryResults'),
             itinerarySummary: document.getElementById('itinerarySummary'),
@@ -245,6 +257,10 @@ class BirdingHotspotsApp {
         // Temperature unit preference (true = Fahrenheit, false = Celsius)
         this.useFahrenheit = storage.getTemperatureUnit() !== 'C';
 
+        // Restore saved itinerary start time preference
+        this.elements.routeItineraryStartTime.value = storage.getItineraryStartTime();
+        this.elements.itineraryStartTime.value = storage.getItineraryStartTime();
+
         // Species search
         this.speciesSearch = null; // Initialized when API key is available
         this.selectedSpeciesData = null;
@@ -261,6 +277,10 @@ class BirdingHotspotsApp {
         // Store results for PDF export
         this.currentResults = null;
         this.currentSortMethod = null;
+
+        // Post-search view filters (view-only; exports always use the full result set)
+        this.activeResultFilters = { notableOnly: false, lifersOnly: false, minSpecies: 0 };
+        this.activeRouteFilters = { notableOnly: false, lifersOnly: false, targetOnly: false, minSpecies: 0 };
 
         // Store notable observations for rare bird alerts
         this.notableObservations = [];
@@ -433,11 +453,30 @@ class BirdingHotspotsApp {
         // Results section buttons
         this.elements.newSearchBtn.addEventListener('click', () => this.handleNewSearch());
         this.elements.exportPdfBtn.addEventListener('click', () => this.handleExportPdf());
+        this.elements.exportGpxBtn.addEventListener('click', () => this.handleExportGpx());
 
         // Sort toggle buttons
         this.elements.sortBySpecies.addEventListener('click', () => this.handleSortChange('species'));
         this.elements.sortByDistance.addEventListener('click', () => this.handleSortChange('distance'));
         this.elements.sortByDriving.addEventListener('click', () => this.handleSortChange('driving'));
+
+        // Post-search filter chips (location mode)
+        this.elements.filterNotable.addEventListener('click', () => this.toggleResultFilterChip('notableOnly', this.elements.filterNotable));
+        this.elements.filterLifers.addEventListener('click', () => this.toggleResultFilterChip('lifersOnly', this.elements.filterLifers));
+        this.elements.filterMinSpecies.addEventListener('input', () => {
+            this.activeResultFilters.minSpecies = parseInt(this.elements.filterMinSpecies.value) || 0;
+            this.renderHotspotCards();
+            this.announceResultFilterCount();
+        });
+
+        // Post-search filter chips (route mode)
+        this.elements.routeFilterNotable.addEventListener('click', () => this.toggleRouteFilterChip('notableOnly', this.elements.routeFilterNotable));
+        this.elements.routeFilterLifers.addEventListener('click', () => this.toggleRouteFilterChip('lifersOnly', this.elements.routeFilterLifers));
+        this.elements.routeFilterTarget.addEventListener('click', () => this.toggleRouteFilterChip('targetOnly', this.elements.routeFilterTarget));
+        this.elements.routeFilterMinSpecies.addEventListener('input', () => {
+            this.activeRouteFilters.minSpecies = parseInt(this.elements.routeFilterMinSpecies.value) || 0;
+            this.applyRouteHotspotFilters();
+        });
 
         // Event delegation for species toggles
         this.elements.hotspotCards.addEventListener('click', (e) => {
@@ -617,6 +656,14 @@ class BirdingHotspotsApp {
         this.elements.selectAllRouteHotspots.addEventListener('click', () => this.selectAllRouteHotspots());
         this.elements.deselectAllRouteHotspots.addEventListener('click', () => this.deselectAllRouteHotspots());
         this.elements.buildRouteItinerary.addEventListener('click', () => this.handleBuildRouteItinerary());
+        this.elements.routeItineraryStartTime.addEventListener('change', () => {
+            storage.setItineraryStartTime(this.elements.routeItineraryStartTime.value);
+            this.elements.itineraryStartTime.value = this.elements.routeItineraryStartTime.value;
+        });
+        this.elements.itineraryStartTime.addEventListener('change', () => {
+            storage.setItineraryStartTime(this.elements.itineraryStartTime.value);
+            this.elements.routeItineraryStartTime.value = this.elements.itineraryStartTime.value;
+        });
     }
 
     /**
@@ -2434,22 +2481,62 @@ class BirdingHotspotsApp {
         // Keep sort-toggle buttons in sync
         this.syncSortToggles(sortMethod);
 
+        // View-only filter; exports always use the full, unfiltered hotspots list
+        const visibleHotspots = applyHotspotFilters(hotspots, this.activeResultFilters);
+
         // Read favorites once — avoids repeated localStorage.getItem + JSON.parse per card
         const favoriteIds = storage.getFavoriteHotspotIds();
 
         clearElement(this.elements.hotspotCards);
 
-        if (hotspots.length === 0) {
-            this.renderEmptyState();
+        if (visibleHotspots.length === 0) {
+            this.renderEmptyState(hotspots.length > 0);
         } else {
             // DocumentFragment for batch append (reduces reflows)
             const fragment = document.createDocumentFragment();
-            hotspots.forEach((hotspot, index) => {
+            visibleHotspots.forEach((hotspot, index) => {
                 const card = this.createHotspotCard(hotspot, index + 1, origin, favoriteIds.has(hotspot.locId));
                 fragment.appendChild(card);
             });
             this.elements.hotspotCards.appendChild(fragment);
         }
+    }
+
+    /**
+     * Toggle a boolean post-search filter for location-mode results and re-render.
+     * @param {'notableOnly'|'lifersOnly'} key
+     * @param {HTMLElement} chip - The chip button to sync aria-pressed/active state on
+     */
+    toggleResultFilterChip(key, chip) {
+        this.activeResultFilters[key] = !this.activeResultFilters[key];
+        chip.setAttribute('aria-pressed', String(this.activeResultFilters[key]));
+        this.renderHotspotCards();
+        this.announceResultFilterCount();
+    }
+
+    /**
+     * Announce the current filtered hotspot count to screen readers via the
+     * shared #searchStatus live region, since filtering doesn't otherwise
+     * change any visible text a screen reader would pick up on its own.
+     */
+    announceResultFilterCount() {
+        if (!this.currentResults || !this.elements.searchStatus) return;
+        const total = this.currentResults.hotspots.length;
+        const visible = applyHotspotFilters(this.currentResults.hotspots, this.activeResultFilters).length;
+        this.elements.searchStatus.textContent = visible === total
+            ? `Showing all ${total} hotspots`
+            : `Showing ${visible} of ${total} hotspots`;
+    }
+
+    /**
+     * Reset location-mode post-search filters and their chip/input UI back to
+     * the "no filters" state. Called whenever a fresh result set is displayed.
+     */
+    resetResultFilters() {
+        this.activeResultFilters = { notableOnly: false, lifersOnly: false, minSpecies: 0 };
+        this.elements.filterNotable.setAttribute('aria-pressed', 'false');
+        this.elements.filterLifers.setAttribute('aria-pressed', 'false');
+        this.elements.filterMinSpecies.value = '0';
     }
 
     /**
@@ -2462,11 +2549,15 @@ class BirdingHotspotsApp {
     displayResults(data) {
         const { origin, hotspots, sortMethod, generatedDate } = data;
 
+        // A fresh result set starts with no active filters
+        this.resetResultFilters();
+
         // Switch to two-column layout
         this.elements.mainContent.classList.add('has-results');
 
-        // Ensure export PDF button is visible (may have been hidden in route mode)
+        // Ensure export PDF/GPX buttons are visible (may have been hidden in route mode)
         this.elements.exportPdfBtn.classList.remove('hidden');
+        this.elements.exportGpxBtn.classList.remove('hidden');
 
         // Generic "Build Itinerary" panel only supports location+hotspot results
         this.updateGenericItineraryButtonVisibility();
@@ -2564,7 +2655,7 @@ class BirdingHotspotsApp {
     /**
      * Render empty state when no results are found
      */
-    renderEmptyState() {
+    renderEmptyState(filtered = false) {
         const emptyDiv = document.createElement('div');
         emptyDiv.className = 'empty-state';
 
@@ -2579,10 +2670,12 @@ class BirdingHotspotsApp {
         iconSvg.appendChild(iconPath);
 
         const heading = document.createElement('h3');
-        heading.textContent = 'No hotspots found';
+        heading.textContent = filtered ? 'No hotspots match your filters' : 'No hotspots found';
 
         const message = document.createElement('p');
-        message.textContent = 'Try expanding your search range or searching in a different area.';
+        message.textContent = filtered
+            ? 'Try loosening or clearing the filters above.'
+            : 'Try expanding your search range or searching in a different area.';
 
         emptyDiv.appendChild(iconSvg);
         emptyDiv.appendChild(heading);
@@ -3834,11 +3927,11 @@ class BirdingHotspotsApp {
      * @param {Array} routeCoords - Route geometry coordinates [[lng, lat], ...]
      * @param {number} routeDistanceKm - Total route distance in km
      * @param {number} maxDetourKm - Max allowed distance from the route line
-     * @param {{maxSamplePoints: number, maxResultHotspots: number}} options
+     * @param {{maxSamplePoints: number, maxResultHotspots: number, targetLocIds?: Set<string>}} options
      * @returns {Promise<{hotspots: Array, isPartialCoverage: boolean}>}
      */
     async findHotspotsAlongRoute(routeCoords, routeDistanceKm, maxDetourKm, options) {
-        const { maxSamplePoints, maxResultHotspots } = options;
+        const { maxSamplePoints, maxResultHotspots, targetLocIds = new Set() } = options;
         const { points, isPartialCoverage } = buildRouteSamplePoints(
             routeCoords, routeDistanceKm, maxSamplePoints, CONFIG.ROUTE_SEARCH.SAMPLE_INTERVAL_KM
         );
@@ -3854,7 +3947,7 @@ class BirdingHotspotsApp {
 
         const merged = dedupeHotspotsById(perPointResults);
         const nearRoute = filterHotspotsByRouteDistance(merged, routeCoords, maxDetourKm);
-        const hotspots = rankHotspotsForEnrichment(nearRoute, maxResultHotspots);
+        const hotspots = rankHotspotsForEnrichment(nearRoute, maxResultHotspots, targetLocIds);
 
         return { hotspots, isPartialCoverage };
     }
@@ -3977,6 +4070,25 @@ class BirdingHotspotsApp {
             // Also keep names for display purposes
             this.routeTargetSpeciesNames = this.routeTargetSpeciesList?.map(s => s.commonName.toLowerCase()) || [];
 
+            // Find which hotspots have a recent target-species sighting so they
+            // can be prioritized before the enrichment cap drops low-traffic
+            // hotspots. Capped to the first 10 target species to bound API calls.
+            const targetLocIds = new Set();
+            if (this.routeTargetSpeciesCodes.length > 0) {
+                this.updateLoading('Checking target species locations...', 28);
+                const targetDist = Math.min(Math.max(routeDistance / 2 + 10, 20), 50);
+                const targetResults = await Promise.all(
+                    this.routeTargetSpeciesCodes.slice(0, 10).map(code =>
+                        this.ebirdApi.getRecentSpeciesObservations(code, midLat, midLng, targetDist, CONFIG.DEFAULT_DAYS_BACK)
+                            .catch(e => {
+                                console.warn(`Could not fetch locations for target species ${code}:`, e);
+                                return [];
+                            })
+                    )
+                );
+                targetResults.flat().forEach(o => targetLocIds.add(o.locId));
+            }
+
             this.updateLoading('Searching along route...', 30);
 
             // Get max detour from slider (in miles), convert to km for calculations
@@ -3987,7 +4099,8 @@ class BirdingHotspotsApp {
                 routeCoords, routeDistance, maxDetour,
                 {
                     maxSamplePoints: CONFIG.ROUTE_SEARCH.MAX_SAMPLE_POINTS,
-                    maxResultHotspots: CONFIG.ROUTE_SEARCH.MAX_ENRICHMENT_HOTSPOTS
+                    maxResultHotspots: CONFIG.ROUTE_SEARCH.MAX_ENRICHMENT_HOTSPOTS,
+                    targetLocIds
                 }
             );
 
@@ -4026,7 +4139,9 @@ class BirdingHotspotsApp {
                         locId: hotspot.locId,
                         speciesCount: birds.length,
                         birds: birds,
-                        distance: hotspot.distance
+                        distance: hotspot.distance,
+                        hasTargetSpecies: birds.some(bird => this.routeTargetSpeciesCodes.includes(bird.speciesCode)),
+                        recentObservations: Array.isArray(observations) ? observations : []
                     };
                 } catch (e) {
                     console.warn(`Failed to get details for hotspot ${hotspot.locId}:`, e);
@@ -4055,8 +4170,27 @@ class BirdingHotspotsApp {
                 return;
             }
 
-            // Sort hotspots by species count (highest first)
-            enrichedHotspots = sortEnrichedRouteHotspots(enrichedHotspots);
+            // Fetch weather for each surviving hotspot (bounded by MAX_ENRICHMENT_HOTSPOTS)
+            this.updateLoading('Fetching weather along route...', 80);
+            try {
+                const weatherData = await getWeatherForLocations(
+                    enrichedHotspots.map(h => ({ lat: h.lat, lng: h.lng })),
+                    (current, total) => {
+                        const progress = 80 + (current / total) * 10;
+                        this.updateLoading(`Fetching weather ${current}/${total}...`, progress);
+                    },
+                    this.abortController?.signal
+                );
+                enrichedHotspots = enrichedHotspots.map((h, i) => ({ ...h, weather: weatherData[i] || null }));
+            } catch (e) {
+                console.warn('Could not fetch weather for route hotspots:', e);
+                this.partialFailures.push('weather data');
+            }
+
+            // Sort hotspots: target species first, then (if lifer-optimize mode
+            // is on) potential lifers, then species count, closest as tiebreak
+            const boostLifers = !!(this.elements.liferOptimizeMode?.checked && this.lifeListService.hasLifeList());
+            enrichedHotspots = sortEnrichedRouteHotspots(enrichedHotspots, { targetLocIds, boostLifers });
 
             this.hideLoading();
             this.showPartialFailureWarning();
@@ -4082,6 +4216,9 @@ class BirdingHotspotsApp {
      * @param {Array} hotspots - Enriched hotspots along the route
      */
     displayRouteHotspotsSelection(hotspots) {
+        // A fresh route search starts with no active filters
+        this.resetRouteFilters();
+
         // Clear previous list
         clearElement(this.elements.routeHotspotsList);
 
@@ -4110,11 +4247,7 @@ class BirdingHotspotsApp {
 
             // Add markers for found hotspots with species count
             hotspots.forEach((h, index) => {
-                // Check if hotspot has target species
-                const targetSpeciesCodes = this.routeTargetSpeciesCodes || [];
-                const hasTargetSpecies = h.birds && h.birds.some(bird =>
-                    targetSpeciesCodes.includes(bird.speciesCode)
-                );
+                const hasTargetSpecies = !!h.hasTargetSpecies;
 
                 const marker = L.circleMarker([h.lat, h.lng], {
                     radius: hasTargetSpecies ? 12 : 10,
@@ -4278,6 +4411,14 @@ class BirdingHotspotsApp {
         details.appendChild(distance);
         info.appendChild(name);
         info.appendChild(details);
+
+        // Weather badge, if weather data was fetched for this hotspot. Clicks
+        // inside it (e.g. the °F/°C toggle) shouldn't also toggle card selection.
+        const weatherBadge = this.createWeatherBadge(hotspot.weather);
+        if (weatherBadge) {
+            weatherBadge.addEventListener('click', (e) => e.stopPropagation());
+            info.appendChild(weatherBadge);
+        }
 
         const links = document.createElement('div');
         links.className = 'hotspot-links';
@@ -4557,6 +4698,62 @@ class BirdingHotspotsApp {
     }
 
     /**
+     * Toggle a boolean post-search filter for route-mode results and re-apply.
+     * @param {'notableOnly'|'lifersOnly'|'targetOnly'} key
+     * @param {HTMLElement} chip - The chip button to sync aria-pressed/active state on
+     */
+    toggleRouteFilterChip(key, chip) {
+        this.activeRouteFilters[key] = !this.activeRouteFilters[key];
+        chip.setAttribute('aria-pressed', String(this.activeRouteFilters[key]));
+        this.applyRouteHotspotFilters();
+    }
+
+    /**
+     * Reset route-mode post-search filters and their chip/input UI back to
+     * the "no filters" state. Called whenever a fresh route search is displayed.
+     */
+    resetRouteFilters() {
+        this.activeRouteFilters = { notableOnly: false, lifersOnly: false, targetOnly: false, minSpecies: 0 };
+        this.elements.routeFilterNotable.setAttribute('aria-pressed', 'false');
+        this.elements.routeFilterLifers.setAttribute('aria-pressed', 'false');
+        this.elements.routeFilterTarget.setAttribute('aria-pressed', 'false');
+        this.elements.routeFilterMinSpecies.value = '0';
+    }
+
+    /**
+     * Apply the active route filters by hiding (not removing) non-matching
+     * cards, so checkbox state and the card-index-to-routeHotspots mapping
+     * used elsewhere (selection toggling, map marker sync) stays intact.
+     */
+    applyRouteHotspotFilters() {
+        if (!this.routeHotspots || this.routeHotspots.length === 0) return;
+
+        const visibleLocIds = new Set(
+            applyHotspotFilters(this.routeHotspots, this.activeRouteFilters).map(h => h.locId)
+        );
+
+        const cards = this.elements.routeHotspotsList.querySelectorAll('.route-hotspot-card');
+        let visibleCount = 0;
+        cards.forEach((card, index) => {
+            const hotspot = this.routeHotspots[index];
+            const visible = !!hotspot && visibleLocIds.has(hotspot.locId);
+            card.classList.toggle('hidden', !visible);
+            if (visible) visibleCount++;
+        });
+
+        const metaText = visibleCount === cards.length
+            ? `Found ${cards.length} birding ${cards.length === 1 ? 'hotspot' : 'hotspots'} along your route`
+            : `Showing ${visibleCount} of ${cards.length} birding hotspots along your route`;
+        this.elements.routeHotspotsMeta.textContent = metaText;
+
+        // applyRouteHotspotFilters() only ever runs in response to a filter
+        // change (never on initial display), so it's always safe to announce here
+        if (this.elements.searchStatus) {
+            this.elements.searchStatus.textContent = metaText;
+        }
+    }
+
+    /**
      * Select all route hotspots
      */
     selectAllRouteHotspots() {
@@ -4612,6 +4809,7 @@ class BirdingHotspotsApp {
             const itinerary = await buildItinerary(start, end, selectedHotspots, {
                 maxStops: selectedHotspots.length,
                 priority: 'balanced',
+                startTime: this.elements.routeItineraryStartTime.value || null,
                 onProgress: (msg, pct) => this.updateLoading(msg, pct)
             });
 
@@ -4645,11 +4843,14 @@ class BirdingHotspotsApp {
         this.elements.weatherSummary.classList.add('hidden');
         clearElement(this.elements.hotspotCards);
 
-        // Hide sort buttons for route mode
+        // Hide sort buttons and post-search filters for route mode (itinerary
+        // stops have a fixed order and aren't filterable)
         this.elements.sortBySpecies.parentElement.classList.add('hidden');
+        this.elements.resultsFilterBar.classList.add('hidden');
 
-        // Hide export PDF button (route has its own export button)
+        // Hide export PDF/GPX buttons (route has its own export buttons)
         this.elements.exportPdfBtn.classList.add('hidden');
+        this.elements.exportGpxBtn.classList.add('hidden');
 
         // Route mode has its own dedicated stop-picker; hide the generic panel
         this.updateGenericItineraryButtonVisibility();
@@ -4832,6 +5033,11 @@ class BirdingHotspotsApp {
             detailsDiv.appendChild(speciesSpan);
             detailsDiv.appendChild(visitSpan);
             stopContent.appendChild(detailsDiv);
+
+            const stopWeatherBadge = this.createWeatherBadge(stop.weather);
+            if (stopWeatherBadge) {
+                stopContent.appendChild(stopWeatherBadge);
+            }
         }
 
         card.appendChild(stopMarker);
@@ -4947,8 +5153,10 @@ class BirdingHotspotsApp {
         // Update results header
         this.elements.resultsMeta.textContent = `${sightings.length} locations with recent sightings`;
 
-        // Hide sort buttons for species search
+        // Hide sort buttons and post-search filters for species search
+        // (currentResults.hotspots isn't populated in this mode)
         this.elements.sortBySpecies.parentElement.classList.add('hidden');
+        this.elements.resultsFilterBar.classList.add('hidden');
 
         // Species search doesn't populate currentResults.hotspots; hide the generic panel
         this.updateGenericItineraryButtonVisibility();
@@ -6120,6 +6328,7 @@ class BirdingHotspotsApp {
             const itinerary = await buildItinerary(start, end, this.currentResults.hotspots, {
                 maxStops,
                 priority,
+                startTime: this.elements.itineraryStartTime.value || null,
                 onProgress: (msg, pct) => this.updateLoading(msg, pct)
             });
 
@@ -6379,7 +6588,9 @@ class BirdingHotspotsApp {
                     lng: endStop.lng
                 },
                 itinerary: this.currentItinerary,
-                generatedDate: new Date().toLocaleDateString()
+                generatedDate: new Date().toLocaleDateString(),
+                useFahrenheit: this.useFahrenheit,
+                targetSpeciesCodes: this.routeTargetSpeciesCodes || []
             };
 
             const pdf = await generateRoutePDFReport(routeData, (msg, pct) => {
@@ -6579,11 +6790,14 @@ class BirdingHotspotsApp {
         clearElement(this.elements.routeHotspotsList);
         this.routeHotspots = [];
 
-        // Show sort buttons again (may have been hidden for species search)
+        // Show sort buttons and post-search filters again (may have been
+        // hidden for species search or route mode)
         this.elements.sortBySpecies.parentElement.classList.remove('hidden');
+        this.elements.resultsFilterBar.classList.remove('hidden');
 
-        // Show export PDF button again (may have been hidden for route mode)
+        // Show export PDF/GPX buttons again (may have been hidden for route mode)
         this.elements.exportPdfBtn.classList.remove('hidden');
+        this.elements.exportGpxBtn.classList.remove('hidden');
 
         // Reset generic "Build Itinerary" panel visibility (next display path re-asserts it)
         this.updateGenericItineraryButtonVisibility();
@@ -6670,7 +6884,7 @@ class BirdingHotspotsApp {
         try {
             await this._ensurePdfLibsLoaded();
 
-            const pdf = await generatePDFReport(this.currentResults, (message, percent) => {
+            const pdf = await generatePDFReport({ ...this.currentResults, useFahrenheit: this.useFahrenheit }, (message, percent) => {
                 this.updateLoading(message, percent);
             });
 
@@ -6681,6 +6895,29 @@ class BirdingHotspotsApp {
             console.error('PDF generation error:', error);
             this.hideLoading();
             this.showError('Failed to generate PDF. Please try again.');
+        }
+    }
+
+    /**
+     * Export the current (non-route) hotspot search results as a waypoints-only
+     * GPX file for loading into a GPS device or navigation app.
+     */
+    handleExportGpx() {
+        if (!this.currentResults || !this.currentResults.hotspots) {
+            this.showError('No results to export. Please perform a search first.');
+            return;
+        }
+
+        try {
+            const gpx = generateHotspotsGPX(this.currentResults.origin, this.currentResults.hotspots, {
+                name: 'Birding Hotspots',
+                description: `${this.currentResults.hotspots.length} birding hotspots found by Birding Hotspots Finder`
+            });
+            downloadGPX(gpx, 'birding-hotspots');
+            this.showSuccessToast('GPX downloaded!');
+        } catch (error) {
+            console.error('GPX generation error:', error);
+            this.showError('Failed to generate GPX file. Please try again.');
         }
     }
 

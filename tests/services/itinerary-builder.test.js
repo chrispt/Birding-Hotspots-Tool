@@ -1,5 +1,35 @@
 import { assert } from '../run-tests.js';
-import { selectHotspots, canShowGenericItineraryButton } from '../../js/services/itinerary-builder.js';
+import { selectHotspots, canShowGenericItineraryButton, buildItinerary } from '../../js/services/itinerary-builder.js';
+
+/**
+ * Mocks global fetch with a single successful OSRM Trip API response for a
+ * round trip through one hotspot: start -> hotspot -> back to start, with a
+ * 600-second (10 min) leg each way.
+ */
+function installOptimizedTripMock() {
+    global.fetch = async () => ({
+        ok: true,
+        json: async () => ({
+            code: 'Ok',
+            trips: [{
+                distance: 20000,
+                duration: 1200,
+                legs: [{ distance: 10000, duration: 600 }, { distance: 10000, duration: 600 }],
+                geometry: { type: 'LineString', coordinates: [[0, 0], [1, 1], [0, 0]] }
+            }],
+            waypoints: [
+                { waypoint_index: 0, location: [0, 0] },
+                { waypoint_index: 1, location: [1, 1] }
+            ]
+        })
+    });
+}
+
+function roundTripArgs() {
+    const start = { lat: 0, lng: 0, address: 'Start' };
+    const hotspots = [{ locId: 'h1', name: 'Hotspot One', lat: 1, lng: 1, speciesCount: 5, distance: 0 }];
+    return { start, end: start, hotspots };
+}
 
 export async function testSelectHotspotsReturnsAllWhenUnderCap() {
     const hotspots = [
@@ -43,4 +73,40 @@ export async function testCanShowGenericItineraryButtonOnlyForLocationHotspotMod
     assert(canShowGenericItineraryButton('route', 'hotspot') === false, 'route mode should hide the button');
     assert(canShowGenericItineraryButton('location', 'species') === false, 'species sub-mode should hide the button');
     assert(canShowGenericItineraryButton('route', 'species') === false, 'route+species should hide the button');
+}
+
+export async function testBuildItineraryDefaultsStartTimeToSevenAM() {
+    installOptimizedTripMock();
+    const { start, end, hotspots } = roundTripArgs();
+
+    const itinerary = await buildItinerary(start, end, hotspots, { maxStops: 5 });
+    const startStop = itinerary.stops[0];
+
+    assert(startStop.departureTime.getHours() === 7 && startStop.departureTime.getMinutes() === 0,
+        `Expected default departure at 7:00 AM, got ${startStop.departureTime.toTimeString()}`);
+}
+
+export async function testBuildItineraryHonorsCustomStartTime() {
+    installOptimizedTripMock();
+    const { start, end, hotspots } = roundTripArgs();
+
+    const itinerary = await buildItinerary(start, end, hotspots, { maxStops: 5, startTime: '09:15' });
+    const startStop = itinerary.stops[0];
+
+    assert(startStop.departureTime.getHours() === 9 && startStop.departureTime.getMinutes() === 15,
+        `Expected departure at 9:15 AM, got ${startStop.departureTime.toTimeString()}`);
+}
+
+export async function testBuildItineraryArrivalTimeIncludesTravelFromPreviousStop() {
+    installOptimizedTripMock();
+    const { start, end, hotspots } = roundTripArgs();
+
+    // 9:15 start + a 10-minute (600s) leg to the hotspot should arrive at 9:25,
+    // not 9:15 (regression guard for arrival time being captured before travel
+    // time was added).
+    const itinerary = await buildItinerary(start, end, hotspots, { maxStops: 5, startTime: '09:15' });
+    const hotspotStop = itinerary.stops.find(s => s.type === 'hotspot');
+
+    assert(hotspotStop.arrivalTime.getHours() === 9 && hotspotStop.arrivalTime.getMinutes() === 25,
+        `Expected hotspot arrival at 9:25 AM (9:15 start + 10 min travel), got ${hotspotStop.arrivalTime.toTimeString()}`);
 }

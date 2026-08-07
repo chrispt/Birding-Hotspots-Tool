@@ -138,3 +138,47 @@ export async function testSortEnrichedRouteHotspotsBreaksTiesByDistance() {
     const sorted = sortEnrichedRouteHotspots(hotspots);
     assert(sorted[0].locId === 'near', 'On a species-count tie, the closer hotspot should rank first');
 }
+
+export async function testRankHotspotsForEnrichmentKeepsTargetHotspotsUnderTightCap() {
+    const hotspots = [
+        { locId: 'richButNoTarget', numSpeciesAllTime: 400, distance: 1 },
+        { locId: 'target', numSpeciesAllTime: 20, distance: 5 },
+        { locId: 'alsoRich', numSpeciesAllTime: 300, distance: 2 }
+    ];
+    const targetLocIds = new Set(['target']);
+
+    const ranked = rankHotspotsForEnrichment(hotspots, 2, targetLocIds);
+
+    assert(ranked.length === 2, `Expected 2 hotspots, got ${ranked.length}`);
+    assert(ranked[0].locId === 'target', 'Target-species hotspot should survive the cap and rank first even with a low species count');
+}
+
+export async function testSortEnrichedRouteHotspotsPutsTargetSpeciesFirst() {
+    const hotspots = [
+        { locId: 'noTarget', speciesCount: 50, distance: 1 },
+        { locId: 'target', speciesCount: 5, distance: 10 }
+    ];
+
+    const sorted = sortEnrichedRouteHotspots(hotspots, { targetLocIds: new Set(['target']) });
+    assert(sorted[0].locId === 'target', 'Target-species hotspot should sort first regardless of species count');
+}
+
+export async function testSortEnrichedRouteHotspotsBoostsLifersWhenEnabled() {
+    const hotspots = [
+        { locId: 'noLifer', speciesCount: 50, distance: 1, birds: [{ isLifer: false }] },
+        { locId: 'hasLifer', speciesCount: 10, distance: 5, birds: [{ isLifer: true }] }
+    ];
+
+    const sorted = sortEnrichedRouteHotspots(hotspots, { boostLifers: true });
+    assert(sorted[0].locId === 'hasLifer', 'Hotspot with a potential lifer should sort first when boostLifers is enabled');
+}
+
+export async function testSortEnrichedRouteHotspotsIgnoresLifersWhenDisabled() {
+    const hotspots = [
+        { locId: 'noLifer', speciesCount: 50, distance: 1, birds: [{ isLifer: false }] },
+        { locId: 'hasLifer', speciesCount: 10, distance: 5, birds: [{ isLifer: true }] }
+    ];
+
+    const sorted = sortEnrichedRouteHotspots(hotspots);
+    assert(sorted[0].locId === 'noLifer', 'Without boostLifers, ordering should fall back to species count as before');
+}

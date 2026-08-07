@@ -1366,8 +1366,36 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 16px;
     padding-top: 16px;
     border-top: 1px solid var(--border-color);
+}
+
+.itinerary-start-time {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.itinerary-start-time .input-label {
+    margin-bottom: 0;
+    white-space: nowrap;
+}
+
+.itinerary-start-time input[type="time"] {
+    padding: 6px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    background: var(--card-bg);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 0.875rem;
+    min-height: 36px;
+}
+
+.itinerary-start-time input[type="time"]:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 1px;
 }
 
 #selectedHotspotsCount {
@@ -1425,6 +1453,9 @@ body {
     }
     #selectedHotspotsCount {
         text-align: center;
+    }
+    .itinerary-start-time {
+        justify-content: center;
     }
     #buildRouteItinerary {
         width: 100%;
@@ -1990,6 +2021,90 @@ details.about-section[open] .about-chevron {
 .results-actions {
     display: flex;
     gap: 12px;
+}
+
+/* Post-search filter chips */
+.results-filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.filter-chip {
+    padding: 6px 14px;
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    background: var(--card-bg);
+    color: var(--text-secondary);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition);
+    font-family: inherit;
+    min-height: 44px; /* WCAG touch target size, matches .sort-btn */
+}
+
+.filter-chip:hover:not([aria-pressed="true"]) {
+    background: var(--background);
+    border-color: var(--text-light);
+}
+
+.filter-chip:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+.filter-chip[aria-pressed="true"] {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+}
+
+#filterNotable[aria-pressed="true"],
+#routeFilterNotable[aria-pressed="true"] {
+    background: var(--notable-highlight);
+    border-color: var(--notable-highlight);
+}
+
+#filterLifers[aria-pressed="true"],
+#routeFilterLifers[aria-pressed="true"] {
+    background: var(--lifer-highlight);
+    border-color: var(--lifer-highlight);
+}
+
+#routeFilterTarget[aria-pressed="true"] {
+    background: var(--target-color);
+    border-color: var(--target-color);
+}
+
+.filter-min-species {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.filter-min-species-label {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.filter-min-species-input {
+    width: 64px;
+    padding: 5px 8px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    background: var(--card-bg);
+    color: var(--text-primary);
+    font-size: 0.8125rem;
+    font-family: inherit;
+    min-height: 44px; /* WCAG touch target size, matches .sort-btn */
+}
+
+.filter-min-species-input:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 1px;
 }
 
 /* Results Map */

@@ -6,6 +6,7 @@
 import { formatDistance, formatDuration, formatDate, getGoogleMapsDirectionsUrl, getEbirdHotspotUrl } from '../utils/formatters.js';
 import { generateCanvasMap, generateRouteMap } from './map-service.js';
 import { generateQRCode, isQRCodeAvailable } from './qr-generator.js';
+import { getSeasonalInsights, analyzeHotspotActivity } from './seasonal-insights.js';
 import { CONFIG } from '../utils/constants.js';
 
 const PDF_COLORS = {
@@ -13,8 +14,117 @@ const PDF_COLORS = {
     textPrimary:   [33, 33, 33],     // Dark gray
     textSecondary: [117, 117, 117],  // Medium gray
     notable:       [255, 87, 34],    // Orange for rare species
+    lifer:         [123, 31, 162],   // Purple, matches --lifer-text
+    target:        [25, 118, 210],   // Blue, matches --target-hover
     link:          [0, 102, 204]     // Blue for links
 };
+
+/**
+ * Format a one-line weather summary for a hotspot/stop, or null if no
+ * weather data was fetched for it.
+ * @param {Object|null} weather - Weather data object
+ * @param {boolean} useFahrenheit - Whether to show °F (true) or °C (false)
+ * @returns {string|null}
+ */
+function formatWeatherLine(weather, useFahrenheit) {
+    if (!weather) return null;
+    const temp = useFahrenheit ? `${weather.temperatureF}°F` : `${weather.temperatureC}°C`;
+    return `Weather: ${temp}, ${weather.description}, wind ${weather.windSpeedMph} mph ${weather.windDirection}`;
+}
+
+/**
+ * Format a one-line seasonal/best-time blurb for a hotspot. Falls back to
+ * the always-available date-based seasonal summary; appends the
+ * observation-derived best time-of-day when timestamped data allows it.
+ * @param {Array} observations - Raw recent observations for the hotspot
+ * @returns {string}
+ */
+function formatSeasonalLine(observations) {
+    const insights = getSeasonalInsights();
+    const activity = analyzeHotspotActivity(observations);
+    return activity?.bestTime
+        ? `${insights.summary} Peak activity here: ${activity.bestTime}.`
+        : insights.summary;
+}
+
+/**
+ * Render a two-column "Species observed" bird list with notable/lifer/target
+ * markers and a matching legend. Shared by generatePDFReport() and
+ * generateRoutePDFReport() since both need identical marker handling.
+ * @param {jsPDF} doc - The PDF document
+ * @param {Array} birds - Bird observations with comName/isNotable/isLifer/speciesCode
+ * @param {Object} opts
+ * @param {number} opts.yPos - Starting Y position
+ * @param {number} opts.margin - Page margin
+ * @param {number} opts.contentWidth - Usable content width
+ * @param {Array<string>} [opts.targetCodes] - Species codes the user is targeting (route mode only)
+ * @returns {number} The Y position after the bird list and legend
+ */
+function renderBirdListColumns(doc, birds, { yPos, margin, contentWidth, targetCodes = [] }) {
+    let y = yPos;
+
+    doc.setFontSize(9);
+    doc.setTextColor(...PDF_COLORS.textPrimary);
+    doc.text('Species observed:', margin, y);
+    y += 4;
+
+    if (!birds || birds.length === 0) {
+        doc.setFontSize(8);
+        doc.setTextColor(...PDF_COLORS.textSecondary);
+        doc.text('No recent observations available', margin, y);
+        return y;
+    }
+
+    const items = birds.map(bird => {
+        const isTarget = targetCodes.includes(bird.speciesCode);
+        const marker = isTarget ? '^ ' : bird.isNotable ? '* ' : bird.isLifer ? '+ ' : '';
+        const color = isTarget ? PDF_COLORS.target
+            : bird.isNotable ? PDF_COLORS.notable
+                : bird.isLifer ? PDF_COLORS.lifer
+                    : PDF_COLORS.textPrimary;
+        return { text: `${marker}${bird.comName}`, color };
+    });
+
+    const colWidth = contentWidth / 2 - 5;
+    const leftCol = [];
+    const rightCol = [];
+    items.forEach((item, idx) => (idx % 2 === 0 ? leftCol : rightCol).push(item));
+
+    doc.setFontSize(8);
+
+    const drawColumn = (col, x) => {
+        col.forEach((item, idx) => {
+            doc.setTextColor(...item.color);
+            const truncated = item.text.length > 35 ? item.text.substring(0, 32) + '...' : item.text;
+            doc.text(truncated, x, y + (idx * 4));
+        });
+    };
+    drawColumn(leftCol, margin);
+    drawColumn(rightCol, margin + colWidth + 10);
+
+    y += Math.max(leftCol.length, rightCol.length) * 4;
+
+    // Legend for whichever markers actually appeared in this bird list
+    const hasTarget = targetCodes.length > 0 && birds.some(b => targetCodes.includes(b.speciesCode));
+    const hasNotable = birds.some(b => b.isNotable);
+    const hasLifer = birds.some(b => b.isLifer);
+    const legendLines = [];
+    if (hasTarget) legendLines.push({ text: '^ Target species', color: PDF_COLORS.target });
+    if (hasNotable) legendLines.push({ text: '* Notable/rare species for this area', color: PDF_COLORS.notable });
+    if (hasLifer) legendLines.push({ text: '+ Potential lifer (not on your life list)', color: PDF_COLORS.lifer });
+
+    if (legendLines.length > 0) {
+        y += 2;
+        doc.setFontSize(7);
+        legendLines.forEach(line => {
+            doc.setTextColor(...line.color);
+            doc.text(line.text, margin, y);
+            y += 3.5;
+        });
+    }
+
+    return y;
+}
 
 /**
  * Generate the PDF report
@@ -28,7 +138,8 @@ export async function generatePDFReport(data, onProgress = () => {}) {
         hotspots,
         sortMethod,
         generatedDate,
-        searchRadiusKm = CONFIG.DEFAULT_SEARCH_RADIUS
+        searchRadiusKm = CONFIG.DEFAULT_SEARCH_RADIUS,
+        useFahrenheit = true
     } = data;
 
     // Get jsPDF from global scope (loaded via CDN)
@@ -46,7 +157,7 @@ export async function generatePDFReport(data, onProgress = () => {}) {
     const contentWidth = pageWidth - (margin * 2);
     let yPos = margin;
 
-    const { primary: primaryColor, textPrimary, textSecondary, notable: notableColor, link: linkColor } = PDF_COLORS;
+    const { primary: primaryColor, textPrimary, textSecondary, link: linkColor } = PDF_COLORS;
 
     // Helper to check if we need a new page
     function checkNewPage(neededSpace) {
@@ -121,9 +232,10 @@ export async function generatePDFReport(data, onProgress = () => {}) {
         const progress = 30 + ((i / hotspots.length) * 60);
         onProgress(`Adding hotspot ${i + 1} of ${hotspots.length}...`, progress);
 
-        // Estimate space needed for this hotspot
+        // Estimate space needed for this hotspot (base + bird columns + the
+        // weather/seasonal lines and marker legend added below)
         const birdLines = Math.ceil(hotspot.birds.length / 3); // Rough estimate
-        const estimatedHeight = 60 + (birdLines * 5);
+        const estimatedHeight = 80 + (birdLines * 5);
         checkNewPage(estimatedHeight);
 
         // Hotspot header with number
@@ -152,6 +264,18 @@ export async function generatePDFReport(data, onProgress = () => {}) {
             yPos += 5;
         }
 
+        // Weather (if fetched for this hotspot)
+        const weatherLine = formatWeatherLine(hotspot.weather, useFahrenheit);
+        if (weatherLine) {
+            doc.text(weatherLine, margin, yPos);
+            yPos += 5;
+        }
+
+        // Seasonal / best-time insight
+        const seasonalLines = doc.splitTextToSize(formatSeasonalLine(hotspot.recentObservations), contentWidth - qrSize - 10);
+        doc.text(seasonalLines, margin, yPos);
+        yPos += seasonalLines.length * 4 + 1;
+
         // Address
         const addressLines = doc.splitTextToSize(`Address: ${hotspot.address}`, contentWidth - qrSize - 10);
         doc.text(addressLines, margin, yPos);
@@ -177,76 +301,7 @@ export async function generatePDFReport(data, onProgress = () => {}) {
 
         // Bird list
         yPos += 3;
-        doc.setFontSize(9);
-        doc.setTextColor(...textPrimary);
-        doc.text('Species observed:', margin, yPos);
-        yPos += 4;
-
-        // Format bird list in columns
-        if (hotspot.birds && hotspot.birds.length > 0) {
-            const hasNotable = hotspot.birds.some(b => b.isNotable);
-
-            // Create bird list text
-            const birdItems = hotspot.birds.map(bird => {
-                const marker = bird.isNotable ? '* ' : '';
-                return `${marker}${bird.comName}`;
-            });
-
-            // Split into multiple columns for better use of space
-            const colWidth = contentWidth / 2 - 5;
-            const leftCol = [];
-            const rightCol = [];
-
-            birdItems.forEach((item, idx) => {
-                if (idx % 2 === 0) {
-                    leftCol.push(item);
-                } else {
-                    rightCol.push(item);
-                }
-            });
-
-            doc.setFontSize(8);
-
-            // Left column
-            leftCol.forEach((item, idx) => {
-                const isNotable = item.startsWith('*');
-                if (isNotable) {
-                    doc.setTextColor(...notableColor);
-                } else {
-                    doc.setTextColor(...textPrimary);
-                }
-
-                const truncated = item.length > 35 ? item.substring(0, 32) + '...' : item;
-                doc.text(truncated, margin, yPos + (idx * 4));
-            });
-
-            // Right column
-            rightCol.forEach((item, idx) => {
-                const isNotable = item.startsWith('*');
-                if (isNotable) {
-                    doc.setTextColor(...notableColor);
-                } else {
-                    doc.setTextColor(...textPrimary);
-                }
-
-                const truncated = item.length > 35 ? item.substring(0, 32) + '...' : item;
-                doc.text(truncated, margin + colWidth + 10, yPos + (idx * 4));
-            });
-
-            yPos += Math.max(leftCol.length, rightCol.length) * 4;
-
-            // Notable species legend
-            if (hasNotable) {
-                yPos += 2;
-                doc.setFontSize(7);
-                doc.setTextColor(...notableColor);
-                doc.text('* Notable/rare species for this area', margin, yPos);
-            }
-        } else {
-            doc.setFontSize(8);
-            doc.setTextColor(...textSecondary);
-            doc.text('No recent observations available', margin, yPos);
-        }
+        yPos = renderBirdListColumns(doc, hotspot.birds, { yPos, margin, contentWidth });
 
         yPos += 12; // Space between hotspots
 
@@ -328,7 +383,9 @@ export async function generateRoutePDFReport(data, onProgress = () => {}) {
         start,
         end,
         itinerary,
-        generatedDate
+        generatedDate,
+        useFahrenheit = true,
+        targetSpeciesCodes = []
     } = data;
 
     // Get jsPDF from global scope (loaded via CDN)
@@ -346,7 +403,7 @@ export async function generateRoutePDFReport(data, onProgress = () => {}) {
     const contentWidth = pageWidth - (margin * 2);
     let yPos = margin;
 
-    const { primary: primaryColor, textPrimary, textSecondary, notable: notableColor, link: linkColor } = PDF_COLORS;
+    const { primary: primaryColor, textPrimary, textSecondary, link: linkColor } = PDF_COLORS;
 
     // Helper to check if we need a new page
     function checkNewPage(neededSpace) {
@@ -433,10 +490,11 @@ export async function generateRoutePDFReport(data, onProgress = () => {}) {
         const progress = 30 + ((i / hotspotStops.length) * 60);
         onProgress(`Adding stop ${i + 1} of ${hotspotStops.length}...`, progress);
 
-        // Estimate space needed for this hotspot
+        // Estimate space needed for this hotspot (base + bird columns + the
+        // weather/seasonal lines and marker legend added below)
         const birds = stop.birds || [];
         const birdLines = Math.ceil(birds.length / 3);
-        const estimatedHeight = 65 + (birdLines * 5);
+        const estimatedHeight = 85 + (birdLines * 5);
         checkNewPage(estimatedHeight);
 
         // Stop header with number
@@ -472,6 +530,18 @@ export async function generateRoutePDFReport(data, onProgress = () => {}) {
             yPos += 5;
         }
 
+        // Weather (if fetched for this stop)
+        const stopWeatherLine = formatWeatherLine(stop.weather, useFahrenheit);
+        if (stopWeatherLine) {
+            doc.text(stopWeatherLine, margin, yPos);
+            yPos += 5;
+        }
+
+        // Seasonal / best-time insight
+        const stopSeasonalLines = doc.splitTextToSize(formatSeasonalLine(stop.recentObservations), contentWidth - qrSize - 10);
+        doc.text(stopSeasonalLines, margin, yPos);
+        yPos += stopSeasonalLines.length * 4 + 1;
+
         // Address
         if (stop.address) {
             const addressLines = doc.splitTextToSize(`Address: ${stop.address}`, contentWidth - qrSize - 10);
@@ -504,76 +574,8 @@ export async function generateRoutePDFReport(data, onProgress = () => {}) {
         }
 
         // Bird list
-        if (birds.length > 0) {
-            yPos += 3;
-            doc.setFontSize(9);
-            doc.setTextColor(...textPrimary);
-            doc.text('Species observed:', margin, yPos);
-            yPos += 4;
-
-            const hasNotable = birds.some(b => b.isNotable);
-
-            // Create bird list text
-            const birdItems = birds.map(bird => {
-                const marker = bird.isNotable ? '* ' : '';
-                return `${marker}${bird.comName}`;
-            });
-
-            // Split into multiple columns for better use of space
-            const colWidth = contentWidth / 2 - 5;
-            const leftCol = [];
-            const rightCol = [];
-
-            birdItems.forEach((item, idx) => {
-                if (idx % 2 === 0) {
-                    leftCol.push(item);
-                } else {
-                    rightCol.push(item);
-                }
-            });
-
-            doc.setFontSize(8);
-
-            // Left column
-            leftCol.forEach((item, idx) => {
-                const isNotable = item.startsWith('*');
-                if (isNotable) {
-                    doc.setTextColor(...notableColor);
-                } else {
-                    doc.setTextColor(...textPrimary);
-                }
-
-                const truncated = item.length > 35 ? item.substring(0, 32) + '...' : item;
-                doc.text(truncated, margin, yPos + (idx * 4));
-            });
-
-            // Right column
-            rightCol.forEach((item, idx) => {
-                const isNotable = item.startsWith('*');
-                if (isNotable) {
-                    doc.setTextColor(...notableColor);
-                } else {
-                    doc.setTextColor(...textPrimary);
-                }
-
-                const truncated = item.length > 35 ? item.substring(0, 32) + '...' : item;
-                doc.text(truncated, margin + colWidth + 10, yPos + (idx * 4));
-            });
-
-            yPos += Math.max(leftCol.length, rightCol.length) * 4;
-
-            // Notable species legend
-            if (hasNotable) {
-                yPos += 2;
-                doc.setFontSize(7);
-                doc.setTextColor(...notableColor);
-                doc.text('* Notable/rare species for this area', margin, yPos);
-            }
-        } else {
-            doc.setFontSize(8);
-            doc.setTextColor(...textSecondary);
-            doc.text('No recent observations available', margin, yPos);
-        }
+        yPos += 3;
+        yPos = renderBirdListColumns(doc, birds, { yPos, margin, contentWidth, targetCodes: targetSpeciesCodes });
 
         yPos += 12; // Space between stops
 
