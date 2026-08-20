@@ -2203,7 +2203,7 @@ details.about-section[open] .about-chevron {
     align-items: flex-start;
     gap: 16px;
     padding: 20px;
-    padding-right: 52px; /* Space for star button */
+    padding-right: 60px; /* Space for star button (16px offset + 36px width + 8px breathing room) */
     background: linear-gradient(135deg, rgba(58, 107, 53, 0.05) 0%, rgba(126, 179, 86, 0.05) 100%);
     border-bottom: 1px solid var(--border-color);
 }
@@ -2677,7 +2677,7 @@ details.about-section[open] .about-chevron {
     .hotspot-header {
         flex-direction: column;
         gap: 12px;
-        padding-right: 48px; /* Less padding needed on mobile column layout */
+        padding-right: 56px; /* 12px offset + 36px width + 8px breathing room */
     }
 
     .hotspot-number {
