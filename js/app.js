@@ -2703,6 +2703,48 @@ class BirdingHotspotsApp {
     }
 
     /**
+     * Build the accessible label text for a species' recency tier.
+     * @param {{tier: string}} confidence - bird.confidence, e.g. {tier: 'high'}
+     * @param {string} lastSeen - eBird observation date string
+     * @returns {string}
+     */
+    getRecencyLabelText(confidence, lastSeen) {
+        const tierLabel = confidence.tier.charAt(0).toUpperCase() + confidence.tier.slice(1);
+        return `${tierLabel} recency — last reported ${this.formatRelativeDate(lastSeen)}`;
+    }
+
+    /**
+     * Build the shared legend explaining the species recency dots.
+     * @returns {HTMLElement}
+     */
+    buildConfidenceLegend() {
+        const legend = document.createElement('p');
+        legend.className = 'confidence-legend';
+
+        const items = document.createElement('span');
+        items.className = 'confidence-legend-items';
+        [['high', 'High'], ['medium', 'Medium'], ['low', 'Low']].forEach(([tier, label]) => {
+            const item = document.createElement('span');
+            item.className = 'confidence-legend-item';
+
+            const dot = document.createElement('span');
+            dot.className = `confidence-dot confidence-${tier}`;
+            dot.setAttribute('aria-hidden', 'true');
+            item.appendChild(dot);
+            item.appendChild(document.createTextNode(label));
+            items.appendChild(item);
+        });
+        legend.appendChild(items);
+
+        const explainer = document.createElement('span');
+        explainer.className = 'confidence-legend-explainer';
+        explainer.textContent = '— how recently each species was reported here, not a statistical frequency';
+        legend.appendChild(explainer);
+
+        return legend;
+    }
+
+    /**
      * Render the rare bird alert banner
      */
     renderRareBirdAlert() {
@@ -4524,10 +4566,25 @@ class BirdingHotspotsApp {
                 if (bird.isTarget) li.classList.add('target');
                 if (bird.isNotable) li.classList.add('notable');
                 if (bird.isLifer) li.classList.add('lifer');
+                if (bird.confidence) li.classList.add(`confidence-${bird.confidence.tier}`);
+
+                if (bird.confidence) {
+                    const dot = document.createElement('span');
+                    dot.className = 'confidence-dot';
+                    dot.setAttribute('aria-hidden', 'true');
+                    const recencyText = this.getRecencyLabelText(bird.confidence, bird.lastSeen);
+                    li.title = recencyText;
+                    li.appendChild(dot);
+
+                    const srText = document.createElement('span');
+                    srText.className = 'visually-hidden';
+                    srText.textContent = `${recencyText}. `;
+                    li.appendChild(srText);
+                }
 
                 const prefix = bird.isTarget ? '\u2691 ' : (bird.isNotable ? '* ' : (bird.isLifer ? '\u2605 ' : ''));
                 const suffix = bird.isNotable && bird.lastSeen ? ` (${this.formatRelativeDate(bird.lastSeen)})` : '';
-                li.textContent = prefix + bird.comName + suffix;
+                li.appendChild(document.createTextNode(prefix + bird.comName + suffix));
                 birdsList.appendChild(li);
             });
 
@@ -4539,6 +4596,10 @@ class BirdingHotspotsApp {
                 more.className = 'route-key-birds-more';
                 more.textContent = `+${keyBirds.length - 3} more key birds`;
                 keyBirdsSection.appendChild(more);
+            }
+
+            if (displayBirds.some(bird => bird.confidence)) {
+                keyBirdsSection.appendChild(this.buildConfidenceLegend());
             }
 
             info.appendChild(keyBirdsSection);
@@ -5589,9 +5650,26 @@ class BirdingHotspotsApp {
             let className = 'species-item';
             if (bird.isNotable) className += ' notable';
             if (bird.isLifer) className += ' lifer';
+            if (bird.confidence) className += ` confidence-${bird.confidence.tier}`;
             li.className = className;
+
+            if (bird.confidence) {
+                const dot = document.createElement('span');
+                dot.className = 'confidence-dot';
+                dot.setAttribute('aria-hidden', 'true');
+                const recencyText = this.getRecencyLabelText(bird.confidence, bird.lastSeen);
+                li.title = recencyText;
+                li.appendChild(dot);
+
+                const srText = document.createElement('span');
+                srText.className = 'visually-hidden';
+                srText.textContent = `${recencyText}. `;
+                li.appendChild(srText);
+            }
+
             // Notable gets asterisk prefix, lifer gets star prefix (from CSS ::before)
-            li.textContent = bird.isNotable && !bird.isLifer ? `* ${bird.comName}` : bird.comName;
+            const nameText = bird.isNotable && !bird.isLifer ? `* ${bird.comName}` : bird.comName;
+            li.appendChild(document.createTextNode(nameText));
             speciesGrid.appendChild(li);
         });
 
@@ -5611,6 +5689,8 @@ class BirdingHotspotsApp {
             liferLegend.textContent = '\u2605 Potential lifer (not on your life list)';
             speciesList.appendChild(liferLegend);
         }
+
+        speciesList.appendChild(this.buildConfidenceLegend());
 
         speciesSection.appendChild(toggle);
         speciesSection.appendChild(speciesList);

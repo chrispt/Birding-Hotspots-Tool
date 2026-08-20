@@ -340,6 +340,28 @@ export class EBirdAPI {
 }
 
 /**
+ * Derive a "confidence" tier for seeing a species from how recently it was
+ * last reported. eBird's public API has no frequency/bar-chart endpoint, so
+ * this is a recency proxy, not a statistical detection rate.
+ * @param {string} obsDt - eBird observation date string (e.g. "2026-08-18 07:15")
+ * @param {Date} [referenceDate] - "now", injectable for testing
+ * @returns {{tier: 'high'|'medium'|'low', daysAgo: number}}
+ */
+export function getConfidenceTier(obsDt, referenceDate = new Date()) {
+    const diffMs = referenceDate - new Date(obsDt);
+    const daysAgo = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+    let tier;
+    if (daysAgo <= CONFIG.CONFIDENCE.HIGH_MAX_DAYS) {
+        tier = 'high';
+    } else if (daysAgo <= CONFIG.CONFIDENCE.MEDIUM_MAX_DAYS) {
+        tier = 'medium';
+    } else {
+        tier = 'low';
+    }
+    return { tier, daysAgo };
+}
+
+/**
  * Process observations to get unique species with counts
  * @param {Array} observations - Raw observation array from eBird
  * @param {Set} notableSpeciesCodes - Set of species codes that are notable
@@ -365,7 +387,8 @@ export function processObservations(observations, notableSpeciesCodes = new Set(
                 count: obs.howMany || 1,
                 lastSeen: obs.obsDt,
                 isNotable: notableSpeciesCodes.has(code),
-                isLifer: hasLifeList && !onLifeList
+                isLifer: hasLifeList && !onLifeList,
+                confidence: getConfidenceTier(obs.obsDt)
             });
         } else {
             const existing = birdMap.get(code);
@@ -373,6 +396,7 @@ export function processObservations(observations, notableSpeciesCodes = new Set(
             existing.count = Math.max(existing.count, obs.howMany || 1);
             if (obs.obsDt > existing.lastSeen) {
                 existing.lastSeen = obs.obsDt;
+                existing.confidence = getConfidenceTier(obs.obsDt);
             }
         }
     }
