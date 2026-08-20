@@ -35,6 +35,34 @@ function sanitizeHTML(str) {
 }
 
 /**
+ * Sort chase-worthy birds (notable/lifer) so the most recently reported
+ * sightings surface first, alphabetically among ties.
+ * @param {Array} birds - Bird records with a `confidence` field from processObservations
+ * @returns {Array} New sorted array
+ */
+function sortBirdsByRecency(birds) {
+    return [...birds].sort((a, b) => {
+        const aDays = a.confidence?.daysAgo ?? Infinity;
+        const bDays = b.confidence?.daysAgo ?? Infinity;
+        if (aDays !== bDays) return aDays - bDays;
+        return a.comName.localeCompare(b.comName);
+    });
+}
+
+/**
+ * A hotspot's "freshness" for the recency sort: how many days ago its most
+ * recently reported lifer or notable species was seen. Hotspots with no
+ * lifer/notable sightings sort last.
+ * @param {Object} hotspot - Hotspot with a `birds` array
+ * @returns {number} Days ago (lower is fresher), or Infinity if none qualify
+ */
+function getHotspotFreshnessDays(hotspot) {
+    const chaseWorthy = hotspot.birds.filter(b => b.isNotable || b.isLifer);
+    if (chaseWorthy.length === 0) return Infinity;
+    return Math.min(...chaseWorthy.map(b => b.confidence?.daysAgo ?? Infinity));
+}
+
+/**
  * Main application class
  */
 class BirdingHotspotsApp {
@@ -136,6 +164,7 @@ class BirdingHotspotsApp {
             sortBySpecies: document.getElementById('sortBySpecies'),
             sortByDistance: document.getElementById('sortByDistance'),
             sortByDriving: document.getElementById('sortByDriving'),
+            sortByRecency: document.getElementById('sortByRecency'),
             resultsFilterBar: document.getElementById('resultsFilterBar'),
             filterNotable: document.getElementById('filterNotable'),
             filterLifers: document.getElementById('filterLifers'),
@@ -459,6 +488,7 @@ class BirdingHotspotsApp {
         this.elements.sortBySpecies.addEventListener('click', () => this.handleSortChange('species'));
         this.elements.sortByDistance.addEventListener('click', () => this.handleSortChange('distance'));
         this.elements.sortByDriving.addEventListener('click', () => this.handleSortChange('driving'));
+        this.elements.sortByRecency.addEventListener('click', () => this.handleSortChange('recency'));
 
         // Post-search filter chips (location mode)
         this.elements.filterNotable.addEventListener('click', () => this.toggleResultFilterChip('notableOnly', this.elements.filterNotable));
@@ -2441,6 +2471,9 @@ class BirdingHotspotsApp {
                 const distB = b.drivingDistance ?? b.distance;
                 return distA - distB;
             });
+        } else if (method === 'recency') {
+            // Prioritize hotspots whose freshest lifer/notable sighting is most recent
+            return [...hotspots].sort((a, b) => getHotspotFreshnessDays(a) - getHotspotFreshnessDays(b));
         } else {
             // Sort by straight-line distance
             return [...hotspots].sort((a, b) => a.distance - b.distance);
@@ -2461,9 +2494,11 @@ class BirdingHotspotsApp {
         this.elements.sortBySpecies.classList.toggle('active', method === 'species');
         this.elements.sortByDistance.classList.toggle('active', method === 'distance');
         this.elements.sortByDriving.classList.toggle('active', method === 'driving');
+        this.elements.sortByRecency.classList.toggle('active', method === 'recency');
         this.elements.sortBySpecies.setAttribute('aria-pressed', String(method === 'species'));
         this.elements.sortByDistance.setAttribute('aria-pressed', String(method === 'distance'));
         this.elements.sortByDriving.setAttribute('aria-pressed', String(method === 'driving'));
+        this.elements.sortByRecency.setAttribute('aria-pressed', String(method === 'recency'));
     }
 
     /**
@@ -2898,6 +2933,7 @@ class BirdingHotspotsApp {
                         sciName: bird.sciName,
                         speciesCode: bird.speciesCode,
                         lastSeen: bird.lastSeen,
+                        confidence: bird.confidence,
                         hotspotName: hotspot.name
                     });
                 }
@@ -2911,13 +2947,14 @@ class BirdingHotspotsApp {
             return;
         }
 
-        // Sort alphabetically
-        lifers.sort((a, b) => a.comName.localeCompare(b.comName));
+        // Show the freshest sightings first so the "+N more" cutoff doesn't
+        // hide a lifer seen today behind ones seen weeks ago.
+        const sortedLifers = sortBirdsByRecency(lifers);
 
         // Show first 5 in preview, rest hidden
         const previewCount = 5;
-        const previewItems = lifers.slice(0, previewCount);
-        const hasMore = lifers.length > previewCount;
+        const previewItems = sortedLifers.slice(0, previewCount);
+        const hasMore = sortedLifers.length > previewCount;
 
         // Create alert element
         const alert = document.createElement('div');
@@ -2977,7 +3014,7 @@ class BirdingHotspotsApp {
             hiddenList.className = 'lifer-alert-list hidden';
             hiddenList.id = 'liferAlertMoreList';
 
-            lifers.slice(previewCount).forEach(lifer => {
+            sortedLifers.slice(previewCount).forEach(lifer => {
                 const li = document.createElement('li');
                 li.className = 'lifer-alert-item';
 
@@ -4491,9 +4528,9 @@ class BirdingHotspotsApp {
         links.appendChild(ebirdLink);
         info.appendChild(links);
 
-        // Check for key birds (notable + lifers)
-        const notableBirds = hotspot.birds ? hotspot.birds.filter(b => b.isNotable) : [];
-        const liferBirds = hotspot.birds ? hotspot.birds.filter(b => b.isLifer) : [];
+        // Check for key birds (notable + lifers), freshest sightings first
+        const notableBirds = hotspot.birds ? sortBirdsByRecency(hotspot.birds.filter(b => b.isNotable)) : [];
+        const liferBirds = hotspot.birds ? sortBirdsByRecency(hotspot.birds.filter(b => b.isLifer)) : [];
         const hasNotable = notableBirds.length > 0;
         const hasLifers = this.lifeListService.hasLifeList() && liferBirds.length > 0;
 
@@ -5698,7 +5735,7 @@ class BirdingHotspotsApp {
         // Notable species highlight section (if any) - collapsible
         let notableHighlight = null;
         if (hasNotable) {
-            const notableSpecies = hotspot.birds.filter(b => b.isNotable);
+            const notableSpecies = sortBirdsByRecency(hotspot.birds.filter(b => b.isNotable));
             notableHighlight = document.createElement('div');
             notableHighlight.className = 'notable-highlight';
 
@@ -5743,7 +5780,7 @@ class BirdingHotspotsApp {
         // Lifer species highlight section (if any) - collapsible
         let liferHighlight = null;
         if (hasLifers) {
-            const liferSpecies = hotspot.birds.filter(b => b.isLifer);
+            const liferSpecies = sortBirdsByRecency(hotspot.birds.filter(b => b.isLifer));
             liferHighlight = document.createElement('div');
             liferHighlight.className = 'lifer-highlight';
 
@@ -6888,7 +6925,7 @@ class BirdingHotspotsApp {
 
     /**
      * Handle sort method change from toggle buttons
-     * @param {string} method - 'species' or 'distance'
+     * @param {string} method - 'species', 'distance', 'driving', or 'recency'
      */
     handleSortChange(method) {
         if (method === this.currentSortMethod || !this.currentResults) return;

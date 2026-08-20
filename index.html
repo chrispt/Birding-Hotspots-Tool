@@ -438,6 +438,14 @@
                                         <span class="radio-desc">Sort by actual driving distance and time</span>
                                     </div>
                                 </label>
+                                <label class="radio-label radio-card">
+                                    <input type="radio" name="sortMethod" value="recency">
+                                    <span class="radio-custom"></span>
+                                    <div class="radio-content">
+                                        <span class="radio-title">Freshest Lifers</span>
+                                        <span class="radio-desc">Prioritize hotspots with the most recently reported lifers and notable species</span>
+                                    </div>
+                                </label>
                             </div>
                         </fieldset>
                     </div>
@@ -607,6 +615,9 @@
                         </button>
                         <button type="button" id="sortByDriving" class="sort-btn" aria-pressed="false">
                             Shortest Drive
+                        </button>
+                        <button type="button" id="sortByRecency" class="sort-btn" aria-pressed="false">
+                            Freshest Lifers
                         </button>
                     </div>
                     <div id="resultsFilterBar" class="results-filter-bar" role="group" aria-label="Filter results">

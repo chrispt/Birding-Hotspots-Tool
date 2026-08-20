@@ -184,7 +184,7 @@ export async function generatePDFReport(data, onProgress = () => {}) {
     yPos += 5;
     doc.text(`Starting Location: ${origin.address || `${origin.lat.toFixed(4)}, ${origin.lng.toFixed(4)}`}`, margin, yPos);
     yPos += 5;
-    const sortLabels = { species: 'Most Species', distance: 'Closest Distance', driving: 'Shortest Drive' };
+    const sortLabels = { species: 'Most Species', distance: 'Closest Distance', driving: 'Shortest Drive', recency: 'Freshest Lifers' };
     doc.text(`Sorted by: ${sortLabels[sortMethod] || sortMethod}`, margin, yPos);
     yPos += 5;
     const radiusMi = Math.round(searchRadiusKm * 0.621371);
@@ -362,7 +362,7 @@ export function downloadPDF(doc, sortMethod = 'species') {
     const hours = String(now.getHours()).padStart(2, '0');
     const minutes = String(now.getMinutes()).padStart(2, '0');
     const timestamp = `${month}-${day}-${year}_${hours}${minutes}`;
-    const sortLabels = { species: 'most-species', distance: 'closest', driving: 'shortest-drive' };
+    const sortLabels = { species: 'most-species', distance: 'closest', driving: 'shortest-drive', recency: 'freshest-lifers' };
     const sortLabel = sortLabels[sortMethod] || 'most-species';
     const filename = `birding-hotspots-${sortLabel}-${timestamp}.pdf`;
     doc.save(filename);
