@@ -281,6 +281,13 @@ export async function generatePDFReport(data, onProgress = () => {}) {
         doc.text(addressLines, margin, yPos);
         yPos += addressLines.length * 4 + 2;
 
+        // GPS coordinates in plain text — many birding hotspots have no cell signal,
+        // so this is what actually works: typeable into an offline maps app or a
+        // dedicated GPS unit, unlike the Google Maps link right below it.
+        doc.setTextColor(...textSecondary);
+        doc.text(`GPS: ${hotspot.lat.toFixed(5)}, ${hotspot.lng.toFixed(5)}`, margin, yPos);
+        yPos += 5;
+
         // Links
         doc.setTextColor(...linkColor);
 
@@ -552,6 +559,12 @@ export async function generateRoutePDFReport(data, onProgress = () => {}) {
             });
             yPos += 2;
         }
+
+        // GPS coordinates in plain text — works with no cell signal, unlike the
+        // Google Maps link right below it.
+        doc.setTextColor(...textSecondary);
+        doc.text(`GPS: ${stop.lat.toFixed(5)}, ${stop.lng.toFixed(5)}`, margin, yPos);
+        yPos += 5;
 
         // Links
         doc.setTextColor(...linkColor);

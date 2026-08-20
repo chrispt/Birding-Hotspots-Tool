@@ -7245,28 +7245,12 @@ class BirdingHotspotsApp {
         content.appendChild(loadingMsg);
 
         try {
-            // Derive the eBird region code from the search location's country/subnational2
-            // The nearest region-code we can derive without an extra lookup is sub-national lat/lng;
-            // eBird top-observers expects a region code. Use the reverse-geocoded county or
-            // fall back to a lat/lng-based regional-news approach.
-            // For now we use the nearby-notable-observations response that we already have loaded
-            // and render the top active observers from the notable obs set.
-            const today = new Date().toISOString().slice(0, 10);
-
-            // Attempt to get recent checklists nearby using lat/lng sub-national code.
-            // eBird's getRecentChecklists expects a region code (e.g. US-WA-033).
-            // We'll use the country fallback and top-observers with a broad region.
-            // Derive sub-national1 from notable observations' locId if available.
-            let regionCode = null;
-            if (this.notableObservations && this.notableObservations.length > 0) {
-                const sampleLocId = this.notableObservations[0].locId || '';
-                // eBird locIds look like L12345; region from subnational can be derived from
-                // observation county code if present
-                const subId = this.notableObservations[0].subnational2Code;
-                const subId1 = this.notableObservations[0].subnational1Code;
-                if (subId) regionCode = subId;
-                else if (subId1) regionCode = subId1;
-            }
+            // Derive the eBird region code (e.g. "US-FL") from the search location
+            // itself via reverse geocoding — works regardless of whether any notable
+            // (rare) species happen to have been reported nearby, unlike deriving it
+            // from this.notableObservations, which is empty most of the time.
+            const originAddress = await reverseGeocode(lat, lng, this.abortController?.signal);
+            const regionCode = this.extractRegionCode(originAddress.raw);
 
             if (!regionCode) {
                 content.innerHTML = '';
@@ -7278,7 +7262,7 @@ class BirdingHotspotsApp {
             }
 
             const [topObserversResult, recentChecklistsResult] = await Promise.allSettled([
-                this.ebirdApi.getTopObservers(regionCode, today),
+                this.ebirdApi.getTopObservers(regionCode),
                 this.ebirdApi.getRecentChecklists(regionCode)
             ]);
 

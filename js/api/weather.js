@@ -193,46 +193,70 @@ export function getBirdingConditionScore(weather) {
 }
 
 /**
- * Format a Date object to 12-hour time string (e.g., "6:42 AM")
- * @param {Date} date
+ * Format an "HH:MM" 24-hour time (as found directly in an Open-Meteo
+ * ISO string, e.g. the "06:42" in "2026-08-20T06:42") to 12-hour display.
+ * Reading the wall-clock digits straight out of the string — rather than
+ * building a Date and calling .getHours() — keeps this the hotspot's
+ * local time regardless of the traveler's own device timezone.
+ * @param {string} hhmm - "HH:MM"
  * @returns {string}
  */
-function formatTime12h(date) {
-    let hours = date.getHours();
-    const minutes = date.getMinutes().toString().padStart(2, '0');
+function formatTime12h(hhmm) {
+    let [hours, minutes] = hhmm.split(':').map(Number);
     const ampm = hours >= 12 ? 'PM' : 'AM';
     hours = hours % 12 || 12;
-    return `${hours}:${minutes} ${ampm}`;
+    return `${hours}:${minutes.toString().padStart(2, '0')} ${ampm}`;
 }
 
 /**
- * Parse sunrise/sunset from Open-Meteo daily data and compute golden hours
+ * Parse sunrise/sunset from Open-Meteo daily data and compute golden hours.
+ *
+ * Open-Meteo's `timezone=auto` response gives sunrise/sunset as wall-clock
+ * strings local to the *hotspot* with no UTC offset (e.g. "2026-08-20T06:15"),
+ * alongside a top-level `utc_offset_seconds` for that location. Handing the
+ * bare string to `new Date()` would silently reinterpret it in the browser's
+ * own timezone — fine for a local user, wrong for a traveler in a different
+ * one. So: display strings are read directly off the wall-clock digits
+ * (always correct, since they're already the hotspot's local time), while
+ * the Date objects used for "is it golden hour right now" comparisons are
+ * built by treating the string as UTC and then subtracting the location's
+ * real UTC offset, giving a true absolute instant comparable to `new Date()`.
  * @param {Object} daily - data.daily from Open-Meteo response
+ * @param {number} utcOffsetSeconds - data.utc_offset_seconds from the same response
  * @returns {Object} Sun time fields
  */
-function parseSunTimes(daily) {
+function parseSunTimes(daily, utcOffsetSeconds) {
     if (!daily?.sunrise?.[0] || !daily?.sunset?.[0]) {
         return {};
     }
 
-    const sunriseDate = new Date(daily.sunrise[0]);
-    const sunsetDate = new Date(daily.sunset[0]);
+    const sunriseWallClock = daily.sunrise[0].slice(11, 16);
+    const sunsetWallClock = daily.sunset[0].slice(11, 16);
+
+    const sunriseDate = new Date(Date.parse(`${daily.sunrise[0]}Z`) - utcOffsetSeconds * 1000);
+    const sunsetDate = new Date(Date.parse(`${daily.sunset[0]}Z`) - utcOffsetSeconds * 1000);
 
     const daylightMs = sunsetDate - sunriseDate;
     const daylightHours = Math.round((daylightMs / 3600000) * 10) / 10;
 
     // Golden hour: first hour after sunrise, last hour before sunset
-    const goldenMorningEnd = new Date(sunriseDate.getTime() + 3600000);
-    const goldenEveningStart = new Date(sunsetDate.getTime() - 3600000);
+    const goldenMorningEndWallClock = new Date(new Date(`1970-01-01T${sunriseWallClock}Z`).getTime() + 3600000);
+    const goldenEveningStartWallClock = new Date(new Date(`1970-01-01T${sunsetWallClock}Z`).getTime() - 3600000);
 
     return {
-        sunrise: formatTime12h(sunriseDate),
-        sunset: formatTime12h(sunsetDate),
+        sunrise: formatTime12h(sunriseWallClock),
+        sunset: formatTime12h(sunsetWallClock),
         sunriseDate,
         sunsetDate,
         daylightHours,
-        goldenHourMorning: { start: formatTime12h(sunriseDate), end: formatTime12h(goldenMorningEnd) },
-        goldenHourEvening: { start: formatTime12h(goldenEveningStart), end: formatTime12h(sunsetDate) }
+        goldenHourMorning: {
+            start: formatTime12h(sunriseWallClock),
+            end: formatTime12h(goldenMorningEndWallClock.toISOString().slice(11, 16))
+        },
+        goldenHourEvening: {
+            start: formatTime12h(goldenEveningStartWallClock.toISOString().slice(11, 16)),
+            end: formatTime12h(sunsetWallClock)
+        }
     };
 }
 
@@ -290,14 +314,17 @@ export async function getWeatherForLocation(lat, lng, signal) {
 
         const data = await response.json();
 
-        // Get current hour's precipitation probability
-        const currentHour = new Date().getHours();
+        // Current hour at the hotspot's own local time — data.current.time is
+        // Open-Meteo's wall-clock "now" for that location (timezone=auto), not
+        // the browser's, so a traveler in a different timezone still gets the
+        // right hour's precipitation probability instead of their home hour's.
+        const currentHour = Number(data.current.time?.slice(11, 13)) || 0;
         const precipProb = data.hourly?.precipitation_probability?.[currentHour] || 0;
 
         const weatherInfo = getWeatherInfo(data.current.weather_code);
 
         // Parse sunrise/sunset from daily data
-        const sunData = parseSunTimes(data.daily);
+        const sunData = parseSunTimes(data.daily, data.utc_offset_seconds || 0);
 
         const result = {
             temperatureC: Math.round(data.current.temperature_2m),
