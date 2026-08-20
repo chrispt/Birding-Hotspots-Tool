@@ -2703,6 +2703,37 @@ class BirdingHotspotsApp {
     }
 
     /**
+     * Build the accessible label text for a species' recency tier.
+     * @param {{tier: string}} confidence - bird.confidence, e.g. {tier: 'high'}
+     * @param {string} lastSeen - eBird observation date string
+     * @returns {string}
+     */
+    getRecencyLabelText(confidence, lastSeen) {
+        const tierLabel = confidence.tier.charAt(0).toUpperCase() + confidence.tier.slice(1);
+        return `${tierLabel} recency — last reported ${this.formatRelativeDate(lastSeen)}`;
+    }
+
+    /**
+     * Build the shared legend explaining the species recency dots.
+     * @returns {HTMLElement}
+     */
+    buildConfidenceLegend() {
+        const legend = document.createElement('p');
+        legend.className = 'confidence-legend';
+        [['high', 'High'], ['medium', 'Medium'], ['low', 'Low']].forEach(([tier, label]) => {
+            const dot = document.createElement('span');
+            dot.className = `confidence-dot confidence-${tier}`;
+            dot.setAttribute('aria-hidden', 'true');
+            legend.appendChild(dot);
+            legend.appendChild(document.createTextNode(`${label}  `));
+        });
+        legend.appendChild(document.createTextNode(
+            '— how recently each species was reported here, not a statistical frequency'
+        ));
+        return legend;
+    }
+
+    /**
      * Render the rare bird alert banner
      */
     renderRareBirdAlert() {
@@ -4530,14 +4561,13 @@ class BirdingHotspotsApp {
                     const dot = document.createElement('span');
                     dot.className = 'confidence-dot';
                     dot.setAttribute('aria-hidden', 'true');
-                    const tierLabel = bird.confidence.tier.charAt(0).toUpperCase() + bird.confidence.tier.slice(1);
-                    const confidenceText = `${tierLabel} confidence \u2014 last reported ${this.formatRelativeDate(bird.lastSeen)}`;
-                    li.title = confidenceText;
+                    const recencyText = this.getRecencyLabelText(bird.confidence, bird.lastSeen);
+                    li.title = recencyText;
                     li.appendChild(dot);
 
                     const srText = document.createElement('span');
                     srText.className = 'visually-hidden';
-                    srText.textContent = `${confidenceText}. `;
+                    srText.textContent = `${recencyText}. `;
                     li.appendChild(srText);
                 }
 
@@ -4555,6 +4585,10 @@ class BirdingHotspotsApp {
                 more.className = 'route-key-birds-more';
                 more.textContent = `+${keyBirds.length - 3} more key birds`;
                 keyBirdsSection.appendChild(more);
+            }
+
+            if (displayBirds.some(bird => bird.confidence)) {
+                keyBirdsSection.appendChild(this.buildConfidenceLegend());
             }
 
             info.appendChild(keyBirdsSection);
@@ -5612,14 +5646,13 @@ class BirdingHotspotsApp {
                 const dot = document.createElement('span');
                 dot.className = 'confidence-dot';
                 dot.setAttribute('aria-hidden', 'true');
-                const tierLabel = bird.confidence.tier.charAt(0).toUpperCase() + bird.confidence.tier.slice(1);
-                const confidenceText = `${tierLabel} confidence \u2014 last reported ${this.formatRelativeDate(bird.lastSeen)}`;
-                li.title = confidenceText;
+                const recencyText = this.getRecencyLabelText(bird.confidence, bird.lastSeen);
+                li.title = recencyText;
                 li.appendChild(dot);
 
                 const srText = document.createElement('span');
                 srText.className = 'visually-hidden';
-                srText.textContent = `${confidenceText}. `;
+                srText.textContent = `${recencyText}. `;
                 li.appendChild(srText);
             }
 
@@ -5646,19 +5679,7 @@ class BirdingHotspotsApp {
             speciesList.appendChild(liferLegend);
         }
 
-        const confidenceLegend = document.createElement('p');
-        confidenceLegend.className = 'confidence-legend';
-        [['high', 'High'], ['medium', 'Medium'], ['low', 'Low']].forEach(([tier, label]) => {
-            const dot = document.createElement('span');
-            dot.className = `confidence-dot confidence-${tier}`;
-            dot.setAttribute('aria-hidden', 'true');
-            confidenceLegend.appendChild(dot);
-            confidenceLegend.appendChild(document.createTextNode(`${label}  `));
-        });
-        confidenceLegend.appendChild(document.createTextNode(
-            '\u2014 confidence based on how recently each species was reported here, not a statistical frequency'
-        ));
-        speciesList.appendChild(confidenceLegend);
+        speciesList.appendChild(this.buildConfidenceLegend());
 
         speciesSection.appendChild(toggle);
         speciesSection.appendChild(speciesList);
