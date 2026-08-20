@@ -57,7 +57,7 @@ function sortBirdsByRecency(birds) {
  * @returns {number} Days ago (lower is fresher), or Infinity if none qualify
  */
 function getHotspotFreshnessDays(hotspot) {
-    const chaseWorthy = hotspot.birds.filter(b => b.isNotable || b.isLifer);
+    const chaseWorthy = (hotspot.birds || []).filter(b => b.isNotable || b.isLifer);
     if (chaseWorthy.length === 0) return Infinity;
     return Math.min(...chaseWorthy.map(b => b.confidence?.daysAgo ?? Infinity));
 }
