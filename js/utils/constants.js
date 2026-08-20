@@ -31,6 +31,15 @@ export const CONFIG = {
     DEFAULT_SEARCH_RADIUS: 50,  // km (max for eBird)
     DEFAULT_DAYS_BACK: 30,
 
+    // Species confidence tiers - a recency-based proxy for "how likely am I to
+    // see this species here", derived from the recent-observations window above.
+    // eBird's public API has no true frequency/bar-chart endpoint, so this is
+    // NOT a statistical detection rate - just how recently it was last reported.
+    CONFIDENCE: {
+        HIGH_MAX_DAYS: 3,
+        MEDIUM_MAX_DAYS: 7
+    },
+
     // Geocoding
     GEOCODE_TIMEOUT: 10000,  // 10 seconds
 

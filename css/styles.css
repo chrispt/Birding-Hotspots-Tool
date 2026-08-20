@@ -55,6 +55,10 @@
     /* Error badge */
     --error-badge-bg: #d32f2f;
     --error-badge-text: #fff;
+    /* Semantic colors: species confidence tiers */
+    --confidence-high: #388E3C;
+    --confidence-medium: #FFA000;
+    --confidence-low: #90A4AE;
     /* Spacing scale */
     --spacing-xs: 8px;
     --spacing-sm: 16px;
@@ -81,6 +85,9 @@
         --error-bg: #3E1E1E;
         --lifer-bg: #2A1E2E;
         --card-bg-muted: #201C14;
+        --confidence-high: #66BB6A;
+        --confidence-medium: #FFB74D;
+        --confidence-low: #90A4AE;
     }
 }
 
@@ -132,6 +139,9 @@
     --season-winter: #90A4AE;
     --error-badge-bg: #ef5350;
     --error-badge-text: #fff;
+    --confidence-high: #66BB6A;
+    --confidence-medium: #FFB74D;
+    --confidence-low: #90A4AE;
 }
 
 [data-theme="dark"] .loading-overlay {
@@ -2415,6 +2425,41 @@ details.about-section[open] .about-chevron {
     font-size: 0.8rem;
     color: var(--notable-highlight);
     font-style: italic;
+}
+
+.confidence-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 5px;
+    vertical-align: middle;
+    background: var(--confidence-low);
+}
+
+.confidence-high .confidence-dot,
+.confidence-dot.confidence-high {
+    background: var(--confidence-high);
+}
+
+.confidence-medium .confidence-dot,
+.confidence-dot.confidence-medium {
+    background: var(--confidence-medium);
+}
+
+.confidence-low .confidence-dot,
+.confidence-dot.confidence-low {
+    background: var(--confidence-low);
+}
+
+.confidence-legend {
+    margin: 8px 0 0 0;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 2px 4px;
 }
 
 /* Copy Species List Button */
