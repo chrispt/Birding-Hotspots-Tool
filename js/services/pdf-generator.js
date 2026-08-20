@@ -235,7 +235,7 @@ export async function generatePDFReport(data, onProgress = () => {}) {
         // Estimate space needed for this hotspot (base + bird columns + the
         // weather/seasonal lines and marker legend added below)
         const birdLines = Math.ceil(hotspot.birds.length / 3); // Rough estimate
-        const estimatedHeight = 80 + (birdLines * 5);
+        const estimatedHeight = 85 + (birdLines * 5); // +5 for the GPS coordinates line
         checkNewPage(estimatedHeight);
 
         // Hotspot header with number
@@ -501,7 +501,7 @@ export async function generateRoutePDFReport(data, onProgress = () => {}) {
         // weather/seasonal lines and marker legend added below)
         const birds = stop.birds || [];
         const birdLines = Math.ceil(birds.length / 3);
-        const estimatedHeight = 85 + (birdLines * 5);
+        const estimatedHeight = 90 + (birdLines * 5); // +5 for the GPS coordinates line
         checkNewPage(estimatedHeight);
 
         // Stop header with number

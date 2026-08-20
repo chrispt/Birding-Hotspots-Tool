@@ -14,14 +14,17 @@ const WEATHER_CACHE_TTL_MS = 60 * 60 * 1000;
 const WEATHER_MAX_ENTRIES = 50;
 
 /**
- * Build a weather cache key from coordinates and the current hour.
+ * Build a weather cache key from coordinates.
+ * Freshness is already enforced by WEATHER_CACHE_TTL_MS on read, so the key
+ * doesn't need an hour component — an hour bucketed off the browser's own
+ * timezone would be wrong for a traveler looking at a hotspot in a
+ * different one anyway.
  * @param {number} lat
  * @param {number} lng
  * @returns {string}
  */
 function getWeatherCacheKey(lat, lng) {
-    const hour = new Date().getHours();
-    return `${lat.toFixed(2)},${lng.toFixed(2)},${hour}`;
+    return `${lat.toFixed(2)},${lng.toFixed(2)}`;
 }
 
 /**
