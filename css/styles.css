@@ -2457,9 +2457,31 @@ details.about-section[open] .about-chevron {
     font-size: 0.78rem;
     color: var(--text-secondary);
     display: flex;
-    align-items: center;
     flex-wrap: wrap;
-    gap: 2px 4px;
+    align-items: center;
+    gap: 4px 10px;
+}
+
+.confidence-legend-items {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+}
+
+/* Keep each dot glued to its label so a wrap never splits them apart */
+.confidence-legend-item {
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+}
+
+.confidence-legend-item .confidence-dot {
+    margin-right: 4px;
+}
+
+.confidence-legend-explainer {
+    flex: 1 1 auto;
+    min-width: 0;
 }
 
 /* Copy Species List Button */

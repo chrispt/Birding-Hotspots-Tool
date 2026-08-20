@@ -2720,16 +2720,27 @@ class BirdingHotspotsApp {
     buildConfidenceLegend() {
         const legend = document.createElement('p');
         legend.className = 'confidence-legend';
+
+        const items = document.createElement('span');
+        items.className = 'confidence-legend-items';
         [['high', 'High'], ['medium', 'Medium'], ['low', 'Low']].forEach(([tier, label]) => {
+            const item = document.createElement('span');
+            item.className = 'confidence-legend-item';
+
             const dot = document.createElement('span');
             dot.className = `confidence-dot confidence-${tier}`;
             dot.setAttribute('aria-hidden', 'true');
-            legend.appendChild(dot);
-            legend.appendChild(document.createTextNode(`${label}  `));
+            item.appendChild(dot);
+            item.appendChild(document.createTextNode(label));
+            items.appendChild(item);
         });
-        legend.appendChild(document.createTextNode(
-            '— how recently each species was reported here, not a statistical frequency'
-        ));
+        legend.appendChild(items);
+
+        const explainer = document.createElement('span');
+        explainer.className = 'confidence-legend-explainer';
+        explainer.textContent = '— how recently each species was reported here, not a statistical frequency';
+        legend.appendChild(explainer);
+
         return legend;
     }
 
