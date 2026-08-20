@@ -55,10 +55,10 @@
     /* Error badge */
     --error-badge-bg: #d32f2f;
     --error-badge-text: #fff;
-    /* Semantic colors: species confidence tiers */
+    /* Semantic colors: species confidence tiers (darkened for WCAG 3:1 non-text contrast on light backgrounds) */
     --confidence-high: #388E3C;
-    --confidence-medium: #FFA000;
-    --confidence-low: #90A4AE;
+    --confidence-medium: #B36A00;
+    --confidence-low: #546E7A;
     /* Spacing scale */
     --spacing-xs: 8px;
     --spacing-sm: 16px;

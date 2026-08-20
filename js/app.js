@@ -4531,8 +4531,14 @@ class BirdingHotspotsApp {
                     dot.className = 'confidence-dot';
                     dot.setAttribute('aria-hidden', 'true');
                     const tierLabel = bird.confidence.tier.charAt(0).toUpperCase() + bird.confidence.tier.slice(1);
-                    li.title = `${tierLabel} confidence \u2014 last reported ${this.formatRelativeDate(bird.lastSeen)}`;
+                    const confidenceText = `${tierLabel} confidence \u2014 last reported ${this.formatRelativeDate(bird.lastSeen)}`;
+                    li.title = confidenceText;
                     li.appendChild(dot);
+
+                    const srText = document.createElement('span');
+                    srText.className = 'visually-hidden';
+                    srText.textContent = `${confidenceText}. `;
+                    li.appendChild(srText);
                 }
 
                 const prefix = bird.isTarget ? '\u2691 ' : (bird.isNotable ? '* ' : (bird.isLifer ? '\u2605 ' : ''));
@@ -5607,8 +5613,14 @@ class BirdingHotspotsApp {
                 dot.className = 'confidence-dot';
                 dot.setAttribute('aria-hidden', 'true');
                 const tierLabel = bird.confidence.tier.charAt(0).toUpperCase() + bird.confidence.tier.slice(1);
-                li.title = `${tierLabel} confidence \u2014 last reported ${this.formatRelativeDate(bird.lastSeen)}`;
+                const confidenceText = `${tierLabel} confidence \u2014 last reported ${this.formatRelativeDate(bird.lastSeen)}`;
+                li.title = confidenceText;
                 li.appendChild(dot);
+
+                const srText = document.createElement('span');
+                srText.className = 'visually-hidden';
+                srText.textContent = `${confidenceText}. `;
+                li.appendChild(srText);
             }
 
             // Notable gets asterisk prefix, lifer gets star prefix (from CSS ::before)
