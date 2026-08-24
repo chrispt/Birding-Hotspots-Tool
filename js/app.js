@@ -7226,7 +7226,7 @@ class BirdingHotspotsApp {
 
     /**
      * Fetch and render the regional activity panel after results load.
-     * Uses the already-built but dormant getTopObservers() and getRecentChecklists() methods.
+     * Uses the already-built but dormant getRecentChecklists() method.
      * @param {number} lat - Latitude
      * @param {number} lng - Longitude
      */
@@ -7261,13 +7261,12 @@ class BirdingHotspotsApp {
                 return;
             }
 
-            const [topObserversResult, recentChecklistsResult] = await Promise.allSettled([
-                this.ebirdApi.getTopObservers(regionCode),
+            const [recentChecklistsResult] = await Promise.allSettled([
                 this.ebirdApi.getRecentChecklists(regionCode)
             ]);
 
             content.innerHTML = '';
-            this.renderRegionalActivity(content, topObserversResult, recentChecklistsResult, regionCode);
+            this.renderRegionalActivity(content, recentChecklistsResult, regionCode);
         } catch (err) {
             content.innerHTML = '';
             const msg = document.createElement('p');
@@ -7278,17 +7277,15 @@ class BirdingHotspotsApp {
     }
 
     /**
-     * Render top observers and recent checklists into the regional activity panel.
+     * Render recent checklists into the regional activity panel.
      * @param {HTMLElement} container
-     * @param {PromiseSettledResult} topObserversResult
      * @param {PromiseSettledResult} recentChecklistsResult
      * @param {string} regionCode
      */
-    renderRegionalActivity(container, topObserversResult, recentChecklistsResult, regionCode) {
-        const observers = topObserversResult.status === 'fulfilled' ? topObserversResult.value : [];
+    renderRegionalActivity(container, recentChecklistsResult, regionCode) {
         const checklists = recentChecklistsResult.status === 'fulfilled' ? recentChecklistsResult.value : [];
 
-        if (observers.length === 0 && checklists.length === 0) {
+        if (checklists.length === 0) {
             const msg = document.createElement('p');
             msg.className = 'help-text';
             msg.textContent = 'No recent regional activity found.';
@@ -7299,41 +7296,6 @@ class BirdingHotspotsApp {
         const body = document.createElement('div');
         body.className = 'regional-activity-body';
         container.appendChild(body);
-
-        if (observers.length > 0) {
-            const col = document.createElement('div');
-            col.className = 'regional-activity-column';
-
-            const obsTitle = document.createElement('h4');
-            obsTitle.textContent = 'Top Observers This Week';
-            col.appendChild(obsTitle);
-
-            const obsList = document.createElement('ol');
-
-            observers.slice(0, 5).forEach((obs, i) => {
-                const item = document.createElement('li');
-
-                const rank = document.createElement('span');
-                rank.className = 'rank-badge';
-                rank.textContent = `${i + 1}`;
-                rank.setAttribute('aria-hidden', 'true');
-
-                const name = document.createElement('span');
-                name.className = 'observer-name';
-                name.textContent = obs.userDisplayName || obs.name || 'Unknown';
-
-                const count = document.createElement('span');
-                count.className = 'observer-count';
-                count.textContent = `${obs.numSpecies || 0} sp.`;
-
-                item.appendChild(rank);
-                item.appendChild(name);
-                item.appendChild(count);
-                obsList.appendChild(item);
-            });
-            col.appendChild(obsList);
-            body.appendChild(col);
-        }
 
         if (checklists.length > 0) {
             const col = document.createElement('div');
