@@ -5478,7 +5478,6 @@ details.about-section[open] .about-chevron {
     margin: 0 0 10px 0;
 }
 
-.regional-activity-column ol,
 .regional-activity-column ul {
     padding: 0;
     margin: 0;
@@ -5497,28 +5496,6 @@ details.about-section[open] .about-chevron {
     padding: 6px 8px;
     border-radius: var(--radius);
     background: var(--background);
-}
-
-/* Gold / silver / bronze — use accent and primary tokens so dark mode works */
-.regional-activity-column li:nth-child(1) .rank-badge { color: var(--accent-color); }
-.regional-activity-column li:nth-child(2) .rank-badge { color: var(--text-secondary); }
-.regional-activity-column li:nth-child(3) .rank-badge { color: var(--primary-light); }
-
-.rank-badge {
-    font-size: 0.75rem;
-    font-weight: 700;
-    width: 18px;
-    text-align: center;
-    flex-shrink: 0;
-}
-
-.observer-name {
-    flex: 1;
-    font-weight: 500;
-    color: var(--text-primary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
 }
 
 .observer-count {
