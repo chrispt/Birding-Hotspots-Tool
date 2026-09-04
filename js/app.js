@@ -169,6 +169,7 @@ class BirdingHotspotsApp {
             sortByDriving: document.getElementById('sortByDriving'),
             sortByRecency: document.getElementById('sortByRecency'),
             resultsFilterBar: document.getElementById('resultsFilterBar'),
+            badgeLegend: document.getElementById('badgeLegend'),
             filterNotable: document.getElementById('filterNotable'),
             filterLifers: document.getElementById('filterLifers'),
             filterMinSpecies: document.getElementById('filterMinSpecies'),
@@ -1984,8 +1985,10 @@ class BirdingHotspotsApp {
         this.elements.routeMaxDetour.value = String(route.detour);
         this.elements.routeMaxDetourValue.textContent = String(route.detour);
 
-        Promise.all([this.handleRouteStartBlur(), this.handleRouteEndBlur()])
-            .catch(() => { /* each blur handler reports its own error */ });
+        // Deliberately no geocoding here: the addresses came from a URL, so
+        // nothing leaves the browser until the user clicks Plan Route
+        // (handleRouteSearch geocodes any address not yet validated).
+        this.showToast('Route loaded from link. Click Plan Route to preview and search.');
     }
 
     /**
@@ -2821,6 +2824,18 @@ class BirdingHotspotsApp {
         });
 
         container.classList.remove('hidden');
+    }
+
+    /**
+     * Show or hide the keyboard-reachable badge legend. It only makes sense
+     * next to hotspot cards, so it follows the results filter bar.
+     * @param {boolean} visible
+     */
+    setBadgeLegendVisible(visible) {
+        const legend = this.elements.badgeLegend;
+        if (!legend) return;
+        legend.classList.toggle('hidden', !visible);
+        if (!visible) legend.open = false;
     }
 
     /**
@@ -5149,6 +5164,7 @@ class BirdingHotspotsApp {
         // stops have a fixed order and aren't filterable)
         this.elements.sortBySpecies.parentElement.classList.add('hidden');
         this.elements.resultsFilterBar.classList.add('hidden');
+        this.setBadgeLegendVisible(false);
 
         // Hide export PDF/GPX buttons (route has its own export buttons)
         this.elements.exportPdfBtn.classList.add('hidden');
@@ -5460,6 +5476,7 @@ class BirdingHotspotsApp {
         // (currentResults.hotspots isn't populated in this mode)
         this.elements.sortBySpecies.parentElement.classList.add('hidden');
         this.elements.resultsFilterBar.classList.add('hidden');
+        this.setBadgeLegendVisible(false);
 
         // Species search doesn't populate currentResults.hotspots; hide the generic panel
         this.updateGenericItineraryButtonVisibility();
@@ -6946,6 +6963,7 @@ class BirdingHotspotsApp {
         }
         this.elements.sortBySpecies.parentElement.classList.add('hidden');
         this.elements.resultsFilterBar.classList.add('hidden');
+        this.setBadgeLegendVisible(false);
         this.elements.exportPdfBtn.classList.add('hidden');
         this.elements.exportGpxBtn.classList.add('hidden');
         this.elements.buildItineraryBtn.classList.add('hidden');
@@ -6980,6 +6998,7 @@ class BirdingHotspotsApp {
         this.elements.mainContent.classList.remove('has-results');
         this.elements.sortBySpecies.parentElement.classList.remove('hidden');
         this.elements.resultsFilterBar.classList.remove('hidden');
+        this.setBadgeLegendVisible(true);
         this.elements.exportPdfBtn.classList.remove('hidden');
         this.elements.exportGpxBtn.classList.remove('hidden');
         this.elements.exportItineraryPdf.classList.remove('hidden');
@@ -7246,6 +7265,7 @@ class BirdingHotspotsApp {
         // hidden for species search or route mode)
         this.elements.sortBySpecies.parentElement.classList.remove('hidden');
         this.elements.resultsFilterBar.classList.remove('hidden');
+        this.setBadgeLegendVisible(true);
 
         // Show export PDF/GPX buttons again (may have been hidden for route mode)
         this.elements.exportPdfBtn.classList.remove('hidden');

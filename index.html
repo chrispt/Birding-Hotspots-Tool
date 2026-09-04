@@ -417,6 +417,7 @@
                     </svg>
                 </button>
                 <div id="advancedOptionsContent" class="collapsible-content collapsed">
+                    <p class="help-text advanced-options-note">Your choices here are remembered on this device.</p>
                     <!-- Sort Options -->
                     <div class="advanced-option-group" id="sortOptionsSection">
                         <fieldset class="fieldset-reset">
@@ -644,6 +645,25 @@
                             <input type="number" id="filterMinSpecies" class="filter-min-species-input" min="0" step="1" value="0" inputmode="numeric">
                         </div>
                     </div>
+                    <details class="badge-legend" id="badgeLegend">
+                        <summary>What do the badges mean?</summary>
+                        <dl>
+                            <dt>N species</dt>
+                            <dd>Distinct species reported at that hotspot in the last 30 days.</dd>
+                            <dt>RARE</dt>
+                            <dd>Has a species flagged as rare or unusual for this area on eBird.</dd>
+                            <dt>LIFER</dt>
+                            <dd>Has species that are not on the list you imported.</dd>
+                            <dt>Well-Established</dt>
+                            <dd>500 or more checklists submitted there: a popular, reliable spot.</dd>
+                            <dt>Active</dt>
+                            <dd>50 or more checklists: regularly birded.</dd>
+                            <dt>New Spot</dt>
+                            <dd>Fewer than 50 checklists so far: little data yet, possibly under-birded.</dd>
+                            <dt>Quick picks</dt>
+                            <dd>The hotspot with the most species, the closest one, and the one with the freshest rare or lifer sighting. Click a chip to jump to it.</dd>
+                        </dl>
+                    </details>
                     <div class="results-actions">
                         <button type="button" id="newSearchBtn" class="btn btn-secondary">
                             <svg viewBox="0 0 24 24" width="18" height="18">

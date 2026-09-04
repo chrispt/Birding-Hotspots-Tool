@@ -5724,3 +5724,59 @@ details.about-section[open] .about-chevron {
         width: 100%;
     }
 }
+
+/* Remembered-options note inside Advanced Options */
+.advanced-options-note {
+    margin: 0 0 12px;
+}
+
+/* Keyboard-reachable legend for result badges (see .confidence-legend) */
+.badge-legend {
+    margin: 0 0 16px;
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+}
+
+.badge-legend summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--text-secondary);
+    padding: 6px 0;
+    list-style: revert;
+}
+
+.badge-legend summary:hover {
+    color: var(--text-primary);
+}
+
+.badge-legend summary:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+    border-radius: var(--radius);
+}
+
+.badge-legend dl {
+    margin: 4px 0 0;
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 4px 12px;
+}
+
+.badge-legend dt {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.badge-legend dd {
+    margin: 0;
+}
+
+@media (max-width: 480px) {
+    .badge-legend dl {
+        grid-template-columns: 1fr;
+        gap: 2px 0;
+    }
+    .badge-legend dd {
+        margin-bottom: 6px;
+    }
+}
