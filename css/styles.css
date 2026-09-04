@@ -6253,3 +6253,76 @@ details.about-section[open] .about-chevron {
     font-size: 0.8125rem;
     color: var(--text-secondary);
 }
+
+/* ==========================================================================
+   Touch tap targets: every control at least 44px on phones and touch
+   screens. Desktop pointer users keep the compact sizes.
+   ========================================================================== */
+@media (hover: none) and (pointer: coarse), (max-width: 600px) {
+    .about-toggle,
+    .collapsible-header,
+    .notable-highlight-toggle,
+    .lifer-highlight-toggle,
+    .seasonal-insights-toggle,
+    .species-toggle,
+    .hotspot-details-toggle {
+        min-height: 44px;
+        box-sizing: border-box;
+    }
+
+    .btn-link,
+    .quick-pick-see,
+    .quick-pick-directions {
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 4px;
+    }
+
+    .results-select,
+    .results-controls .btn-small {
+        min-height: 44px;
+    }
+
+    .section-title .help-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 44px;
+        min-height: 44px;
+        margin: -12px 0;
+    }
+
+    .toast-dismiss {
+        min-width: 44px;
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .header .help-link,
+    .theme-toggle-btn,
+    .btn,
+    .btn-reset,
+    .recent-searches-clear,
+    .recent-search-chip,
+    .filter-chip,
+    .mode-tab {
+        min-height: 44px;
+        box-sizing: border-box;
+    }
+
+    .recent-searches-clear {
+        min-width: 44px;
+    }
+
+    .footer a,
+    .help-text a,
+    .help-text-small a,
+    .about-note a {
+        display: inline-block;
+        padding: 12px 2px;
+        margin: -12px 0;
+    }
+}
