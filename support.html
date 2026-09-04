@@ -81,7 +81,7 @@
                             <li>Copy the API key that's generated</li>
                             <li>Paste it into the "eBird API Key" field on the main page</li>
                         </ol>
-                        <p>Your API key is typically issued immediately. Check the "Remember my API key" box to save it for future visits.</p>
+                        <p>Your API key is typically issued immediately. Check the "Remember my API key" box to save it for future visits. Once a key is saved, the card collapses to a single "eBird API key saved" line; click <strong>Change</strong> to edit or replace it.</p>
                     </div>
                 </details>
 
@@ -129,8 +129,8 @@
                 <details class="faq-item">
                     <summary class="faq-question">What does "Find hotspots near me" do?</summary>
                     <div class="faq-answer">
-                        <p>It is a one-click shortcut for the most common search. Clicking it switches to a plain hotspot search, asks your browser for your current location, and immediately runs the search using whatever sort, range, and count you have set under Advanced Options.</p>
-                        <p>You still need an eBird API key in the field at the top of the page. If the key is missing you will see the usual "API key required" message.</p>
+                        <p>It is a one-click shortcut for the most common search. Clicking it switches to the <strong>Near a place</strong> tab, asks your browser for your current location, and immediately runs the search using whatever sort, range, and count you have set under Advanced Options.</p>
+                        <p>You still need an eBird API key. If the key is missing you will see the usual "API key required" message.</p>
                     </div>
                 </details>
 
@@ -142,29 +142,29 @@
                 </details>
 
                 <details class="faq-item">
-                    <summary class="faq-question">What's the difference between "Search a Location" and "Plan a Route"?</summary>
+                    <summary class="faq-question">What are the three search modes?</summary>
                     <div class="faq-answer">
-                        <p>The tool offers two main search types:</p>
-                        <p><strong>Search a Location</strong> - Find birding hotspots or a specific species within a circular radius around a single location. Within this mode, you can choose to:</p>
+                        <p>The tabs at the top of the search card switch between three modes:</p>
                         <ul>
-                            <li><strong>Find Hotspots</strong> - Discover the best birding spots near your location, sorted by species diversity or distance</li>
-                            <li><strong>Find a Species</strong> - Search for recent sightings of a specific bird species near your location</li>
+                            <li><strong>Near a place</strong> - Find the best birding hotspots within a circular radius around one location, ranked by your chosen sort.</li>
+                            <li><strong>Along a route</strong> - Find hotspots along an actual driving path between two locations. Ideal for road trips where you want to stop at birding spots without going too far off your route.</li>
+                            <li><strong>A species</strong> - Search for recent sightings of one bird species near a location.</li>
                         </ul>
-                        <p><strong>Plan a Route</strong> - Find hotspots along an actual driving path between two locations. This is ideal for road trips where you want to stop at birding spots along the way without going too far off your route.</p>
+                        <p>Under the location form, a one-line summary shows your current range, hotspot count, and sort ("Within 10 mi · Top 10 · Most species"). Click <strong>Change</strong> to open Advanced Options.</p>
                     </div>
                 </details>
 
                 <details class="faq-item">
                     <summary class="faq-question">Why is the search range limited to 50km (31 miles)?</summary>
                     <div class="faq-answer">
-                        <p>This is a limitation of the eBird API. Their hotspot search endpoint only returns results within a 50km radius. For longer distances, consider using the "Plan a Route" feature, which searches along your entire driving path.</p>
+                        <p>This is a limitation of the eBird API. Their hotspot search endpoint only returns results within a 50km radius. For longer distances, use the <strong>Along a route</strong> tab, which searches along your entire driving path.</p>
                     </div>
                 </details>
 
                 <details class="faq-item">
                     <summary class="faq-question">How does the species search work?</summary>
                     <div class="faq-answer">
-                        <p>When you select "Find a Species" under "Search a Location":</p>
+                        <p>When you choose the <strong>A species</strong> tab:</p>
                         <ol>
                             <li>Start typing a bird name (common or scientific) in the search box</li>
                             <li>Select the species from the dropdown suggestions</li>
@@ -177,7 +177,7 @@
                 <details class="faq-item">
                     <summary class="faq-question">What does "Max Detour from Route" do?</summary>
                     <div class="faq-answer">
-                        <p>When using the "Plan a Route" feature, this slider controls how far off your driving path you're willing to go to visit a hotspot.</p>
+                        <p>In <strong>Along a route</strong> mode, this slider controls how far off your driving path you're willing to go to visit a hotspot.</p>
                         <ul>
                             <li><strong>3-5 miles</strong> - Only shows hotspots very close to your route</li>
                             <li><strong>10-15 miles</strong> - Includes hotspots further from the route, giving you more options but longer detours</li>
@@ -188,7 +188,7 @@
                 <details class="faq-item">
                     <summary class="faq-question">Can I enter GPS coordinates instead of an address?</summary>
                     <div class="faq-answer">
-                        <p>Yes. When using "Search a Location", you can toggle between "Address" and "GPS Coordinates" input modes. Enter your latitude and longitude values directly (e.g., 40.7128 for latitude and -74.0060 for longitude).</p>
+                        <p>Yes. In <strong>Near a place</strong> mode you can toggle between "Address" and "GPS Coordinates" input modes. Enter your latitude and longitude values directly (e.g., 40.7128 for latitude and -74.0060 for longitude).</p>
                         <p>You can also click "Use My Current Location" to automatically detect your position using your device's GPS.</p>
                     </div>
                 </details>
@@ -225,36 +225,47 @@
                 <h2 class="section-title">Understanding Results</h2>
 
                 <details class="faq-item">
-                    <summary class="faq-question">What are Quick picks?</summary>
+                    <summary class="faq-question">What is "Where should I go?"</summary>
                     <div class="faq-answer">
-                        <p>Quick picks is the short strip at the top of the results. It names up to three hotspots: the one with the <strong>most species</strong> in the last 30 days, the <strong>closest</strong> one, and the one with the <strong>freshest activity</strong> (the most recently reported rare or lifer species). Click a chip to jump to that hotspot's card.</p>
-                        <p>If one hotspot wins in more than one category the chips are combined, and the freshness chip is left out when no hotspot has a recent rare or lifer sighting. If a filter hides the winning hotspot you will see a short notice instead.</p>
+                        <p>It is the row of up to three answer cards at the top of the results: the hotspot with the <strong>most species</strong> in the last 30 days, the <strong>closest</strong> one, and the one with the <strong>freshest sighting</strong> (the most recently reported rare or target species). Each card shows a one-line reason (the fresh bird, species this month, drive time, targets) plus <strong>See details</strong>, which jumps to that hotspot's card, and <strong>Directions</strong>.</p>
+                        <p>If one hotspot wins in more than one category the labels are combined on a single card, and the freshest-sighting card is left out when no hotspot has a recent rare or target sighting. If a filter hides the winning hotspot you will see a short notice instead.</p>
                     </div>
                 </details>
 
                 <details class="faq-item">
-                    <summary class="faq-question">What do the RARE, LIFER, and quality badges mean?</summary>
+                    <summary class="faq-question">What do the badges on a hotspot card mean?</summary>
                     <div class="faq-answer">
+                        <p>Each card opens with one line (species this month, drive time or distance, and quality with visit count), then a row of badges:</p>
                         <ul>
-                        <li><strong>RARE</strong>: the hotspot has at least one species that eBird flagged as rare or unusual for that place and season.</li>
-                        <li><strong>LIFER</strong>: the hotspot has species that are not on the list you imported.</li>
+                        <li><strong>RARE · bird name</strong>: the hotspot has at least one species that eBird flagged as rare or unusual for that place and season. The freshest one is named; "+N" means more.</li>
+                        <li><strong>N targets</strong>: that many species at the hotspot are not on the list you imported.</li>
+                        <li><strong>Fresh today / Fresh yesterday</strong>: a rare or target species was reported there in the last day.</li>
                         <li><strong>Well-Established</strong>: 500 or more checklists have been submitted there, so it is a popular, reliable spot.</li>
                         <li><strong>Active</strong>: 50 or more checklists. Regularly birded.</li>
                         <li><strong>New Spot</strong>: fewer than 50 checklists. Little data yet, and possibly under-birded.</li>
                         </ul>
-                        <p>Hover over any badge or the species count for the same explanation. A <strong>hotspot</strong> is a public birding location tracked on eBird, a <strong>checklist</strong> is one birder's report of a visit, and a <strong>lifer</strong> is a species you have never seen before.</p>
+                        <p>A purple <strong>For you</strong> row lists the target and rare birds worth the trip with how recently each was reported. Hover over any badge for the same explanation, or open <strong>Filters</strong> in the results header and expand "What do the badges mean?" for a keyboard-reachable legend. A <strong>hotspot</strong> is a public birding location tracked on eBird, a <strong>checklist</strong> is one birder's report of a visit, and a <strong>lifer</strong> is a species you have never seen before.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">Where are the species list, weather, and birding tips?</summary>
+                    <div class="faq-answer">
+                        <p>Behind the single <strong>Details</strong> toggle at the bottom of each card. It reveals the notable sightings and potential lifers lists, the weather badge with sunrise and sunset, the address, the full species list with the Copy List button and recency dots, and the seasonal best-time chart and tips. The hint next to "Details" tells you what is inside before you open it.</p>
                     </div>
                 </details>
 
                 <details class="faq-item">
                     <summary class="faq-question">How are hotspots ranked?</summary>
                     <div class="faq-answer">
-                        <p>You can sort results by three different methods:</p>
+                        <p>Use the <strong>Sort</strong> dropdown in the results header (or the same choice under Advanced Options before searching):</p>
                         <ul>
-                            <li><strong>Most Species</strong> - Hotspots with the highest number of unique bird species observed within your "Days to Look Back" period appear first</li>
-                            <li><strong>Closest Distance</strong> - Hotspots nearest to your location (straight-line distance) appear first</li>
-                            <li><strong>Shortest Drive</strong> - Hotspots with the shortest actual driving time from your location appear first</li>
+                            <li><strong>Most species</strong> - Hotspots with the highest number of unique bird species observed in the last 30 days appear first</li>
+                            <li><strong>Closest</strong> - Hotspots nearest to your location (straight-line distance) appear first</li>
+                            <li><strong>Shortest drive</strong> - Hotspots with the shortest actual driving time from your location appear first</li>
+                            <li><strong>Freshest sightings</strong> - Hotspots with the most recently reported targets and notable species appear first</li>
                         </ul>
+                        <p>The <strong>Filters</strong> button next to it narrows the list to hotspots with notable species, with targets, or with at least a minimum species count, and shows how many filters are active.</p>
                     </div>
                 </details>
 
@@ -283,10 +294,16 @@
                 </details>
 
                 <details class="faq-item">
-                    <summary class="faq-question">What are Rare Bird Alerts and Migration Alerts?</summary>
+                    <summary class="faq-question">What is the "Today's highlights" strip?</summary>
                     <div class="faq-answer">
-                        <p><strong>Rare Bird Alerts</strong> appear when notable or uncommon species have been recently observed in your search area. These highlight unusual sightings that birders often seek out. Rare birds are shown with orange highlighting.</p>
-                        <p><strong>Migration Alerts</strong> provide seasonal context based on the time of year, suggesting what types of birds might be moving through the area during spring or fall migration periods.</p>
+                        <p>It is the single row beneath "Where should I go?" that gathers everything worth knowing before you pick a spot. Each segment shows a count or headline with a short summary, and clicking it expands the full panel below the strip (one at a time):</p>
+                        <ul>
+                            <li><strong>Rare birds</strong> - notable or uncommon species recently observed in your search area, freshest first, with a link to view all.</li>
+                            <li><strong>Targets</strong> - species not on the list you imported, with how many hotspots report each and a <strong>Copy targets</strong> button.</li>
+                            <li><strong>Weather</strong> - the overall birding-conditions rating, sunrise and sunset, and a golden-hour note when it applies.</li>
+                            <li><strong>Migration</strong> - seasonal context on what is moving through and the best time of day to look.</li>
+                        </ul>
+                        <p>A segment only appears when there is something to show, so on a quiet day the strip may have one or two segments.</p>
                     </div>
                 </details>
 
@@ -313,7 +330,7 @@
                     <summary class="faq-question">What are Potential Lifers?</summary>
                     <div class="faq-answer">
                         <p><strong>Potential Lifers</strong> are species that have been observed at a hotspot but are not on your personal life list. If you've imported your eBird life list, the tool will highlight species you haven't seen yet with purple text and a star icon.</p>
-                        <p>This feature helps you identify hotspots where you might add new species to your life list. A "Potential Lifers" alert appears when species you haven't seen are present nearby.</p>
+                        <p>This feature helps you identify hotspots where you might add new species to your list. On each card they appear as an <strong>N targets</strong> badge and in the <strong>For you</strong> row; across all results they appear as the <strong>Targets</strong> segment of the highlights strip, which expands to the full list.</p>
                         <p>Species that are both rare AND potential lifers get special combined highlighting, making them highest priority targets.</p>
                     </div>
                 </details>
@@ -359,7 +376,7 @@
                 <details class="faq-item">
                     <summary class="faq-question">What does the route preview show?</summary>
                     <div class="faq-answer">
-                        <p>When using "Plan a Route", the route preview displays:</p>
+                        <p>In <strong>Along a route</strong> mode, the route preview displays:</p>
                         <ul>
                             <li>A map showing your driving path between start and end locations</li>
                             <li>Total driving distance in miles</li>
@@ -377,7 +394,7 @@
                 <details class="faq-item">
                     <summary class="faq-question">Can I share a route search?</summary>
                     <div class="faq-answer">
-                        <p>Yes. After you click <strong>Plan Route</strong> the page address is updated with your start, end, and maximum detour. Copy it from the address bar, or use the <strong>Share Link</strong> button once you have built the itinerary. Whoever opens the link sees route mode with both addresses and the detour filled in. Nothing is looked up until they click <strong>Plan Route</strong>, which draws the preview and runs the search with their own eBird key.</p>
+                        <p>Yes. After you click <strong>Plan Route</strong> the page address is updated with your start, end, and maximum detour. Copy it from the address bar, or use <strong>Copy share link</strong> in the <strong>Share · Export</strong> menu once you have built the itinerary. Whoever opens the link sees route mode with both addresses and the detour filled in. Nothing is looked up until they click <strong>Plan Route</strong>, which draws the preview and runs the search with their own eBird key.</p>
                     </div>
                 </details>
 
@@ -548,7 +565,7 @@
                 <details class="faq-item">
                     <summary class="faq-question">How do I copy a species list?</summary>
                     <div class="faq-answer">
-                        <p>Expand the species list for any hotspot by clicking "View Species List", then click the "Copy List" button at the top of the list. The species will be copied to your clipboard as a formatted checklist.</p>
+                        <p>Open <strong>Details</strong> on any hotspot card, expand "View Species List", then click the "Copy List" button at the top of the list. The species will be copied to your clipboard as a formatted checklist.</p>
                     </div>
                 </details>
 
@@ -605,7 +622,7 @@
                             <li><strong>Orange text</strong> - Rare/notable species in the area</li>
                             <li><strong>Purple + Orange combined</strong> - Species that are BOTH rare AND a potential lifer (highest priority!)</li>
                         </ul>
-                        <p>A "Potential Lifers" collapsible section appears when lifers are present in your search results, listing all species you could add to your life list.</p>
+                        <p>Each hotspot card with targets shows an <strong>N targets</strong> badge and names them in the <strong>For you</strong> row. The <strong>Targets</strong> segment of the highlights strip expands to a list of every species you could add across all results.</p>
                     </div>
                 </details>
 
@@ -614,14 +631,14 @@
                     <summary class="faq-question">Can I use a year list or a state list instead of my full life list?</summary>
                     <div class="faq-answer">
                         <p>Yes. On the eBird Life List page pick the region and time period first (for example your state and the current year), then download. Import that file here and the tool flags species that are not on it: your year birds, state birds, or county birds rather than only lifers.</p>
-                        <p>Type a name in <strong>List name</strong> (for example "2026 Minnesota list") so the badges and the Potential Lifers banner say which list they are comparing against. Importing a different list replaces the current one.</p>
+                        <p>Type a name in <strong>List name</strong> (for example "2026 Minnesota list") so the badges, the "For you" rows, and the Targets panel say which list they are comparing against. Importing a different list replaces the current one.</p>
                     </div>
                 </details>
 
                 <details class="faq-item">
                     <summary class="faq-question">What does "Copy targets" copy?</summary>
                     <div class="faq-answer">
-                        <p>The <strong>Copy targets</strong> button in the Potential Lifers banner copies every species in the banner as a plain-text checklist, one line each: <code>[ ] Species - Hotspot (+N more spots) (last seen)</code>. Paste it into a notes app or a message to plan your day. "+N more spots" means the same species was also reported at that many other hotspots in your results.</p>
+                        <p>The <strong>Copy targets</strong> button in the Targets panel of the highlights strip copies every species in the banner as a plain-text checklist, one line each: <code>[ ] Species - Hotspot (+N more spots) (last seen)</code>. Paste it into a notes app or a message to plan your day. "+N more spots" means the same species was also reported at that many other hotspots in your results.</p>
                     </div>
                 </details>
 

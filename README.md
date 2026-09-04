@@ -1,6 +1,6 @@
 # Birding Hotspots Finder
 
-A web-based tool to discover the best birding locations near any address. Enter where you're staying and generate a PDF report of nearby birding hotspots with species lists, maps, and directions.
+A web-based tool to discover the best birding locations near any address. Enter where you're staying and get a ranked list of nearby hotspots with species lists, maps, directions, and a one-glance answer to "where should I go?". Export a PDF or GPX when you want a file.
 
 ## Features
 
@@ -8,10 +8,13 @@ A web-based tool to discover the best birding locations near any address. Enter 
 - **Current Location**: Use your device's GPS to automatically detect your location
 - **Quick Start**: One "Find hotspots near me" button locates you and runs the search with your current options
 - **Find a Species**: Search for a single species and see where it has been reported nearby in the last 30 days
-- **Flexible Sorting**: Sort hotspots by most species observed, closest distance, shortest drive time, or freshest sightings (most recently reported lifers and notable species). Your sort, range, and count choices are remembered between visits
-- **Quick Picks**: A three-chip summary above the results names the hotspot with the most species, the closest one, and the freshest activity, and jumps to its card
+- **Three search modes**: Tabs for "Near a place", "Along a route", and "A species" sit at the top of the search card, with a one-line summary of your range, count, and sort beneath the location form
+- **Flexible Sorting**: A Sort dropdown orders hotspots by most species observed, closest distance, shortest drive time, or freshest sightings (most recently reported targets and notable species). Your sort, range, and count choices are remembered between visits
+- **Where should I go?**: Up to three answer cards above the results name the hotspot with the most species, the closest one, and the freshest sighting, each with a why-line, See details, and Directions
+- **Today's highlights**: Rare birds, targets, weather, and migration collapse into one strip; click a segment to expand its details
+- **Calm hotspot cards**: Each card leads with one why-go line (species this month, drive time, quality), a badge row, and a "For you" row of target birds; one Details toggle reveals the species list, weather, best time, and tips
 - **Species Confidence Dots**: Each species shows how recently it was reported at that hotspot
-- **Hotspot Quality Indicators**: See total species ever recorded, visit counts, and quality badges (Well-Established/Active/New) for each hotspot, with plain-language tooltips
+- **Hotspot Quality Indicators**: Quality badges (Well-Established/Active/New Spot) with visit counts on each card, plain-language tooltips, and a badge legend inside the Filters panel
 - **Route Planning**: Find birding hotspots along a driving route between two locations, with target species, an "Optimize for Lifers" mode, and a shareable link for the route
 - **Itinerary Builder**: Create optimized multi-stop birding itineraries, open the whole route in Google Maps, and save itineraries to reopen later
 - **Life List Integration**: Import your eBird life list (or a year, state, or county list) to highlight species not on it at each hotspot, see how many spots report each target, and copy the target list
@@ -26,9 +29,9 @@ A web-based tool to discover the best birding locations near any address. Enter 
 - **Saved Locations**: Save frequently-used starting locations for quick access
 - **Favorite Hotspots and Recent Searches**: Star hotspots for quick reference and reuse recent search locations
 - **Share Links**: Copy a link that reproduces a location search or a route search
-- **Notable Species**: Rare and uncommon species are automatically highlighted
-- **Migration Alerts**: Seasonal migration information based on time of year
-- **Weather Integration**: Current conditions and birding weather scores for each hotspot
+- **Notable Species**: Rare and uncommon species are automatically highlighted, and the freshest one is named on the card's RARE badge
+- **Migration Alerts**: Seasonal migration information based on time of year, in the highlights strip
+- **Weather Integration**: Current conditions and birding weather scores for each hotspot, with an overall rating in the highlights strip
 
 ## Getting Started
 
@@ -43,18 +46,22 @@ You'll need a free eBird API key to use this tool:
 
 ### Using the Tool
 
-1. **Open the Application**: Visit the hosted page on GitHub Pages or open `index.html` locally
-2. **Enter Your Location**:
+1. **Open the Application**: Visit the hosted page or open `index.html` locally
+2. **Enter Your API Key**: Paste your eBird API key and check "Remember" to save it. Once saved, the key card collapses to one line; click "Change" to edit it
+3. **Pick a mode**: "Near a place" (the default), "Along a route", or "A species"
+4. **Enter Your Location**:
    - Type an address in the address field, OR
    - Enter GPS coordinates (latitude/longitude), OR
    - Click "Use My Current Location" to use your device's GPS
-3. **Enter Your API Key**: Paste your eBird API key (optionally check "Remember" to save it)
-4. **Choose Sorting Method** (under Advanced Options):
-   - **Most Species**: Prioritizes hotspots with the highest bird diversity
-   - **Closest Distance**: Prioritizes hotspots nearest to your location
-   - **Shortest Drive**: Sorts by actual driving distance and time
-   - **Freshest Sightings**: Prioritizes hotspots with the most recently reported lifers and notable species
-5. **Find Hotspots**: Click the button to see results on the page, then use "Export to PDF" or "Export GPX" if you want a file. New to the area? "Find hotspots near me" does steps 2 and 5 in one click.
+   - The line under the form shows your current range, count, and sort. Click "Change" to open Advanced Options
+5. **Find Hotspots**: Click the button. New to the area? "Find hotspots near me" does steps 4 and 5 in one click
+6. **Read the results**:
+   - The header names the place and offers a **Sort** dropdown, a **Filters** panel (Notable only, Lifers only, Min species, and the badge legend), and a **Share · Export** menu (PDF, GPX, share link)
+   - **Where should I go?** answers with up to three cards: most species, closest, freshest sighting
+   - **Today's highlights** is one strip for rare birds, targets, weather, and migration; click a segment to expand it
+   - Each hotspot card shows a why-go line, badges, and a "For you" row; open **Details** for the species list, weather, best time, and tips
+
+Sort options: **Most species** (highest diversity), **Closest** (straight-line distance), **Shortest drive** (driving time), **Freshest sightings** (most recently reported targets and notable species).
 
 ### Saving Favorite Locations
 
