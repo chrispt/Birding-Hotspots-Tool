@@ -89,7 +89,15 @@
             <!-- Settings Sidebar -->
             <aside class="settings-sidebar">
                 <!-- API Key Section -->
-            <section class="card">
+            <section class="card api-key-card" id="apiKeyCard">
+                <div id="apiKeyCollapsed" class="api-key-collapsed hidden">
+                    <span class="api-key-saved">
+                        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                        eBird API key saved
+                    </span>
+                    <button type="button" id="apiKeyChange" class="btn-link">Change</button>
+                </div>
+                <div id="apiKeyFull">
                 <h2 class="section-title has-tooltip tooltip-left" data-tooltip="Your personal eBird API key is required to fetch bird sighting data. Get one free from eBird.">
                     eBird API Key
                     <a href="https://ebird.org/api/keygen" target="_blank" rel="noopener noreferrer" class="help-link" title="Get your free API key" aria-label="Get your free eBird API key">
@@ -111,34 +119,16 @@
                     <span class="checkbox-custom"></span>
                     Remember my API key
                 </label>
+                </div>
             </section>
 
             <!-- Step 1: Search Type Selection -->
             <section id="searchTypeSection" class="card">
-                <h2 class="section-title">What would you like to do?</h2>
-                <div class="search-type-cards">
-                    <button type="button" class="search-type-card active" id="locationSearchBtn" aria-pressed="true">
-                        <div class="search-type-icon">
-                            <svg viewBox="0 0 24 24" width="32" height="32" aria-hidden="true">
-                                <path fill="currentColor" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-                            </svg>
-                        </div>
-                        <div class="search-type-content">
-                            <span class="search-type-title">Search a Location</span>
-                            <span class="search-type-desc">Find hotspots or a species near one place</span>
-                        </div>
-                    </button>
-                    <button type="button" class="search-type-card" id="routeSearchBtn" aria-pressed="false">
-                        <div class="search-type-icon">
-                            <svg viewBox="0 0 24 24" width="32" height="32" aria-hidden="true">
-                                <path fill="currentColor" d="M21.71 11.29l-9-9c-.39-.39-1.02-.39-1.41 0l-9 9c-.39.39-.39 1.02 0 1.41l9 9c.39.39 1.02.39 1.41 0l9-9c.39-.38.39-1.01 0-1.41zM14 14.5V12h-4v3H8v-4c0-.55.45-1 1-1h5V7.5l3.5 3.5-3.5 3.5z"/>
-                            </svg>
-                        </div>
-                        <div class="search-type-content">
-                            <span class="search-type-title">Plan a Route</span>
-                            <span class="search-type-desc">Find hotspots along your drive</span>
-                        </div>
-                    </button>
+                <h2 class="section-title">What are you looking for?</h2>
+                <div class="mode-tabs" role="group" aria-label="Search mode">
+                    <button type="button" class="mode-tab active" id="locationSearchBtn" aria-pressed="true">Near a place</button>
+                    <button type="button" class="mode-tab" id="routeSearchBtn" aria-pressed="false">Along a route</button>
+                    <button type="button" class="mode-tab" id="speciesTabBtn" aria-pressed="false">A species</button>
                 </div>
                 <button type="button" id="quickStartNearMe" class="btn btn-secondary quick-start-btn">
                     <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
@@ -227,7 +217,7 @@
                 </div>
 
                 <!-- Sub-toggle for hotspot vs species -->
-                <div class="search-sub-toggle">
+                <div class="search-sub-toggle hidden" aria-hidden="true">
                     <button type="button" class="sub-toggle-btn active" id="hotspotSubBtn" aria-pressed="true">Find Hotspots</button>
                     <button type="button" class="sub-toggle-btn" id="speciesSubBtn" aria-pressed="false">Find a Species</button>
                 </div>
@@ -246,6 +236,11 @@
                     <div id="selectedSpecies" class="selected-species hidden"></div>
                     <p class="help-text">Search by common or scientific name</p>
                 </div>
+
+                <p class="search-options-summary">
+                    <span id="searchOptionsSummary">Within 10 mi · Top 10 · Most species</span>
+                    <button type="button" id="changeSearchOptions" class="btn-link" aria-controls="advancedOptionsContent">Change</button>
+                </p>
             </section>
 
             <!-- Step 2b: Route Search Section (hidden by default) -->
@@ -354,6 +349,13 @@
             </section>
 
             <!-- Route Hotspots Selection Section (shown after finding hotspots along route) -->
+            <button type="button" id="generateReport" class="btn btn-primary btn-large">
+                <svg viewBox="0 0 24 24" width="24" height="24">
+                    <path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                </svg>
+                Find Hotspots
+            </button>
+
             <section id="routeHotspotsSection" class="card hidden">
                 <h2 class="section-title">
                     <svg viewBox="0 0 24 24" width="24" height="24">
@@ -598,12 +600,6 @@
             </section>
 
             <!-- Generate Button -->
-            <button type="button" id="generateReport" class="btn btn-primary btn-large">
-                <svg viewBox="0 0 24 24" width="24" height="24">
-                    <path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
-                </svg>
-                Find Hotspots
-            </button>
             </aside>
 
             <!-- Results Area -->
@@ -618,7 +614,6 @@
                         <div class="results-summary" aria-live="polite" role="status">
                             <h2 class="results-title" id="resultsTitle">Search Results</h2>
                             <p id="resultsMeta" class="results-meta"></p>
-                            <div id="weatherSummary" class="weather-summary hidden"></div>
                         </div>
                         <div class="results-controls" id="resultsControls">
                             <div class="sort-toggle" id="sortControl">
@@ -826,14 +821,16 @@
                 </div>
 
                 <!-- Rare Bird Alert Container (dynamically populated) -->
-                <div id="quickPicks" class="quick-picks hidden" role="group" aria-label="Quick picks"></div>
-                <div id="rareBirdAlert" class="hidden"></div>
-
-                <!-- Lifer Alert Container (dynamically populated) -->
-                <div id="liferAlert" class="hidden"></div>
-
-                <!-- Migration Alert Container (dynamically populated) -->
-                <div id="migrationAlert" class="hidden"></div>
+                <section id="quickPicks" class="quick-picks hidden" aria-labelledby="quickPicksHeading"></section>
+                <div id="highlights" class="highlights hidden">
+                    <div id="highlightsStrip" class="highlights-strip" role="group" aria-label="Today's highlights"></div>
+                    <div id="highlightsPanels" class="highlights-panels">
+                        <div id="weatherSummary" class="weather-summary hidden"></div>
+                        <div id="rareBirdAlert" class="hidden"></div>
+                        <div id="liferAlert" class="hidden"></div>
+                        <div id="migrationAlert" class="hidden"></div>
+                    </div>
+                </div>
 
                 <!-- Regional Activity Panel (populated after search) -->
                 <div id="regionalActivityPanel" class="regional-activity-panel card hidden">

@@ -181,6 +181,13 @@ class BirdingHotspotsApp {
             filterMinSpecies: document.getElementById('filterMinSpecies'),
             resultsMap: document.getElementById('resultsMap'),
             quickPicks: document.getElementById('quickPicks'),
+            highlights: document.getElementById('highlights'),
+            highlightsStrip: document.getElementById('highlightsStrip'),
+            speciesTabBtn: document.getElementById('speciesTabBtn'),
+            apiKeyCard: document.getElementById('apiKeyCard'),
+            apiKeyChange: document.getElementById('apiKeyChange'),
+            searchOptionsSummary: document.getElementById('searchOptionsSummary'),
+            changeSearchOptions: document.getElementById('changeSearchOptions'),
             rareBirdAlert: document.getElementById('rareBirdAlert'),
             liferAlert: document.getElementById('liferAlert'),
             weatherSummary: document.getElementById('weatherSummary'),
@@ -377,6 +384,7 @@ class BirdingHotspotsApp {
         this.initializeEventListeners();
         this.loadSavedData();
         this.loadFromURL();
+        this.updateSearchOptionsSummary();
     }
 
     /**
@@ -495,7 +503,7 @@ class BirdingHotspotsApp {
 
         // Remember Advanced Options across visits
         [this.elements.sortMethodRadios, this.elements.searchRangeRadios, this.elements.hotspotsCountRadios]
-            .forEach(radios => radios.forEach(radio => radio.addEventListener('change', () => this.saveSearchOptions())));
+            .forEach(radios => radios.forEach(radio => radio.addEventListener('change', () => { this.saveSearchOptions(); this.updateSearchOptionsSummary(); })));
 
         // Favorite hotspots collapsible toggle
         if (this.elements.favoriteHotspotsToggle) {
@@ -567,7 +575,26 @@ class BirdingHotspotsApp {
         });
 
         // Search type selection (Step 1)
-        this.elements.locationSearchBtn.addEventListener('click', () => this.setSearchType('location'));
+        this.elements.locationSearchBtn.addEventListener('click', () => { this.setSearchType('location'); this.setSearchSubMode('hotspot'); });
+        if (this.elements.speciesTabBtn) {
+            this.elements.speciesTabBtn.addEventListener('click', () => { this.setSearchType('location'); this.setSearchSubMode('species'); });
+        }
+        if (this.elements.apiKeyChange) {
+            this.elements.apiKeyChange.addEventListener('click', () => {
+                this.setApiKeyCollapsed(false);
+                this.elements.apiKey.focus();
+            });
+        }
+        if (this.elements.changeSearchOptions) {
+            this.elements.changeSearchOptions.addEventListener('click', () => {
+                if (this.elements.advancedOptionsToggle.getAttribute('aria-expanded') !== 'true') {
+                    this.toggleAdvancedOptions();
+                }
+                this.elements.advancedOptionsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                const first = this.elements.advancedOptionsContent.querySelector('input:not([disabled])');
+                if (first) first.focus({ preventScroll: true });
+            });
+        }
         this.elements.routeSearchBtn.addEventListener('click', () => this.setSearchType('route'));
 
         // Reset buttons
@@ -734,13 +761,15 @@ class BirdingHotspotsApp {
         // Restore remembered Advanced Options before anything reads the radios.
         // loadFromURL() runs afterwards, so hash parameters still win.
         this.restoreSearchOptions();
+        this.updateSearchOptionsSummary();
 
-        // Load saved API key
+        // Load saved API key; once saved, the card collapses to one line
         const savedKey = storage.getApiKey();
         if (savedKey) {
             this.elements.apiKey.value = savedKey;
             this.elements.rememberKey.checked = true;
         }
+        this.setApiKeyCollapsed(!!savedKey);
 
         // Load favorites
         this.renderFavorites();
@@ -2760,6 +2789,7 @@ class BirdingHotspotsApp {
         this.renderRareBirdAlert();
         this.renderLiferAlert(hotspots);
         this.renderMigrationAlert();
+        this.renderHighlightsStrip(hotspots);
 
         // Render weather summary
         this.renderWeatherSummary(hotspots);
@@ -2811,25 +2841,188 @@ class BirdingHotspotsApp {
             return;
         }
 
-        const label = document.createElement('span');
-        label.className = 'quick-picks-label';
-        label.textContent = 'Quick picks:';
-        container.appendChild(label);
+        const heading = document.createElement('h3');
+        heading.className = 'quick-picks-heading';
+        heading.id = 'quickPicksHeading';
+        heading.textContent = 'Where should I go?';
+        container.appendChild(heading);
+
+        const grid = document.createElement('div');
+        grid.className = 'quick-pick-cards';
+        const origin = this.currentResults?.origin;
+        const displayLabel = { 'Most species': 'Most species', 'Closest': 'Closest', 'Freshest activity': 'Freshest sighting' };
+        const labelClass = { 'Most species': 'species', 'Closest': 'closest', 'Freshest activity': 'fresh' };
 
         picks.forEach(pick => {
-            const chip = document.createElement('button');
-            chip.type = 'button';
-            chip.className = 'filter-chip quick-pick-chip';
-            chip.setAttribute('aria-label', `${pick.labels.join(' and ')}: ${pick.name}. Jump to this hotspot`);
-            chip.appendChild(document.createTextNode(`${pick.labels.join(' and ')}: `));
-            const name = document.createElement('strong');
-            name.textContent = pick.name;
-            chip.appendChild(name);
-            chip.addEventListener('click', () => this.scrollToHotspotCardByLocId(pick.locId));
-            container.appendChild(chip);
+            const hotspot = hotspots.find(h => h.locId === pick.locId);
+            if (!hotspot) return;
+            const card = document.createElement('article');
+            card.className = 'quick-pick-card';
+
+            const label = document.createElement('span');
+            label.className = `quick-pick-label ${labelClass[pick.labels[0]] || ''}`;
+            label.textContent = pick.labels.map(l => displayLabel[l] || l).join(' and ');
+            card.appendChild(label);
+
+            const name = document.createElement('h4');
+            name.className = 'quick-pick-name';
+            name.textContent = hotspot.name;
+            card.appendChild(name);
+
+            const why = document.createElement('p');
+            why.className = 'quick-pick-why';
+            const parts = [];
+            if (pick.labels.includes('Freshest activity')) {
+                const fresh = sortBirdsByRecency(hotspot.birds.filter(b => b.isNotable || b.isLifer))[0];
+                if (fresh) parts.push(`${fresh.comName} reported ${this.formatRelativeDate(fresh.lastSeen)}`);
+            }
+            parts.push(`${hotspot.speciesCount} species this month`);
+            if (hotspot.drivingDuration != null) {
+                parts.push(`${formatDuration(hotspot.drivingDuration)} drive`);
+            } else if (hotspot.distance != null) {
+                parts.push(`${formatDistance(hotspot.distance)} away`);
+            }
+            const targets = this.lifeListService.hasLifeList() ? hotspot.birds.filter(b => b.isLifer).length : 0;
+            if (targets > 0) parts.push(`${targets} ${targets === 1 ? 'target' : 'targets'}`);
+            why.textContent = parts.join(' · ');
+            card.appendChild(why);
+
+            const actions = document.createElement('div');
+            actions.className = 'quick-pick-actions';
+            const see = document.createElement('button');
+            see.type = 'button';
+            see.className = 'btn-link quick-pick-see';
+            see.textContent = 'See details';
+            see.setAttribute('aria-label', `See details for ${hotspot.name}`);
+            see.addEventListener('click', () => this.scrollToHotspotCardByLocId(pick.locId));
+            actions.appendChild(see);
+            if (origin) {
+                const dir = document.createElement('a');
+                dir.className = 'btn-link quick-pick-directions';
+                dir.href = getGoogleMapsDirectionsUrl(origin.lat, origin.lng, hotspot.lat, hotspot.lng);
+                dir.target = '_blank';
+                dir.rel = 'noopener noreferrer';
+                dir.textContent = 'Directions ↗';
+                dir.setAttribute('aria-label', `Directions to ${hotspot.name} (opens Google Maps)`);
+                actions.appendChild(dir);
+            }
+            card.appendChild(actions);
+            grid.appendChild(card);
         });
 
+        container.appendChild(grid);
         container.classList.remove('hidden');
+    }
+
+    /**
+     * Collapse the rare-bird, targets, weather, and migration banners into
+     * one strip of expandable segments. The existing renderers still fill
+     * their containers; this hides them and shows one at a time on demand.
+     * @param {Array} hotspots
+     */
+    renderHighlightsStrip(hotspots) {
+        const wrap = this.elements.highlights;
+        const strip = this.elements.highlightsStrip;
+        if (!wrap || !strip) return;
+        clearElement(strip);
+
+        const weatherData = hotspots.map(h => h.weather).filter(w => w);
+        const conditions = weatherData.length ? getOverallBirdingConditions(weatherData) : null;
+        const rareCodes = new Set((this.notableObservations || []).map(o => o.speciesCode));
+        const freshestRare = [...(this.notableObservations || [])].sort((a, b) => new Date(b.obsDt) - new Date(a.obsDt))[0];
+        const lifers = this.lifeListService.hasLifeList() ? sortBirdsByRecency(collectLifersAcrossHotspots(hotspots)) : [];
+        const migration = (getSeasonalInsights().migrationAlerts || [])[0] || null;
+        const sun = weatherData.find(w => w.sunrise);
+
+        const segments = [
+            {
+                panel: this.elements.rareBirdAlert, cls: 'rare', icon: 'alert',
+                title: rareCodes.size ? `${rareCodes.size} rare ${rareCodes.size === 1 ? 'bird' : 'birds'}` : null,
+                sub: freshestRare ? `${freshestRare.comName} · ${this.formatRelativeDate(freshestRare.obsDt)}` : ''
+            },
+            {
+                panel: this.elements.liferAlert, cls: 'targets', icon: null,
+                title: lifers.length ? `${lifers.length} ${lifers.length === 1 ? 'target' : 'targets'}` : null,
+                sub: lifers.slice(0, 2).map(l => l.comName).join(', ') + (lifers.length > 2 ? ` +${lifers.length - 2}` : '')
+            },
+            {
+                panel: this.elements.weatherSummary, cls: conditions ? conditions.rating : 'weather', icon: 'sun',
+                title: conditions ? `${conditions.rating.charAt(0).toUpperCase()}${conditions.rating.slice(1)} weather` : null,
+                sub: [weatherData[0] && weatherData[0].temperatureF != null ? `${Math.round(weatherData[0].temperatureF)}°F` : null,
+                      sun ? `sunrise ${sun.sunrise}` : null].filter(Boolean).join(' · ')
+            },
+            {
+                panel: this.elements.migrationAlert, cls: 'migration', icon: 'trending',
+                title: migration ? (migration.isPeak ? 'Peak migration' : 'Migration') : null,
+                sub: migration ? String(migration.message || '').replace(/!$/, '') : ''
+            }
+        ].filter(seg => seg.title && seg.panel && !seg.panel.classList.contains('hidden'));
+
+        // Panels start collapsed; a segment reveals its own panel
+        for (const el of [this.elements.rareBirdAlert, this.elements.liferAlert, this.elements.weatherSummary, this.elements.migrationAlert]) {
+            if (el) el.classList.add('hidden');
+        }
+
+        if (segments.length === 0) {
+            wrap.classList.add('hidden');
+            return;
+        }
+
+        const buttons = [];
+        segments.forEach(seg => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = `highlight-segment ${seg.cls}`;
+            btn.setAttribute('aria-expanded', 'false');
+            btn.setAttribute('aria-controls', seg.panel.id);
+
+            const icon = document.createElement('span');
+            icon.className = 'highlight-icon';
+            if (seg.icon) {
+                icon.appendChild(createSVGIcon(seg.icon, 18));
+            } else {
+                const star = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                star.setAttribute('viewBox', '0 0 24 24');
+                star.setAttribute('width', '18');
+                star.setAttribute('height', '18');
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('fill', 'currentColor');
+                path.setAttribute('d', 'M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z');
+                star.appendChild(path);
+                icon.appendChild(star);
+            }
+            const text = document.createElement('span');
+            text.className = 'highlight-text';
+            const t = document.createElement('span');
+            t.className = 'highlight-title';
+            t.textContent = seg.title;
+            text.appendChild(t);
+            if (seg.sub) {
+                const sub = document.createElement('span');
+                sub.className = 'highlight-sub';
+                sub.textContent = seg.sub;
+                text.appendChild(sub);
+            }
+            btn.appendChild(icon);
+            btn.appendChild(text);
+            btn.appendChild(createSVGIcon('chevron', 16, 'chevron'));
+
+            btn.addEventListener('click', () => {
+                const open = btn.getAttribute('aria-expanded') === 'true';
+                buttons.forEach(([b, panel]) => {
+                    b.setAttribute('aria-expanded', 'false');
+                    panel.classList.add('hidden');
+                });
+                if (!open) {
+                    btn.setAttribute('aria-expanded', 'true');
+                    seg.panel.classList.remove('hidden');
+                }
+            });
+            buttons.push([btn, seg.panel]);
+            strip.appendChild(btn);
+        });
+
+        wrap.classList.remove('hidden');
     }
 
     /**
@@ -2940,9 +3133,14 @@ class BirdingHotspotsApp {
      */
     hideQuickPicks() {
         const container = this.elements.quickPicks;
-        if (!container) return;
-        clearElement(container);
-        container.classList.add('hidden');
+        if (container) {
+            clearElement(container);
+            container.classList.add('hidden');
+        }
+        if (this.elements.highlights) {
+            this.elements.highlights.classList.add('hidden');
+            clearElement(this.elements.highlightsStrip);
+        }
     }
 
     /**
@@ -3613,11 +3811,9 @@ class BirdingHotspotsApp {
     setSearchType(type) {
         this.searchType = type;
 
-        // Update Step 1 card states
-        this.elements.locationSearchBtn.classList.toggle('active', type === 'location');
-        this.elements.routeSearchBtn.classList.toggle('active', type === 'route');
-        this.elements.locationSearchBtn.setAttribute('aria-pressed', String(type === 'location'));
-        this.elements.routeSearchBtn.setAttribute('aria-pressed', String(type === 'route'));
+        // Update mode tabs
+        this._syncModeTabs();
+        this.updateSearchOptionsSummary();
 
         // Toggle Step 2 sections
         this.elements.locationSearchSection.classList.toggle('hidden', type !== 'location');
@@ -3663,13 +3859,65 @@ class BirdingHotspotsApp {
         this.elements.sortOptionsSection.classList.toggle('hidden', mode === 'species');
         this.elements.hotspotsCountSection.classList.toggle('hidden', mode === 'species');
 
-        // Update generate button
+        // Update mode tabs and generate button
+        this._syncModeTabs();
+        this.updateSearchOptionsSummary();
         this.updateGenerateButton();
 
         // Initialize species search if switching to species mode
         if (mode === 'species' && !this.speciesSearch) {
             this.initializeSpeciesSearch();
         }
+    }
+
+    /**
+     * Reflect searchType + searchSubMode in the three mode tabs.
+     */
+    _syncModeTabs() {
+        const tabs = [
+            [this.elements.locationSearchBtn, this.searchType === 'location' && this.searchSubMode !== 'species'],
+            [this.elements.routeSearchBtn, this.searchType === 'route'],
+            [this.elements.speciesTabBtn, this.searchType === 'location' && this.searchSubMode === 'species']
+        ];
+        for (const [tab, on] of tabs) {
+            if (!tab) continue;
+            tab.classList.toggle('active', on);
+            tab.setAttribute('aria-pressed', String(on));
+        }
+    }
+
+    /**
+     * One-line summary of the Advanced Options under the location input,
+     * so a user sees "Within 10 mi · Top 10 · Most species" without opening
+     * the panel.
+     */
+    updateSearchOptionsSummary() {
+        const el = this.elements.searchOptionsSummary;
+        if (!el) return;
+        const rangeKm = parseInt(this._checkedValue(this.elements.searchRangeRadios, '16'), 10);
+        // Whole miles, matching the radio labels (16 km reads as 10 mi, not 9.9)
+        const parts = [`Within ${Math.round(rangeKm * 0.621371)} mi`];
+        if (this.searchSubMode !== 'species') {
+            parts.push(`Top ${this._checkedValue(this.elements.hotspotsCountRadios, '10')}`);
+            const sortLabels = { species: 'Most species', distance: 'Closest', driving: 'Shortest drive', recency: 'Freshest sightings' };
+            parts.push(sortLabels[this._checkedValue(this.elements.sortMethodRadios, 'species')] || 'Most species');
+        }
+        el.textContent = parts.join(' · ');
+    }
+
+    /**
+     * Collapse the API key card to one line once a key is saved; the
+     * Change button reopens it.
+     * @param {boolean} collapsed
+     */
+    setApiKeyCollapsed(collapsed) {
+        const card = this.elements.apiKeyCard;
+        if (!card) return;
+        card.classList.toggle('collapsed', collapsed);
+        const collapsedRow = document.getElementById('apiKeyCollapsed');
+        const full = document.getElementById('apiKeyFull');
+        if (collapsedRow) collapsedRow.classList.toggle('hidden', !collapsed);
+        if (full) full.classList.toggle('hidden', collapsed);
     }
 
     /**
