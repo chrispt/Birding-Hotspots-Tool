@@ -5964,9 +5964,25 @@ details.about-section[open] .about-chevron {
     border-top: 1px solid var(--border-color);
 }
 
+.hotspot-details-body .weather-badge {
+    margin: 12px 20px;
+}
+
 .hotspot-details-body .hotspot-address {
-    padding: 12px 20px 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
     margin: 0;
+    padding: 10px 20px;
+    font-size: 0.8125rem;
+    line-height: 1.45;
+    border-top: 1px solid var(--border-color);
+}
+
+.hotspot-details-body .hotspot-address svg {
+    flex-shrink: 0;
+    margin-top: 2px;
+    color: var(--text-light);
 }
 
 @media (max-width: 600px) {

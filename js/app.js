@@ -6262,9 +6262,15 @@ class BirdingHotspotsApp {
             detailsBody.classList.toggle('hidden', expanded);
         });
 
-        const address = document.createElement('p');
-        address.className = 'hotspot-address';
-        address.textContent = hotspot.address;
+        let address = null;
+        if (hotspot.address) {
+            address = document.createElement('p');
+            address.className = 'hotspot-address';
+            address.appendChild(createSVGIcon('location', 14));
+            const addressText = document.createElement('span');
+            addressText.textContent = hotspot.address;
+            address.appendChild(addressText);
+        }
 
         // Species section
         const speciesSection = document.createElement('div');
@@ -6479,7 +6485,7 @@ class BirdingHotspotsApp {
         if (notableHighlight) detailsBody.appendChild(notableHighlight);
         if (liferHighlight) detailsBody.appendChild(liferHighlight);
         if (weatherBadge) detailsBody.appendChild(weatherBadge);
-        detailsBody.appendChild(address);
+        if (address) detailsBody.appendChild(address);
         detailsBody.appendChild(speciesSection);
         if (seasonalInsights) detailsBody.appendChild(seasonalInsights);
 
