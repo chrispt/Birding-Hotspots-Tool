@@ -6026,8 +6026,20 @@ details.about-section[open] .about-chevron {
 }
 
 @media (max-width: 600px) {
+    /* The header becomes a column here; a flex-basis of 260px would be
+       read as height, so let the title block size to its content */
+    .hotspot-header .hotspot-title-section {
+        flex: 0 1 auto;
+        width: 100%;
+    }
     .hotspot-header .hotspot-links {
         width: 100%;
+    }
+    .hotspot-header .hotspot-link {
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 0;
     }
     .hotspot-details-hint {
         display: block;
