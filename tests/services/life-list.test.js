@@ -8,7 +8,7 @@ global.localStorage = {
     removeItem: (k) => { delete _store[k]; }
 };
 
-const { LifeListService } = await import('../../js/services/life-list.js');
+const { LifeListService, collectLifersAcrossHotspots, formatLiferTargetsText } = await import('../../js/services/life-list.js');
 const { CONFIG } = await import('../../js/utils/constants.js');
 
 function clearLifeList() {
@@ -82,4 +82,83 @@ export async function testImportFromCSVSkipsAlreadyOwnedSpecies() {
 
     assert(result.imported === 0, 'Re-importing an already-owned species should not count as newly imported');
     assert(result.duplicates === 1, `Expected 1 duplicate, got ${result.duplicates}`);
+}
+
+export async function testImportFromCSVReplaceDiscardsExistingList() {
+    clearLifeList();
+    const service = new LifeListService();
+    service.importFromCSV('Common Name,Scientific Name\nAmerican Crow,Corvus brachyrhynchos\n', TAXONOMY);
+
+    const result = service.importFromCSV(
+        'Common Name,Scientific Name\nNorthern Cardinal,Cardinalis cardinalis\n', TAXONOMY, { replace: true });
+
+    assert(result.replaced === true, 'Result should report that the list was replaced');
+    assert(result.imported === 1, `Expected 1 imported, got ${result.imported}`);
+    assert(service.getCount() === 1, `Expected list of 1 after replace, got ${service.getCount()}`);
+    assert(service.isOnLifeList('norcar'), 'New species should be on the list');
+    assert(!service.isOnLifeList('amecro'), 'Old species should have been discarded');
+}
+
+export async function testImportFromCSVReplaceKeepsOldListWhenFileHasNoSpecies() {
+    clearLifeList();
+    const service = new LifeListService();
+    service.importFromCSV('Common Name,Scientific Name\nAmerican Crow,Corvus brachyrhynchos\n', TAXONOMY);
+
+    const result = service.importFromCSV('Common Name,Scientific Name\n', TAXONOMY, { replace: true });
+
+    assert(result.replaced === false, 'Nothing should be replaced when the file has no species');
+    assert(service.getCount() === 1, 'Existing list should be untouched');
+    assert(service.isOnLifeList('amecro'), 'Existing species should remain');
+}
+
+export async function testImportFromCSVDefaultStillMerges() {
+    clearLifeList();
+    const service = new LifeListService();
+    service.importFromCSV('Common Name,Scientific Name\nAmerican Crow,Corvus brachyrhynchos\n', TAXONOMY);
+
+    const result = service.importFromCSV('Common Name,Scientific Name\nNorthern Cardinal,Cardinalis cardinalis\n', TAXONOMY);
+
+    assert(result.replaced === false, 'Two-argument call must not replace');
+    assert(service.getCount() === 2, `Expected merged list of 2, got ${service.getCount()}`);
+}
+
+const LIFER_HOTSPOTS = [
+    { name: 'Marsh', birds: [
+        { speciesCode: 'a', comName: 'Bird A', isLifer: true, lastSeen: '2026-09-01 08:00' },
+        { speciesCode: 'x', comName: 'Seen Bird', isLifer: false, lastSeen: '2026-09-01 08:00' }
+    ] },
+    { name: 'Lake', birds: [
+        { speciesCode: 'a', comName: 'Bird A', isLifer: true, lastSeen: '2026-08-30 08:00' },
+        { speciesCode: 'b', comName: 'Bird B', isLifer: true, lastSeen: '2026-08-29 08:00' }
+    ] },
+    { name: 'Ridge', birds: [
+        { speciesCode: 'a', comName: 'Bird A', isLifer: true, lastSeen: '2026-08-20 08:00' }
+    ] }
+];
+
+export async function testCollectLifersCountsHotspotsPerSpecies() {
+    const lifers = collectLifersAcrossHotspots(LIFER_HOTSPOTS);
+    assert(lifers.length === 2, `Expected 2 unique lifers, got ${lifers.length}`);
+    const a = lifers.find(l => l.speciesCode === 'a');
+    assert(a.hotspotCount === 3, `Bird A should be counted at 3 hotspots, got ${a.hotspotCount}`);
+    assert(a.hotspotName === 'Marsh', 'First hotspot should supply the display name');
+    assert(a.lastSeen === '2026-09-01 08:00', 'First sighting should supply lastSeen');
+    const b = lifers.find(l => l.speciesCode === 'b');
+    assert(b.hotspotCount === 1, 'Bird B should be counted once');
+}
+
+export async function testCollectLifersIgnoresNonLifers() {
+    const lifers = collectLifersAcrossHotspots(LIFER_HOTSPOTS);
+    assert(!lifers.some(l => l.speciesCode === 'x'), 'Species already seen must not be listed');
+    assert(collectLifersAcrossHotspots([]).length === 0, 'Empty input gives empty output');
+    assert(collectLifersAcrossHotspots([{ name: 'No birds' }]).length === 0, 'Hotspot without birds is tolerated');
+}
+
+export async function testFormatLiferTargetsTextIncludesMoreSpotsSuffix() {
+    const lifers = collectLifersAcrossHotspots(LIFER_HOTSPOTS);
+    const text = formatLiferTargetsText(lifers, () => 'today', '2026 MN list');
+    const lines = text.split('\n');
+    assert(lines[0] === 'Target birds not on your 2026 MN list (2)', `Unexpected header: ${lines[0]}`);
+    assert(lines[1] === '[ ] Bird A - Marsh (+2 more spots) (today)', `Unexpected line: ${lines[1]}`);
+    assert(lines[2] === '[ ] Bird B - Lake (today)', `Unexpected line: ${lines[2]}`);
 }

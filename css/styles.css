@@ -5631,3 +5631,698 @@ details.about-section[open] .about-chevron {
         scrollbar-color: var(--border-color) transparent;
     }
 }
+
+
+/* ==========================================================================
+   Persona additions: quick start, quick picks, list name, lifer targets,
+   saved-itinerary actions
+   ========================================================================== */
+
+.quick-start-btn {
+    width: 100%;
+    margin-top: var(--spacing-sm, 16px);
+    justify-content: center;
+}
+
+.quick-start-hint {
+    text-align: center;
+    margin-top: 6px;
+}
+
+.quick-picks {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.quick-picks-label {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.quick-pick-chip {
+    min-height: 36px;
+    text-align: left;
+}
+
+.quick-pick-chip strong {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.lifer-alert-header {
+    flex-wrap: wrap;
+}
+
+.lifer-alert-copy {
+    margin-left: 4px;
+}
+
+.lifer-alert-more {
+    color: var(--text-light);
+    font-size: 0.8rem;
+    margin-left: 4px;
+}
+
+.life-list-label-group {
+    display: block;
+    margin-bottom: 12px;
+}
+
+.about-glossary {
+    margin-bottom: 8px !important;
+}
+
+.saved-itinerary-actions .btn-small {
+    min-height: 32px;
+    padding: 4px 10px;
+}
+
+/* .btn-icon is absolutely positioned for the API-key eye button; inside the
+   saved-itinerary row it must flow with its siblings */
+.saved-itinerary-actions .btn-icon {
+    position: static;
+    transform: none;
+    min-width: 36px;
+    min-height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Anchor styled as a button (Open route in Google Maps) */
+.itinerary-export-buttons a.btn {
+    text-decoration: none;
+}
+
+@media (max-width: 480px) {
+    .lifer-alert-count {
+        margin-left: 0;
+        width: 100%;
+    }
+}
+
+/* Remembered-options note inside Advanced Options */
+.advanced-options-note {
+    margin: 0 0 12px;
+}
+
+/* Keyboard-reachable legend for result badges (see .confidence-legend) */
+.badge-legend {
+    margin: 0 0 16px;
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+}
+
+.badge-legend summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--text-secondary);
+    padding: 6px 0;
+    list-style: revert;
+}
+
+.badge-legend summary:hover {
+    color: var(--text-primary);
+}
+
+.badge-legend summary:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+    border-radius: var(--radius);
+}
+
+.badge-legend dl {
+    margin: 4px 0 0;
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 4px 12px;
+}
+
+.badge-legend dt {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.badge-legend dd {
+    margin: 0;
+}
+
+@media (max-width: 480px) {
+    .badge-legend dl {
+        grid-template-columns: 1fr;
+        gap: 2px 0;
+    }
+    .badge-legend dd {
+        margin-bottom: 6px;
+    }
+}
+
+
+/* ==========================================================================
+   Concept A: results header (sort select, Filters popover, Share/Export
+   menu) and the simplified hotspot card
+   ========================================================================== */
+
+.results-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.results-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.results-select {
+    appearance: none;
+    -webkit-appearance: none;
+    font-family: inherit;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    padding: 9px 32px 9px 14px;
+    min-height: 40px;
+    cursor: pointer;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='16' height='16'><path fill='%235E5E5E' d='M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+}
+
+.results-select:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+.results-controls .btn-small {
+    min-height: 40px;
+    border-radius: 999px;
+    padding: 8px 14px;
+    font-size: 0.8125rem;
+}
+
+.filters-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    margin-left: 6px;
+    border-radius: 999px;
+    background: var(--primary-color);
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 700;
+}
+
+.popover-anchor {
+    position: relative;
+}
+
+.popover {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 6px);
+    z-index: 60;
+    min-width: 280px;
+    max-width: calc(100vw - 32px);
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-hover);
+    padding: 14px;
+}
+
+.popover .results-filter-bar {
+    margin-bottom: 12px;
+}
+
+.popover .badge-legend {
+    margin: 0;
+}
+
+.popover-menu {
+    min-width: 220px;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.popover-menu .btn {
+    width: 100%;
+    justify-content: flex-start;
+    border: none;
+    background: transparent;
+    box-shadow: none;
+    color: var(--text-primary);
+}
+
+.popover-menu .btn:hover,
+.popover-menu .btn:focus-visible {
+    background: var(--hover-bg);
+}
+
+.results-actions {
+    margin-top: 12px;
+}
+
+/* Hotspot card: header with rank, name, why-line, and links */
+.hotspot-header {
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.hotspot-header .hotspot-title-section {
+    flex: 1 1 260px;
+    min-width: 0;
+}
+
+.hotspot-why {
+    margin: 4px 0 0;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.hotspot-why .quality-badge {
+    display: inline;
+    padding: 0;
+    background: transparent;
+    font-size: inherit;
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+.hotspot-header .hotspot-links {
+    margin: 0;
+    padding: 0;
+    border: none;
+    display: flex;
+    gap: 14px;
+    align-items: center;
+}
+
+.hotspot-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px 20px 0;
+}
+
+.hotspot-badges .rare-badge,
+.hotspot-badges .lifer-badge {
+    margin: 0;
+}
+
+.fresh-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    background: var(--success-bg, rgba(58, 107, 53, 0.1));
+}
+
+.hotspot-for-you {
+    margin: 12px 20px 0;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: var(--lifer-bg, rgba(123, 31, 162, 0.08));
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+.hotspot-for-you strong {
+    color: var(--lifer-text, #7B1FA2);
+}
+
+.hotspot-details-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    margin-top: 12px;
+    padding: 12px 20px;
+    border: none;
+    border-top: 1px solid var(--border-color);
+    background: transparent;
+    color: var(--text-secondary);
+    font-family: inherit;
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+    min-height: 44px;
+}
+
+.hotspot-details-toggle:hover {
+    background: var(--hover-bg);
+}
+
+.hotspot-details-toggle:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: -2px;
+}
+
+.hotspot-details-toggle .chevron {
+    transition: transform var(--transition);
+}
+
+.hotspot-details-toggle[aria-expanded="true"] .chevron {
+    transform: rotate(180deg);
+}
+
+.hotspot-details-hint {
+    font-weight: 400;
+    color: var(--text-light);
+    margin-left: 4px;
+}
+
+.hotspot-details-body {
+    border-top: 1px solid var(--border-color);
+}
+
+.hotspot-details-body .hotspot-address {
+    padding: 12px 20px 0;
+    margin: 0;
+}
+
+@media (max-width: 600px) {
+    /* The header becomes a column here; a flex-basis of 260px would be
+       read as height, so let the title block size to its content */
+    .hotspot-header .hotspot-title-section {
+        flex: 0 1 auto;
+        width: 100%;
+    }
+    .hotspot-header .hotspot-links {
+        width: 100%;
+    }
+    .hotspot-header .hotspot-link {
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 0;
+    }
+    .hotspot-details-hint {
+        display: block;
+        width: 100%;
+        margin-left: 0;
+        padding-left: 24px;
+    }
+    .popover {
+        right: auto;
+        left: 0;
+    }
+}
+
+.hotspot-badges .badge-name {
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 600;
+}
+
+
+/* ==========================================================================
+   Concept A steps 3 and 4: pick cards, highlights strip, mode tabs,
+   collapsed API key card, options summary
+   ========================================================================== */
+
+.btn-link {
+    background: none;
+    border: none;
+    padding: 4px 2px;
+    font-family: inherit;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--primary-color);
+    cursor: pointer;
+    text-decoration: none;
+    min-height: 32px;
+}
+
+.btn-link:hover { text-decoration: underline; }
+
+.btn-link:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+/* Where should I go? */
+.quick-picks {
+    display: block;
+    margin-bottom: 16px;
+}
+
+.quick-picks-heading {
+    margin: 0 0 10px;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.quick-pick-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+}
+
+.quick-pick-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.quick-pick-label {
+    align-self: flex-start;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    background: var(--hover-bg);
+    color: var(--text-secondary);
+}
+
+.quick-pick-label.species { background: var(--success-bg, rgba(58, 107, 53, 0.1)); color: var(--primary-color); }
+.quick-pick-label.fresh { background: var(--rare-bg, rgba(230, 81, 0, 0.1)); color: var(--rare-text, #E65100); }
+
+.quick-pick-name {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.quick-pick-why {
+    margin: 0;
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    line-height: 1.45;
+}
+
+.quick-pick-actions {
+    display: flex;
+    gap: 14px;
+    margin-top: 2px;
+}
+
+/* Today's highlights strip */
+.highlights { margin-bottom: 16px; }
+
+.highlights-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 8px;
+    padding: 8px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+}
+
+.highlight-segment {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    background: var(--hover-bg);
+    color: var(--text-primary);
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+    min-height: 48px;
+}
+
+.highlight-segment .highlight-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
+.highlight-title { font-size: 0.8125rem; font-weight: 700; }
+.highlight-sub { font-size: 0.75rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.highlight-segment .chevron { flex-shrink: 0; transition: transform var(--transition); }
+.highlight-segment[aria-expanded="true"] .chevron { transform: rotate(180deg); }
+.highlight-segment[aria-expanded="true"] { border-color: currentColor; }
+.highlight-segment:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 2px; }
+
+.highlight-segment.rare { background: var(--rare-bg, rgba(230, 81, 0, 0.1)); color: var(--rare-text, #E65100); }
+.highlight-segment.targets { background: var(--lifer-bg, rgba(123, 31, 162, 0.08)); color: var(--lifer-text, #7B1FA2); }
+.highlight-segment.excellent,
+.highlight-segment.good { background: var(--success-bg, rgba(58, 107, 53, 0.1)); color: var(--primary-color); }
+.highlight-segment.fair,
+.highlight-segment.poor,
+.highlight-segment.weather { background: var(--hover-bg); color: var(--text-primary); }
+.highlight-segment.migration { background: var(--hover-bg); color: var(--text-primary); }
+
+.highlights-panels > * { margin-top: 12px; }
+.highlights-panels > .hidden { display: none; }
+.highlights-panels .weather-summary { margin-top: 12px; }
+
+/* Mode tabs */
+.mode-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+    background: var(--hover-bg);
+    border-radius: 10px;
+}
+
+.mode-tab {
+    flex: 1;
+    padding: 10px 8px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-secondary);
+    font-family: inherit;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
+    min-height: 44px;
+}
+
+.mode-tab:hover { color: var(--text-primary); }
+.mode-tab.active { background: var(--card-bg); color: var(--primary-color); box-shadow: var(--shadow); }
+.mode-tab:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 2px; }
+
+/* API key card, collapsed once a key is saved */
+.api-key-collapsed {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.api-key-saved {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.api-key-card.collapsed { padding-top: 12px; padding-bottom: 12px; }
+
+/* Options summary under the location input */
+.search-options-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 12px 0 0;
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+}
+
+/* ==========================================================================
+   Touch tap targets: every control at least 44px on phones and touch
+   screens. Desktop pointer users keep the compact sizes.
+   ========================================================================== */
+@media (hover: none) and (pointer: coarse), (max-width: 600px) {
+    .about-toggle,
+    .collapsible-header,
+    .notable-highlight-toggle,
+    .lifer-highlight-toggle,
+    .seasonal-insights-toggle,
+    .species-toggle,
+    .hotspot-details-toggle {
+        min-height: 44px;
+        box-sizing: border-box;
+    }
+
+    .btn-link,
+    .quick-pick-see,
+    .quick-pick-directions {
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 4px;
+    }
+
+    .results-select,
+    .results-controls .btn-small {
+        min-height: 44px;
+    }
+
+    .section-title .help-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 44px;
+        min-height: 44px;
+        margin: -12px 0;
+    }
+
+    .toast-dismiss {
+        min-width: 44px;
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .header .help-link,
+    .theme-toggle-btn,
+    .btn,
+    .btn-reset,
+    .recent-searches-clear,
+    .recent-search-chip,
+    .filter-chip,
+    .mode-tab {
+        min-height: 44px;
+        box-sizing: border-box;
+    }
+
+    .recent-searches-clear {
+        min-width: 44px;
+    }
+
+    .footer a,
+    .help-text a,
+    .help-text-small a,
+    .about-note a {
+        display: inline-block;
+        padding: 12px 2px;
+        margin: -12px 0;
+    }
+}

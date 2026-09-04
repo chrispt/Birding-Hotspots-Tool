@@ -93,7 +93,9 @@ export const CONFIG = {
         ERROR_QUEUE: 'birding_error_queue',
         SAVED_ITINERARIES: 'birding_saved_itineraries',
         ONBOARDED: 'birding_onboarded',
-        ITINERARY_START_TIME: 'birding_itinerary_start_time'
+        ITINERARY_START_TIME: 'birding_itinerary_start_time',
+        LIFE_LIST_LABEL: 'birding_life_list_label',
+        SEARCH_OPTIONS: 'birding_search_options'
     }
 };
 

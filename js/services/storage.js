@@ -6,6 +6,27 @@ import { CONFIG } from '../utils/constants.js';
 
 const { STORAGE_KEYS } = CONFIG;
 
+/**
+ * Legal values for the remembered Advanced Options radios. Mirrors the
+ * radio values in index.html.
+ */
+export const SEARCH_OPTION_VALUES = {
+    sort: ['species', 'distance', 'driving', 'recency'],
+    range: ['16', '32', '50'],
+    count: ['10', '20', '30']
+};
+
+function filterSearchOptions(options) {
+    const clean = {};
+    for (const key of Object.keys(SEARCH_OPTION_VALUES)) {
+        const value = options && options[key] != null ? String(options[key]) : null;
+        if (value && SEARCH_OPTION_VALUES[key].includes(value)) {
+            clean[key] = value;
+        }
+    }
+    return clean;
+}
+
 // Simple obfuscation key (not cryptographically secure, but prevents casual viewing)
 const OBFUSCATION_KEY = 'BirdingHotspots2024';
 
@@ -215,6 +236,70 @@ export const storage = {
             }
         } catch (e) {
             console.warn('Could not save itinerary start time:', e);
+        }
+    },
+
+
+    // ==================== Life list label ====================
+
+    /**
+     * Get the optional user-chosen name for the imported list
+     * (e.g. "2026 Minnesota list"). Empty string when unset.
+     * @returns {string}
+     */
+    getLifeListLabel() {
+        try {
+            return localStorage.getItem(STORAGE_KEYS.LIFE_LIST_LABEL) || '';
+        } catch (e) {
+            return '';
+        }
+    },
+
+    /**
+     * Set the list label. Trimmed and capped at 40 characters; an empty
+     * value removes the key.
+     * @param {string} label
+     */
+    setLifeListLabel(label) {
+        try {
+            const clean = String(label || '').trim().slice(0, 40);
+            if (clean) {
+                localStorage.setItem(STORAGE_KEYS.LIFE_LIST_LABEL, clean);
+            } else {
+                localStorage.removeItem(STORAGE_KEYS.LIFE_LIST_LABEL);
+            }
+        } catch (e) {
+            console.warn('Could not save life list label:', e);
+        }
+    },
+
+    // ==================== Search options ====================
+
+    /**
+     * Get remembered Advanced Options. Only values in SEARCH_OPTION_VALUES
+     * survive, so a tampered or stale entry can never select a radio that
+     * does not exist.
+     * @returns {{sort?: string, range?: string, count?: string}}
+     */
+    getSearchOptions() {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEYS.SEARCH_OPTIONS);
+            return filterSearchOptions(raw ? JSON.parse(raw) : {});
+        } catch (e) {
+            return {};
+        }
+    },
+
+    /**
+     * Remember Advanced Options (sort method, search range, hotspot count).
+     * @param {{sort?: string, range?: string, count?: string}} options
+     */
+    setSearchOptions(options) {
+        try {
+            const clean = filterSearchOptions(options || {});
+            localStorage.setItem(STORAGE_KEYS.SEARCH_OPTIONS, JSON.stringify(clean));
+        } catch (e) {
+            console.warn('Could not save search options:', e);
         }
     },
 
@@ -434,6 +519,13 @@ export const storage = {
                 stops: itinerary.stops || [],
                 stopCount: itinerary.stops ? itinerary.stops.length : 0,
                 totalDistance: itinerary.totalDistance || 0,
+                // Lean copies so a saved itinerary can be reopened later without
+                // re-running the search: per-leg drive distance/duration, the
+                // summary totals, the search origin, and the trip shape.
+                summary: itinerary.summary || null,
+                legs: (itinerary.legs || []).map(l => ({ distance: l.distance, duration: l.duration })),
+                origin: itinerary.origin || null,
+                isRoundTrip: typeof itinerary.isRoundTrip === 'boolean' ? itinerary.isRoundTrip : null,
                 createdAt: new Date().toISOString()
             };
             itineraries.unshift(saved);

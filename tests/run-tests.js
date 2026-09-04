@@ -101,9 +101,10 @@ async function main() {
   console.log(colors.red(`Failed: ${totalFailed}`));
   console.log('======================\n');
 
-  if (totalFailed > 0) {
-    process.exit(1);
-  }
+  // Exit explicitly so stray timers left behind by modules under test (e.g. the
+  // error reporter's auto-report debounce) cannot keep the process alive or
+  // crash it after the summary has been printed.
+  process.exit(totalFailed > 0 ? 1 : 0);
 }
 
 // Only run when executed directly with Node.

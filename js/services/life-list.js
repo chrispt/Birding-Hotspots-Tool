@@ -86,10 +86,14 @@ export class LifeListService {
      * Supports "My eBird Data" CSV format
      * @param {string} csvContent - Raw CSV content
      * @param {Array} taxonomy - eBird taxonomy array for resolving species codes
+     * @param {Object} [options]
+     * @param {boolean} [options.replace=false] - Replace the stored list with
+     *   this file instead of merging into it. If the file yields no species
+     *   the existing list is left untouched.
      * @returns {Object} Result with count and any errors
      */
-    importFromCSV(csvContent, taxonomy = []) {
-        const result = { imported: 0, errors: [], duplicates: 0, notMatched: [] };
+    importFromCSV(csvContent, taxonomy = [], { replace = false } = {}) {
+        const result = { imported: 0, errors: [], duplicates: 0, notMatched: [], replaced: false };
 
         // Validate file size
         if (csvContent.length > LIFE_LIST_IMPORT.MAX_FILE_SIZE_BYTES) {
@@ -155,7 +159,7 @@ export class LifeListService {
         console.log(`[LifeList] Common name column index: ${commonNameIdx}, Scientific name column index: ${sciNameIdx}`);
 
         // Get existing life list to check for duplicates
-        const existingCodes = this.getLifeListCodes();
+        const existingCodes = replace ? new Set() : this.getLifeListCodes();
         const newSpecies = [];
 
         // Process data rows
@@ -208,11 +212,15 @@ export class LifeListService {
             console.warn(`[LifeList] ${result.notMatched.length} species not matched to taxonomy:`, result.notMatched.slice(0, 10));
         }
 
-        // Merge with existing list and save
+        // Save: either replace the stored list outright or merge into it
         if (newSpecies.length > 0) {
-            const existingList = this.getLifeList();
-            const mergedList = [...existingList, ...newSpecies];
-            this._saveList(mergedList);
+            if (replace) {
+                this._saveList(newSpecies);
+                result.replaced = true;
+            } else {
+                const existingList = this.getLifeList();
+                this._saveList([...existingList, ...newSpecies]);
+            }
         }
 
         return result;
@@ -360,4 +368,53 @@ export class LifeListService {
         }
         return { total: list.length, fallbackCount: fallbackCodes.length };
     }
+}
+
+/**
+ * Collect every potential lifer across a set of enriched hotspots, one entry
+ * per species. The first hotspot (in the order given) supplies the display
+ * hotspot name; every additional hotspot reporting the same species bumps
+ * `hotspotCount` so the UI can say "(+N more spots)".
+ * @param {Array} hotspots - Hotspots with a `birds` array of {isLifer, speciesCode, ...}
+ * @returns {Array} Unique lifers with hotspotName and hotspotCount
+ */
+export function collectLifersAcrossHotspots(hotspots) {
+    const liferMap = new Map();
+    for (const hotspot of hotspots || []) {
+        for (const bird of hotspot.birds || []) {
+            if (!bird.isLifer) continue;
+            const existing = liferMap.get(bird.speciesCode);
+            if (existing) {
+                existing.hotspotCount++;
+            } else {
+                liferMap.set(bird.speciesCode, {
+                    comName: bird.comName,
+                    sciName: bird.sciName,
+                    speciesCode: bird.speciesCode,
+                    lastSeen: bird.lastSeen,
+                    confidence: bird.confidence,
+                    hotspotName: hotspot.name,
+                    hotspotCount: 1
+                });
+            }
+        }
+    }
+    return Array.from(liferMap.values());
+}
+
+/**
+ * Build a plain-text, checkbox-style target list suitable for the clipboard.
+ * @param {Array} lifers - Output of collectLifersAcrossHotspots (any order)
+ * @param {Function} formatDate - Formats a lastSeen string for display
+ * @param {string} [label='life list'] - The user's name for their list
+ * @returns {string}
+ */
+export function formatLiferTargetsText(lifers, formatDate = (d) => d, label = 'life list') {
+    const lines = [`Target birds not on your ${label} (${lifers.length})`];
+    for (const lifer of lifers) {
+        const more = lifer.hotspotCount > 1 ? ` (+${lifer.hotspotCount - 1} more spots)` : '';
+        const when = lifer.lastSeen ? ` (${formatDate(lifer.lastSeen)})` : '';
+        lines.push(`[ ] ${lifer.comName} - ${lifer.hotspotName}${more}${when}`);
+    }
+    return lines.join('\n');
 }

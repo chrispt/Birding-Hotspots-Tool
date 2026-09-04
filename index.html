@@ -79,6 +79,7 @@
                     <li><strong>Generate PDF reports</strong> - Download a printable report with maps, directions, and species lists</li>
                     <li><strong>Save locations</strong> - Bookmark your favorite starting points for quick access</li>
                 </ul>
+                <p class="about-note about-glossary"><strong>New to birding?</strong> A <strong>hotspot</strong> is a public birding location tracked on eBird. A <strong>checklist</strong> is one birder's report of a visit. A <strong>lifer</strong> is a species you have never seen before. <strong>Notable</strong> (rare) means eBird flagged the sighting as unusual for that place and season.</p>
                 <p class="about-note">Requires a free <a href="https://ebird.org/api/keygen" target="_blank" rel="noopener noreferrer">eBird API key</a> to access hotspot data.</p>
             </div>
         </details>
@@ -88,7 +89,15 @@
             <!-- Settings Sidebar -->
             <aside class="settings-sidebar">
                 <!-- API Key Section -->
-            <section class="card">
+            <section class="card api-key-card" id="apiKeyCard">
+                <div id="apiKeyCollapsed" class="api-key-collapsed hidden">
+                    <span class="api-key-saved">
+                        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                        eBird API key saved
+                    </span>
+                    <button type="button" id="apiKeyChange" class="btn-link">Change</button>
+                </div>
+                <div id="apiKeyFull">
                 <h2 class="section-title has-tooltip tooltip-left" data-tooltip="Your personal eBird API key is required to fetch bird sighting data. Get one free from eBird.">
                     eBird API Key
                     <a href="https://ebird.org/api/keygen" target="_blank" rel="noopener noreferrer" class="help-link" title="Get your free API key" aria-label="Get your free eBird API key">
@@ -110,35 +119,24 @@
                     <span class="checkbox-custom"></span>
                     Remember my API key
                 </label>
+                </div>
             </section>
 
             <!-- Step 1: Search Type Selection -->
             <section id="searchTypeSection" class="card">
-                <h2 class="section-title">What would you like to do?</h2>
-                <div class="search-type-cards">
-                    <button type="button" class="search-type-card active" id="locationSearchBtn" aria-pressed="true">
-                        <div class="search-type-icon">
-                            <svg viewBox="0 0 24 24" width="32" height="32" aria-hidden="true">
-                                <path fill="currentColor" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-                            </svg>
-                        </div>
-                        <div class="search-type-content">
-                            <span class="search-type-title">Search a Location</span>
-                            <span class="search-type-desc">Find hotspots or a species near one place</span>
-                        </div>
-                    </button>
-                    <button type="button" class="search-type-card" id="routeSearchBtn" aria-pressed="false">
-                        <div class="search-type-icon">
-                            <svg viewBox="0 0 24 24" width="32" height="32" aria-hidden="true">
-                                <path fill="currentColor" d="M21.71 11.29l-9-9c-.39-.39-1.02-.39-1.41 0l-9 9c-.39.39-.39 1.02 0 1.41l9 9c.39.39 1.02.39 1.41 0l9-9c.39-.38.39-1.01 0-1.41zM14 14.5V12h-4v3H8v-4c0-.55.45-1 1-1h5V7.5l3.5 3.5-3.5 3.5z"/>
-                            </svg>
-                        </div>
-                        <div class="search-type-content">
-                            <span class="search-type-title">Plan a Route</span>
-                            <span class="search-type-desc">Find hotspots along your drive</span>
-                        </div>
-                    </button>
+                <h2 class="section-title">What are you looking for?</h2>
+                <div class="mode-tabs" role="group" aria-label="Search mode">
+                    <button type="button" class="mode-tab active" id="locationSearchBtn" aria-pressed="true">Near a place</button>
+                    <button type="button" class="mode-tab" id="routeSearchBtn" aria-pressed="false">Along a route</button>
+                    <button type="button" class="mode-tab" id="speciesTabBtn" aria-pressed="false">A species</button>
                 </div>
+                <button type="button" id="quickStartNearMe" class="btn btn-secondary quick-start-btn">
+                    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                        <path fill="currentColor" d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0013 3.06V1h-2v2.06A8.994 8.994 0 003.06 11H1v2h2.06A8.994 8.994 0 0011 20.94V23h2v-2.06A8.994 8.994 0 0020.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/>
+                    </svg>
+                    Find hotspots near me
+                </button>
+                <p class="help-text quick-start-hint">One click: uses your device location and your current options.</p>
             </section>
 
             <!-- Step 2a: Location Search Section -->
@@ -219,7 +217,7 @@
                 </div>
 
                 <!-- Sub-toggle for hotspot vs species -->
-                <div class="search-sub-toggle">
+                <div class="search-sub-toggle hidden" aria-hidden="true">
                     <button type="button" class="sub-toggle-btn active" id="hotspotSubBtn" aria-pressed="true">Find Hotspots</button>
                     <button type="button" class="sub-toggle-btn" id="speciesSubBtn" aria-pressed="false">Find a Species</button>
                 </div>
@@ -238,6 +236,11 @@
                     <div id="selectedSpecies" class="selected-species hidden"></div>
                     <p class="help-text">Search by common or scientific name</p>
                 </div>
+
+                <p class="search-options-summary">
+                    <span id="searchOptionsSummary">Within 10 mi · Top 10 · Most species</span>
+                    <button type="button" id="changeSearchOptions" class="btn-link" aria-controls="advancedOptionsContent">Change</button>
+                </p>
             </section>
 
             <!-- Step 2b: Route Search Section (hidden by default) -->
@@ -346,6 +349,13 @@
             </section>
 
             <!-- Route Hotspots Selection Section (shown after finding hotspots along route) -->
+            <button type="button" id="generateReport" class="btn btn-primary btn-large">
+                <svg viewBox="0 0 24 24" width="24" height="24">
+                    <path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                </svg>
+                Find Hotspots
+            </button>
+
             <section id="routeHotspotsSection" class="card hidden">
                 <h2 class="section-title">
                     <svg viewBox="0 0 24 24" width="24" height="24">
@@ -409,6 +419,7 @@
                     </svg>
                 </button>
                 <div id="advancedOptionsContent" class="collapsible-content collapsed">
+                    <p class="help-text advanced-options-note">Your choices here are remembered on this device.</p>
                     <!-- Sort Options -->
                     <div class="advanced-option-group" id="sortOptionsSection">
                         <fieldset class="fieldset-reset">
@@ -551,7 +562,11 @@
                     </svg>
                 </button>
                 <div id="lifeListContent" class="collapsible-content collapsed">
-                    <p class="help-text">Import your eBird life list to highlight potential lifers at hotspots.</p>
+                    <p class="help-text">Import an eBird list to highlight species that are not on it yet.</p>
+                    <div class="input-group life-list-label-group">
+                        <label for="lifeListLabel" class="input-label">List name (optional)</label>
+                        <input type="text" id="lifeListLabel" class="text-input" maxlength="40" placeholder="e.g., 2026 Minnesota list" autocomplete="off">
+                    </div>
                     <div class="life-list-actions">
                         <label class="btn btn-secondary btn-small life-list-import-btn">
                             <svg viewBox="0 0 24 24" width="16" height="16">
@@ -567,7 +582,7 @@
                             Clear
                         </button>
                     </div>
-                    <p id="lifeListHelp" class="help-text-small">Go to <a href="https://ebird.org/downloadMyData" target="_blank" rel="noopener">My eBird &gt; Download My Data</a> to export your life list as CSV.</p>
+                    <p id="lifeListHelp" class="help-text-small">Go to <a href="https://ebird.org/lifelist" target="_blank" rel="noopener noreferrer">My eBird &gt; Life List</a>, choose a region and time period at the top of the page (for example a state and this year to make a year list), then click <strong>Download</strong> at the bottom. Importing a new file replaces the current list. Do not use "Download My Data": that is your full checklist history and will be rejected.</p>
                 </div>
             </section>
 
@@ -585,12 +600,6 @@
             </section>
 
             <!-- Generate Button -->
-            <button type="button" id="generateReport" class="btn btn-primary btn-large">
-                <svg viewBox="0 0 24 24" width="24" height="24">
-                    <path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
-                </svg>
-                Find Hotspots
-            </button>
             </aside>
 
             <!-- Results Area -->
@@ -601,64 +610,98 @@
                 <section id="resultsSection" class="results-section hidden" tabindex="-1" aria-label="Search results">
                 <!-- Results Header (sticky) -->
                 <div class="results-header">
-                    <div class="results-summary" aria-live="polite" role="status">
-                        <h2 class="results-title">Search Results</h2>
-                        <p id="resultsMeta" class="results-meta"></p>
-                        <div id="weatherSummary" class="weather-summary hidden"></div>
-                    </div>
-                    <div class="sort-toggle" role="group" aria-label="Sort results">
-                        <button type="button" id="sortBySpecies" class="sort-btn active" aria-pressed="true">
-                            Most Species
-                        </button>
-                        <button type="button" id="sortByDistance" class="sort-btn" aria-pressed="false">
-                            Closest
-                        </button>
-                        <button type="button" id="sortByDriving" class="sort-btn" aria-pressed="false">
-                            Shortest Drive
-                        </button>
-                        <button type="button" id="sortByRecency" class="sort-btn" aria-pressed="false">
-                            Freshest Sightings
-                        </button>
-                    </div>
-                    <div id="resultsFilterBar" class="results-filter-bar" role="group" aria-label="Filter results">
-                        <button type="button" id="filterNotable" class="filter-chip" aria-pressed="false">
-                            Notable only
-                        </button>
-                        <button type="button" id="filterLifers" class="filter-chip" aria-pressed="false">
-                            Lifers only
-                        </button>
-                        <div class="filter-min-species">
-                            <label for="filterMinSpecies" class="filter-min-species-label">Min species</label>
-                            <input type="number" id="filterMinSpecies" class="filter-min-species-input" min="0" step="1" value="0" inputmode="numeric">
+                    <div class="results-header-row">
+                        <div class="results-summary" aria-live="polite" role="status">
+                            <h2 class="results-title" id="resultsTitle">Search Results</h2>
+                            <p id="resultsMeta" class="results-meta"></p>
+                        </div>
+                        <div class="results-controls" id="resultsControls">
+                            <div class="sort-toggle" id="sortControl">
+                                <label for="sortSelect" class="visually-hidden">Sort results</label>
+                                <select id="sortSelect" class="results-select" aria-label="Sort results">
+                                    <option value="species">Sort: Most species</option>
+                                    <option value="distance">Sort: Closest</option>
+                                    <option value="driving">Sort: Shortest drive</option>
+                                    <option value="recency">Sort: Freshest sightings</option>
+                                </select>
+                            </div>
+                            <div class="popover-anchor" id="filtersAnchor">
+                                <button type="button" id="filtersToggle" class="btn btn-secondary btn-small" aria-expanded="false" aria-controls="filtersPanel">
+                                    Filters
+                                    <span id="filtersCount" class="filters-count hidden" aria-live="polite"></span>
+                                </button>
+                                <div id="filtersPanel" class="popover hidden" role="group" aria-label="Filter results">
+                                    <div id="resultsFilterBar" class="results-filter-bar" role="group" aria-label="Filter results">
+                                        <button type="button" id="filterNotable" class="filter-chip" aria-pressed="false">
+                                            Notable only
+                                        </button>
+                                        <button type="button" id="filterLifers" class="filter-chip" aria-pressed="false">
+                                            Lifers only
+                                        </button>
+                                        <div class="filter-min-species">
+                                            <label for="filterMinSpecies" class="filter-min-species-label">Min species</label>
+                                            <input type="number" id="filterMinSpecies" class="filter-min-species-input" min="0" step="1" value="0" inputmode="numeric">
+                                        </div>
+                                    </div>
+                                    <details class="badge-legend" id="badgeLegend">
+                                        <summary>What do the badges mean?</summary>
+                                        <dl>
+                                            <dt>N species</dt>
+                                            <dd>Distinct species reported at that hotspot in the last 30 days.</dd>
+                                            <dt>RARE</dt>
+                                            <dd>Has a species flagged as rare or unusual for this area on eBird.</dd>
+                                            <dt>Targets</dt>
+                                            <dd>Species that are not on the list you imported.</dd>
+                                            <dt>Fresh today</dt>
+                                            <dd>A rare or target species was reported there today or yesterday.</dd>
+                                            <dt>Well-Established</dt>
+                                            <dd>500 or more checklists submitted there: a popular, reliable spot.</dd>
+                                            <dt>Active</dt>
+                                            <dd>50 or more checklists: regularly birded.</dd>
+                                            <dt>New Spot</dt>
+                                            <dd>Fewer than 50 checklists so far: little data yet, possibly under-birded.</dd>
+                                            <dt>Quick picks</dt>
+                                            <dd>The hotspot with the most species, the closest one, and the one with the freshest rare or target sighting. Click a chip to jump to it.</dd>
+                                        </dl>
+                                    </details>
+                                </div>
+                            </div>
+                            <div class="popover-anchor" id="shareExportAnchor">
+                                <button type="button" id="shareExportToggle" class="btn btn-secondary btn-small" aria-expanded="false" aria-haspopup="true" aria-controls="shareExportMenu">
+                                    Share · Export
+                                </button>
+                                <div id="shareExportMenu" class="popover popover-menu hidden" role="group" aria-label="Share and export">
+                                    <button type="button" id="exportPdfBtn" class="btn btn-secondary">
+                                        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                                            <path fill="currentColor" d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
+                                        </svg>
+                                        Export to PDF
+                                    </button>
+                                    <button type="button" id="exportGpxBtn" class="btn btn-secondary">
+                                        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                                            <path fill="currentColor" d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z"/>
+                                        </svg>
+                                        Export GPX
+                                    </button>
+                                    <button type="button" id="shareLinkBtn" class="btn btn-secondary">
+                                        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                                            <path fill="currentColor" d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/>
+                                        </svg>
+                                        Copy share link
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="results-actions">
                         <button type="button" id="newSearchBtn" class="btn btn-secondary">
-                            <svg viewBox="0 0 24 24" width="18" height="18">
+                            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
                                 <path fill="currentColor" d="M17.65 6.35A8 8 0 1 0 19.73 13h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
                             </svg>
                             New Search
                         </button>
-                        <button type="button" id="exportPdfBtn" class="btn btn-primary">
-                            <svg viewBox="0 0 24 24" width="18" height="18">
-                                <path fill="currentColor" d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
-                            </svg>
-                            Export to PDF
-                        </button>
-                        <button type="button" id="exportGpxBtn" class="btn btn-secondary">
-                            <svg viewBox="0 0 24 24" width="18" height="18">
-                                <path fill="currentColor" d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z"/>
-                            </svg>
-                            Export GPX
-                        </button>
-                        <button type="button" id="shareLinkBtn" class="btn btn-secondary">
-                            <svg viewBox="0 0 24 24" width="18" height="18">
-                                <path fill="currentColor" d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/>
-                            </svg>
-                            Share
-                        </button>
                         <button type="button" id="buildItineraryBtn" class="btn btn-accent">
-                            <svg viewBox="0 0 24 24" width="18" height="18">
+                            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
                                 <path fill="currentColor" d="M21.71 11.29l-9-9c-.39-.39-1.02-.39-1.41 0l-9 9c-.39.39-.39 1.02 0 1.41l9 9c.39.39 1.02.39 1.41 0l9-9c.39-.38.39-1.01 0-1.41zM14 14.5V12h-4v3H8v-4c0-.55.45-1 1-1h5V7.5l3.5 3.5-3.5 3.5z"/>
                             </svg>
                             Build Itinerary
@@ -741,6 +784,12 @@
                         <!-- Dynamically populated -->
                     </div>
                     <div class="itinerary-export-buttons">
+                        <a id="openItineraryInMaps" class="btn btn-secondary" href="#" target="_blank" rel="noopener noreferrer">
+                            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                                <path fill="currentColor" d="M21.71 11.29l-9-9c-.39-.39-1.02-.39-1.41 0l-9 9c-.39.39-.39 1.02 0 1.41l9 9c.39.39 1.02.39 1.41 0l9-9c.39-.38.39-1.01 0-1.41zM14 14.5V12h-4v3H8v-4c0-.55.45-1 1-1h5V7.5l3.5 3.5-3.5 3.5z"/>
+                            </svg>
+                            Open route in Google Maps
+                        </a>
                         <button type="button" id="exportItineraryPdf" class="btn btn-primary">
                             <svg viewBox="0 0 24 24" width="16" height="16">
                                 <path fill="currentColor" d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
@@ -772,13 +821,16 @@
                 </div>
 
                 <!-- Rare Bird Alert Container (dynamically populated) -->
-                <div id="rareBirdAlert" class="hidden"></div>
-
-                <!-- Lifer Alert Container (dynamically populated) -->
-                <div id="liferAlert" class="hidden"></div>
-
-                <!-- Migration Alert Container (dynamically populated) -->
-                <div id="migrationAlert" class="hidden"></div>
+                <section id="quickPicks" class="quick-picks hidden" aria-labelledby="quickPicksHeading"></section>
+                <div id="highlights" class="highlights hidden">
+                    <div id="highlightsStrip" class="highlights-strip" role="group" aria-label="Today's highlights"></div>
+                    <div id="highlightsPanels" class="highlights-panels">
+                        <div id="weatherSummary" class="weather-summary hidden"></div>
+                        <div id="rareBirdAlert" class="hidden"></div>
+                        <div id="liferAlert" class="hidden"></div>
+                        <div id="migrationAlert" class="hidden"></div>
+                    </div>
+                </div>
 
                 <!-- Regional Activity Panel (populated after search) -->
                 <div id="regionalActivityPanel" class="regional-activity-panel card hidden">
