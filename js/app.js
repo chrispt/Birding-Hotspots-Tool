@@ -2810,6 +2810,9 @@ class BirdingHotspotsApp {
     displayResults(data) {
         const { origin, hotspots, sortMethod, generatedDate } = data;
 
+        // Clear anything left from a previous mode (e.g. an itinerary panel)
+        this.resetResultsView();
+
         // A fresh result set starts with no active filters
         this.resetResultFilters();
 
@@ -5543,11 +5546,10 @@ class BirdingHotspotsApp {
      * @param {Object} end - End location
      */
     displayRouteItinerary(itinerary, start, end) {
-        // Clear previous results
-        this.hideQuickPicks();
-        this.elements.rareBirdAlert.classList.add('hidden');
-        this.elements.weatherSummary.classList.add('hidden');
-        clearElement(this.elements.hotspotCards);
+        // Clear previous results, including a location-mode itinerary panel
+        // that would otherwise sit under this route (keep the route itinerary
+        // the caller just stored)
+        this.resetResultsView({ keepItinerary: true });
 
         // Hide sort buttons and post-search filters for route mode (itinerary
         // stops have a fixed order and aren't filterable)
@@ -5850,11 +5852,8 @@ class BirdingHotspotsApp {
      * @param {Object} origin - Search origin
      */
     displaySpeciesResults(species, sightings, origin) {
-        // Clear previous results
-        this.hideQuickPicks();
-        this.elements.rareBirdAlert.classList.add('hidden');
-        this.elements.weatherSummary.classList.add('hidden');
-        clearElement(this.elements.hotspotCards);
+        // Clear previous results, including any itinerary panel from another mode
+        this.resetResultsView();
 
         // Update results header
         this.setResultsTitle(`${species.comName || 'Species'} nearby`, `${sightings.length} locations with recent sightings`);
@@ -7627,6 +7626,41 @@ class BirdingHotspotsApp {
     /**
      * Handle "New Search" button click
      */
+    /**
+     * Put the results area back to a blank slate before a fresh render.
+     * Every display path (hotspots, species, route itinerary) and New Search
+     * share this so a panel from an earlier mode, such as a location-mode
+     * itinerary, cannot linger under a new result.
+     * @param {{keepItinerary?: boolean}} [options] - route mode sets
+     *   currentItinerary before rendering, so it asks to keep it
+     */
+    resetResultsView({ keepItinerary = false } = {}) {
+        // Quick picks and the highlights strip (with its banner panels)
+        this.hideQuickPicks();
+        for (const el of [this.elements.rareBirdAlert, this.elements.liferAlert,
+            this.elements.migrationAlert, this.elements.weatherSummary]) {
+            if (!el) continue;
+            el.classList.add('hidden');
+            clearElement(el);
+        }
+
+        // Itinerary panels and the route line drawn on the map
+        if (this.itineraryRouteLine && this.resultsMapInstance) {
+            this.resultsMapInstance.removeLayer(this.itineraryRouteLine);
+        }
+        this.itineraryRouteLine = null;
+        if (!keepItinerary) this.currentItinerary = null;
+        this.viewingSavedItinerary = false;
+        this.elements.itineraryPanel.classList.add('hidden');
+        this.elements.itineraryResults.classList.add('hidden');
+        this.elements.exportItineraryPdf.classList.remove('hidden');
+        if (this.elements.saveItineraryBtn) this.elements.saveItineraryBtn.classList.remove('hidden');
+
+        // Cards area is the default surface
+        clearElement(this.elements.hotspotCards);
+        this.elements.hotspotCards.classList.remove('hidden');
+    }
+
     handleNewSearch() {
         // Switch back to single-column layout
         this.elements.mainContent.classList.remove('has-results');
@@ -7637,33 +7671,13 @@ class BirdingHotspotsApp {
         // Hide results section
         this.elements.resultsSection.classList.add('hidden');
 
-        // Hide and clear quick picks and rare bird alert
-        this.hideQuickPicks();
-        this.elements.rareBirdAlert.classList.add('hidden');
-        clearElement(this.elements.rareBirdAlert);
-
-        // Hide and clear weather summary
-        this.elements.weatherSummary.classList.add('hidden');
-        clearElement(this.elements.weatherSummary);
-
-        // Hide and clear migration alert
-        this.elements.migrationAlert.classList.add('hidden');
-        clearElement(this.elements.migrationAlert);
+        // Banners, quick picks, itinerary panels, and the cards area
+        this.resetResultsView();
 
         // Clear stored results
         this.currentResults = null;
         this.currentSortMethod = null;
         this.notableObservations = [];
-
-        // Clear itinerary state
-        this.currentItinerary = null;
-        this.itineraryRouteLine = null;
-        this.viewingSavedItinerary = false;
-        this.elements.itineraryPanel.classList.add('hidden');
-        this.elements.itineraryResults.classList.add('hidden');
-        this.elements.exportItineraryPdf.classList.remove('hidden');
-        if (this.elements.saveItineraryBtn) this.elements.saveItineraryBtn.classList.remove('hidden');
-        this.elements.hotspotCards.classList.remove('hidden');
 
         // Hide and clear route hotspots selection
         this.elements.routeHotspotsSection.classList.add('hidden');
