@@ -1988,44 +1988,8 @@ details.about-section[open] .about-chevron {
     margin: 4px 0 0 0;
 }
 
-/* Sort Toggle in Results */
-.sort-toggle {
+.sort-control {
     display: flex;
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius);
-    overflow: hidden;
-}
-
-.sort-btn {
-    padding: 8px 16px;
-    border: none;
-    background: var(--card-bg);
-    color: var(--text-secondary);
-    font-size: 0.875rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all var(--transition);
-    font-family: inherit;
-    min-height: 44px; /* WCAG touch target size */
-}
-
-.sort-btn:not(:last-child) {
-    border-right: 1px solid var(--border-color);
-}
-
-.sort-btn:hover:not(.active) {
-    background: var(--background);
-}
-
-.sort-btn.active {
-    background: var(--primary-color);
-    color: white;
-}
-
-.sort-btn:focus-visible {
-    outline: 2px solid var(--primary-color);
-    outline-offset: -2px;
-    z-index: 1;
 }
 
 .results-actions {
@@ -2052,7 +2016,7 @@ details.about-section[open] .about-chevron {
     cursor: pointer;
     transition: all var(--transition);
     font-family: inherit;
-    min-height: 44px; /* WCAG touch target size, matches .sort-btn */
+    min-height: 44px; /* WCAG touch target size */
 }
 
 .filter-chip:hover:not([aria-pressed="true"]) {
@@ -2109,7 +2073,7 @@ details.about-section[open] .about-chevron {
     color: var(--text-primary);
     font-size: 0.8125rem;
     font-family: inherit;
-    min-height: 44px; /* WCAG touch target size, matches .sort-btn */
+    min-height: 44px; /* WCAG touch target size */
 }
 
 .filter-min-species-input:focus-visible {
@@ -2656,29 +2620,9 @@ details.about-section[open] .about-chevron {
         height: 250px;
     }
 
-    /* 4 sort buttons no longer fit legibly in one row at this width (adding
-       "Freshest Sightings" made labels too long for a 4-up flex row) — wrap
-       into a 2x2 grid instead, with gap-drawn gridlines replacing the
-       border-right-per-button approach used in the single-row desktop layout. */
-    .sort-toggle {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
+    .sort-control,
+    .results-select {
         width: 100%;
-        gap: 1px;
-        background: var(--border-color);
-    }
-
-    .sort-btn {
-        flex: none;
-        text-align: center;
-        font-size: 0.8rem;
-        padding: 8px 6px;
-    }
-
-    /* Override the desktop single-row border-right rule (higher specificity
-       than a plain .sort-btn selector) now that gridlines come from the gap. */
-    .sort-btn:not(:last-child) {
-        border-right: none;
     }
 
     .results-actions {
