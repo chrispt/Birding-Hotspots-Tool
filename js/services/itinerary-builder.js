@@ -315,3 +315,72 @@ export function formatItineraryTime(date) {
         hour12: true
     });
 }
+
+/**
+ * Reduce itinerary stops to the fields a saved itinerary needs to be
+ * reopened later (name, position, timing). Drops per-stop bird lists,
+ * weather and raw observations, which are large and go stale anyway.
+ * @param {Array} stops - Stops from buildItinerary()
+ * @returns {Array} Lean stop objects with ISO-string arrivalTime
+ */
+export function toSavedItineraryStops(stops) {
+    return (stops || []).map(stop => ({
+        type: stop.type,
+        name: stop.name,
+        locId: stop.locId || null,
+        lat: stop.lat,
+        lng: stop.lng,
+        address: stop.address || '',
+        speciesCount: stop.speciesCount || 0,
+        stopNumber: stop.stopNumber,
+        suggestedVisitTime: stop.suggestedVisitTime || 0,
+        arrivalTime: stop.arrivalTime ? new Date(stop.arrivalTime).toISOString() : null
+    }));
+}
+
+/**
+ * Rebuild a displayable itinerary from a saved record. Tolerates legacy
+ * saves that have no summary/legs (only stops and totalDistance).
+ * @param {Object} saved - Record from storage.getSavedItineraries()
+ * @returns {Object} Itinerary shaped like buildItinerary()'s result
+ */
+export function reviveSavedItinerary(saved) {
+    const stops = (saved.stops || []).map((stop, index) => ({
+        ...stop,
+        stopNumber: stop.stopNumber || index + 1,
+        arrivalTime: stop.arrivalTime ? new Date(stop.arrivalTime) : null,
+        departureTime: null,
+        legToNext: null
+    }));
+    const hotspotStops = stops.filter(s => s.type === 'hotspot');
+    const legs = Array.isArray(saved.legs) ? saved.legs : [];
+    const totalVisitTime = hotspotStops.reduce((sum, s) => sum + (s.suggestedVisitTime || 0), 0);
+    const totalTravelTime = legs.reduce((sum, l) => sum + (l.duration || 0), 0) / 60;
+
+    const summary = saved.summary ? { ...saved.summary } : {
+        totalStops: hotspotStops.length,
+        totalDistance: saved.totalDistance || 0,
+        totalTravelTime,
+        totalVisitTime,
+        totalTripTime: totalTravelTime + totalVisitTime
+    };
+    if (summary.estimatedEndTime) {
+        summary.estimatedEndTime = new Date(summary.estimatedEndTime);
+    }
+
+    const first = stops[0];
+    const last = stops[stops.length - 1];
+    const isRoundTrip = typeof saved.isRoundTrip === 'boolean'
+        ? saved.isRoundTrip
+        : !(last && last.type === 'end');
+
+    return {
+        stops,
+        legs,
+        geometry: null,
+        summary,
+        isRoundTrip,
+        name: saved.name || '',
+        origin: saved.origin || (first ? { lat: first.lat, lng: first.lng, address: first.address } : null)
+    };
+}

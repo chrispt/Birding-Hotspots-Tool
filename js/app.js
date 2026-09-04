@@ -16,11 +16,13 @@ import { getDrivingRoutes, getRouteThrough } from './api/routing.js';
 import { getWeatherForLocations, getOverallBirdingConditions, getBirdingConditionScore, getGoldenHourStatus } from './api/weather.js';
 import { SpeciesSearch } from './services/species-search.js';
 import { getSeasonalInsights, getOptimalBirdingTimes, getCurrentSeason, analyzeHotspotActivity } from './services/seasonal-insights.js';
-import { buildItinerary, formatItineraryDuration, formatItineraryTime, calculateUniquenessScore, getSeenSpeciesFromHotspots, canShowGenericItineraryButton } from './services/itinerary-builder.js';
+import { buildItinerary, formatItineraryDuration, formatItineraryTime, calculateUniquenessScore, getSeenSpeciesFromHotspots, canShowGenericItineraryButton, toSavedItineraryStops, reviveSavedItinerary } from './services/itinerary-builder.js';
 import { buildRouteSamplePoints, dedupeHotspotsById, filterHotspotsByRouteDistance, rankHotspotsForEnrichment, sortEnrichedRouteHotspots } from './services/route-hotspot-search.js';
 import { generateGPX, generateHotspotsGPX, downloadGPX } from './services/gpx-generator.js';
 import { applyHotspotFilters } from './services/hotspot-filters.js';
-import { LifeListService } from './services/life-list.js';
+import { LifeListService, collectLifersAcrossHotspots, formatLiferTargetsText } from './services/life-list.js';
+import { computeQuickPicks } from './services/quick-picks.js';
+import { buildRouteShareHash, parseRouteShareHash } from './utils/share-link.js';
 import { errorReporter } from './services/error-reporter.js';
 
 // Install global error handlers as early as possible
@@ -85,6 +87,7 @@ class BirdingHotspotsApp {
             latitude: document.getElementById('latitude'),
             longitude: document.getElementById('longitude'),
             useCurrentLocation: document.getElementById('useCurrentLocation'),
+            quickStartNearMe: document.getElementById('quickStartNearMe'),
 
             // API key
             apiKey: document.getElementById('apiKey'),
@@ -170,6 +173,7 @@ class BirdingHotspotsApp {
             filterLifers: document.getElementById('filterLifers'),
             filterMinSpecies: document.getElementById('filterMinSpecies'),
             resultsMap: document.getElementById('resultsMap'),
+            quickPicks: document.getElementById('quickPicks'),
             rareBirdAlert: document.getElementById('rareBirdAlert'),
             liferAlert: document.getElementById('liferAlert'),
             weatherSummary: document.getElementById('weatherSummary'),
@@ -178,6 +182,7 @@ class BirdingHotspotsApp {
             lifeListToggle: document.getElementById('lifeListToggle'),
             lifeListContent: document.getElementById('lifeListContent'),
             lifeListCount: document.getElementById('lifeListCount'),
+            lifeListLabel: document.getElementById('lifeListLabel'),
             importLifeList: document.getElementById('importLifeList'),
             clearLifeList: document.getElementById('clearLifeList'),
             // Search type selection (Step 1)
@@ -251,6 +256,7 @@ class BirdingHotspotsApp {
             itineraryStops: document.getElementById('itineraryStops'),
             exportItineraryPdf: document.getElementById('exportItineraryPdf'),
             exportItineraryGpx: document.getElementById('exportItineraryGpx'),
+            openItineraryInMaps: document.getElementById('openItineraryInMaps'),
             backToResults: document.getElementById('backToResults'),
             // Recent searches
             recentSearches: document.getElementById('recentSearches'),
@@ -467,6 +473,22 @@ class BirdingHotspotsApp {
         this.elements.lifeListToggle.addEventListener('click', () => this.toggleLifeList());
         this.elements.importLifeList.addEventListener('change', (e) => this.handleLifeListImport(e));
         this.elements.clearLifeList.addEventListener('click', () => this.handleClearLifeList());
+        if (this.elements.lifeListLabel) {
+            this.elements.lifeListLabel.addEventListener('change', () => {
+                storage.setLifeListLabel(this.elements.lifeListLabel.value);
+                this.elements.lifeListLabel.value = storage.getLifeListLabel();
+                this.updateLifeListCount();
+            });
+        }
+
+        // One-click quick start for casual use: locate, then search with current options
+        if (this.elements.quickStartNearMe) {
+            this.elements.quickStartNearMe.addEventListener('click', () => this.handleQuickStart());
+        }
+
+        // Remember Advanced Options across visits
+        [this.elements.sortMethodRadios, this.elements.searchRangeRadios, this.elements.hotspotsCountRadios]
+            .forEach(radios => radios.forEach(radio => radio.addEventListener('change', () => this.saveSearchOptions())));
 
         // Favorite hotspots collapsible toggle
         if (this.elements.favoriteHotspotsToggle) {
@@ -700,6 +722,10 @@ class BirdingHotspotsApp {
      * Load saved data from localStorage
      */
     loadSavedData() {
+        // Restore remembered Advanced Options before anything reads the radios.
+        // loadFromURL() runs afterwards, so hash parameters still win.
+        this.restoreSearchOptions();
+
         // Load saved API key
         const savedKey = storage.getApiKey();
         if (savedKey) {
@@ -716,7 +742,10 @@ class BirdingHotspotsApp {
         // Load favorite hotspots
         this.renderFavoriteHotspots();
 
-        // Initialize life list count
+        // Initialize life list label and count
+        if (this.elements.lifeListLabel) {
+            this.elements.lifeListLabel.value = storage.getLifeListLabel();
+        }
         this.updateLifeListCount();
 
         // Load saved itineraries
@@ -730,6 +759,54 @@ class BirdingHotspotsApp {
         // Show onboarding for first-time users without a saved API key
         if (!savedKey && !storage.hasOnboarded()) {
             this.showOnboarding();
+        }
+    }
+
+    /**
+     * Re-check the Advanced Options radios from the remembered preference.
+     * Values are allowlisted in storage, so a stale or tampered entry can
+     * never select a radio that does not exist.
+     */
+    restoreSearchOptions() {
+        const saved = storage.getSearchOptions();
+        const groups = { sort: 'sortMethod', range: 'searchRange', count: 'hotspotsCount' };
+        for (const [key, name] of Object.entries(groups)) {
+            if (!saved[key]) continue;
+            const radio = document.querySelector(`[name="${name}"][value="${saved[key]}"]`);
+            if (radio) radio.checked = true;
+        }
+    }
+
+    /**
+     * Persist the currently checked Advanced Options radios.
+     */
+    saveSearchOptions() {
+        storage.setSearchOptions({
+            sort: this._checkedValue(this.elements.sortMethodRadios),
+            range: this._checkedValue(this.elements.searchRangeRadios),
+            count: this._checkedValue(this.elements.hotspotsCountRadios)
+        });
+    }
+
+    /**
+     * One-click quick start: switch to a plain hotspot search, use the
+     * device location, then run the search with the current options.
+     * Errors from geolocation and API-key validation surface through the
+     * handlers' own error paths.
+     */
+    async handleQuickStart() {
+        if (this.isProcessing) return;
+        const btn = this.elements.quickStartNearMe;
+        btn.disabled = true;
+        try {
+            this.setSearchType('location');
+            this.setSearchSubMode('hotspot');
+            this.currentLocation = null;
+            await this.handleUseCurrentLocation();
+            if (!this.currentLocation) return;
+            await this.handleGenerateReport();
+        } finally {
+            btn.disabled = false;
         }
     }
 
@@ -1508,6 +1585,21 @@ class BirdingHotspotsApp {
             return;
         }
 
+        // A fresh eBird export is a complete list, so replace rather than merge
+        // when one already exists (re-importing after clearing was the old
+        // workaround, and merging silently kept stale entries).
+        const replace = this.lifeListService.hasLifeList();
+        if (replace) {
+            const confirmed = await this.showConfirmDialog(
+                `Replace your current list (${this.lifeListService.getCount()} species) with this file? The old list will be removed.`,
+                { title: 'Replace List', okText: 'Replace', cancelText: 'Cancel' }
+            );
+            if (!confirmed) {
+                e.target.value = '';
+                return;
+            }
+        }
+
         try {
             const content = await file.text();
 
@@ -1522,11 +1614,13 @@ class BirdingHotspotsApp {
                 }
             }
 
-            const result = this.lifeListService.importFromCSV(content, this.taxonomy);
+            const result = this.lifeListService.importFromCSV(content, this.taxonomy, { replace });
 
             if (result.imported > 0) {
                 this.updateLifeListCount();
-                this.showSuccessToast(`Imported ${result.imported} species to your life list`);
+                this.showSuccessToast(result.replaced
+                    ? `Replaced your list with ${result.imported} species`
+                    : `Imported ${result.imported} species to your ${this.getLifeListLabel()}`);
             } else if (result.duplicates > 0) {
                 this.showSuccessToast(`All ${result.duplicates} species were already on your list`);
             } else if (result.errors.length > 0) {
@@ -1555,8 +1649,19 @@ class BirdingHotspotsApp {
         if (!confirmed) return;
 
         this.lifeListService.clear();
+        storage.setLifeListLabel('');
+        if (this.elements.lifeListLabel) this.elements.lifeListLabel.value = '';
         this.updateLifeListCount();
-        this.showSuccessToast('Life list cleared');
+        this.showSuccessToast('List cleared');
+    }
+
+    /**
+     * The user's name for their imported list ("2026 Minnesota list"), or
+     * the generic "life list" when they have not set one.
+     * @returns {string}
+     */
+    getLifeListLabel() {
+        return storage.getLifeListLabel() || 'life list';
     }
 
     /**
@@ -1564,7 +1669,10 @@ class BirdingHotspotsApp {
      */
     updateLifeListCount() {
         const count = this.lifeListService.getCount();
-        this.elements.lifeListCount.textContent = `${count} species`;
+        const label = storage.getLifeListLabel();
+        this.elements.lifeListCount.textContent = label && count > 0
+            ? `${count} species · ${label}`
+            : `${count} species`;
         this.elements.clearLifeList.disabled = count === 0;
 
         // Show/hide lifer optimize section based on life list
@@ -1810,6 +1918,13 @@ class BirdingHotspotsApp {
         if (!hash) return;
 
         const params = new URLSearchParams(hash);
+
+        // Route-mode share link: restore the form and preview, never auto-search
+        if (params.get('mode') === 'route') {
+            this.restoreRouteFromURL(hash);
+            return;
+        }
+
         const lat = parseFloat(params.get('lat'));
         const lng = parseFloat(params.get('lng'));
 
@@ -1851,6 +1966,26 @@ class BirdingHotspotsApp {
         if (savedKey) {
             this.handleGenerateReport();
         }
+    }
+
+    /**
+     * Restore a shared route search: switch to route mode, fill both
+     * addresses and the detour slider, then geocode each address so the
+     * route preview draws. The search itself is left for the user to run.
+     * @param {string} hash - Hash body from window.location.hash
+     */
+    restoreRouteFromURL(hash) {
+        const route = parseRouteShareHash(hash);
+        if (!route) return;
+
+        this.setSearchType('route');
+        this.elements.routeStartAddress.value = route.from;
+        this.elements.routeEndAddress.value = route.to;
+        this.elements.routeMaxDetour.value = String(route.detour);
+        this.elements.routeMaxDetourValue.textContent = String(route.detour);
+
+        Promise.all([this.handleRouteStartBlur(), this.handleRouteEndBlur()])
+            .catch(() => { /* each blur handler reports its own error */ });
     }
 
     /**
@@ -1920,10 +2055,19 @@ class BirdingHotspotsApp {
         const footer = `\n(${birds.length} species)`;
 
         const text = `${header}\n${separator}\n${speciesList}${footer}`;
+        await this._copyTextToClipboard(text, `${birds.length} species copied to clipboard`);
+    }
 
+    /**
+     * Copy plain text to the clipboard with an execCommand fallback for
+     * older browsers, showing a toast either way.
+     * @param {string} text
+     * @param {string} successMessage
+     */
+    async _copyTextToClipboard(text, successMessage) {
         try {
             await navigator.clipboard.writeText(text);
-            this.showToast(`${birds.length} species copied to clipboard`);
+            this.showToast(successMessage);
         } catch (error) {
             // Fallback for older browsers
             const textArea = document.createElement('textarea');
@@ -1934,7 +2078,7 @@ class BirdingHotspotsApp {
             textArea.select();
             try {
                 document.execCommand('copy');
-                this.showToast(`${birds.length} species copied to clipboard`);
+                this.showToast(successMessage);
             } catch (e) {
                 this.showToast('Could not copy to clipboard', 'error');
             }
@@ -2600,6 +2744,9 @@ class BirdingHotspotsApp {
         // Update meta information
         this.elements.resultsMeta.textContent = `${hotspots.length} hotspots found | ${generatedDate}`;
 
+        // Quick picks: a one-glance answer to "which one should I go to?"
+        this.renderQuickPicks(hotspots);
+
         // Render alert banners
         this.renderRareBirdAlert();
         this.renderLiferAlert(hotspots);
@@ -2636,6 +2783,70 @@ class BirdingHotspotsApp {
         if (origin && this.ebirdApi) {
             this.fetchRegionalActivity(origin.lat, origin.lng).catch(() => {/* swallow — non-critical */});
         }
+    }
+
+    /**
+     * Render the "Quick picks" strip: up to three chips naming the hotspot
+     * with the most species, the closest one, and the freshest recent
+     * activity. Clicking a chip jumps to that hotspot's card.
+     * @param {Array} hotspots - Enriched hotspot results
+     */
+    renderQuickPicks(hotspots) {
+        const container = this.elements.quickPicks;
+        if (!container) return;
+        clearElement(container);
+
+        const picks = computeQuickPicks(hotspots, { freshnessDays: getHotspotFreshnessDays });
+        if (picks.length === 0) {
+            container.classList.add('hidden');
+            return;
+        }
+
+        const label = document.createElement('span');
+        label.className = 'quick-picks-label';
+        label.textContent = 'Quick picks:';
+        container.appendChild(label);
+
+        picks.forEach(pick => {
+            const chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = 'filter-chip quick-pick-chip';
+            chip.setAttribute('aria-label', `${pick.labels.join(' and ')}: ${pick.name}. Jump to this hotspot`);
+            chip.appendChild(document.createTextNode(`${pick.labels.join(' and ')}: `));
+            const name = document.createElement('strong');
+            name.textContent = pick.name;
+            chip.appendChild(name);
+            chip.addEventListener('click', () => this.scrollToHotspotCardByLocId(pick.locId));
+            container.appendChild(chip);
+        });
+
+        container.classList.remove('hidden');
+    }
+
+    /**
+     * Hide and clear the quick picks strip (species search, route mode,
+     * new search).
+     */
+    hideQuickPicks() {
+        const container = this.elements.quickPicks;
+        if (!container) return;
+        clearElement(container);
+        container.classList.add('hidden');
+    }
+
+    /**
+     * Attach a plain-language explanation to a badge or stat: a native
+     * tooltip for pointer users plus visually-hidden text for screen
+     * readers (a title on a generic span is not reliably announced).
+     * @param {HTMLElement} el
+     * @param {string} text
+     */
+    _describe(el, text) {
+        el.title = text;
+        const sr = document.createElement('span');
+        sr.className = 'visually-hidden';
+        sr.textContent = `. ${text}`;
+        el.appendChild(sr);
     }
 
     /**
@@ -2923,24 +3134,8 @@ class BirdingHotspotsApp {
             return;
         }
 
-        // Collect all lifers across all hotspots (unique by species code)
-        const liferMap = new Map();
-        for (const hotspot of hotspots) {
-            for (const bird of hotspot.birds) {
-                if (bird.isLifer && !liferMap.has(bird.speciesCode)) {
-                    liferMap.set(bird.speciesCode, {
-                        comName: bird.comName,
-                        sciName: bird.sciName,
-                        speciesCode: bird.speciesCode,
-                        lastSeen: bird.lastSeen,
-                        confidence: bird.confidence,
-                        hotspotName: hotspot.name
-                    });
-                }
-            }
-        }
-
-        const lifers = Array.from(liferMap.values());
+        // One entry per species, with a count of how many hotspots report it
+        const lifers = collectLifersAcrossHotspots(hotspots);
 
         if (lifers.length === 0) {
             container.classList.add('hidden');
@@ -2950,6 +3145,7 @@ class BirdingHotspotsApp {
         // Show the freshest sightings first so the "+N more" cutoff doesn't
         // hide a lifer seen today behind ones seen weeks ago.
         const sortedLifers = sortBirdsByRecency(lifers);
+        const label = this.getLifeListLabel();
 
         // Show first 5 in preview, rest hidden
         const previewCount = 5;
@@ -2972,19 +3168,26 @@ class BirdingHotspotsApp {
         title.className = 'lifer-alert-title';
         title.textContent = 'POTENTIAL LIFERS';
 
+        const copyBtn = document.createElement('button');
+        copyBtn.type = 'button';
+        copyBtn.className = 'btn btn-secondary btn-small lifer-alert-copy';
+        copyBtn.textContent = 'Copy targets';
+        copyBtn.setAttribute('aria-label', `Copy all ${lifers.length} target species as a checklist`);
+        copyBtn.addEventListener('click', () => {
+            const text = formatLiferTargetsText(sortedLifers, d => this.formatRelativeDate(d), label);
+            this._copyTextToClipboard(text, `${lifers.length} target species copied to clipboard`);
+        });
+
         const count = document.createElement('span');
         count.className = 'lifer-alert-count';
-        count.textContent = `${lifers.length} ${lifers.length === 1 ? 'species' : 'species'} you haven't seen`;
+        count.textContent = `${lifers.length} species not on your ${label}`;
 
         header.appendChild(iconSpan);
         header.appendChild(title);
+        header.appendChild(copyBtn);
         header.appendChild(count);
 
-        // List
-        const list = document.createElement('ul');
-        list.className = 'lifer-alert-list';
-
-        previewItems.forEach(lifer => {
+        const makeLiferItem = (lifer) => {
             const li = document.createElement('li');
             li.className = 'lifer-alert-item';
 
@@ -2995,15 +3198,27 @@ class BirdingHotspotsApp {
             location.className = 'lifer-alert-location';
             location.textContent = ` at ${lifer.hotspotName}`;
 
-            const date = document.createElement('span');
-            date.className = 'lifer-alert-date';
-            date.textContent = `(${this.formatRelativeDate(lifer.lastSeen)})`;
-
             li.appendChild(strong);
             li.appendChild(location);
+
+            if (lifer.hotspotCount > 1) {
+                const more = document.createElement('span');
+                more.className = 'lifer-alert-more';
+                more.textContent = `(+${lifer.hotspotCount - 1} more ${lifer.hotspotCount === 2 ? 'spot' : 'spots'})`;
+                li.appendChild(more);
+            }
+
+            const date = document.createElement('span');
+            date.className = 'lifer-alert-date';
+            date.textContent = ` (${this.formatRelativeDate(lifer.lastSeen)})`;
             li.appendChild(date);
-            list.appendChild(li);
-        });
+            return li;
+        };
+
+        // List
+        const list = document.createElement('ul');
+        list.className = 'lifer-alert-list';
+        previewItems.forEach(lifer => list.appendChild(makeLiferItem(lifer)));
 
         alert.appendChild(header);
         alert.appendChild(list);
@@ -3013,32 +3228,13 @@ class BirdingHotspotsApp {
             const hiddenList = document.createElement('ul');
             hiddenList.className = 'lifer-alert-list hidden';
             hiddenList.id = 'liferAlertMoreList';
-
-            sortedLifers.slice(previewCount).forEach(lifer => {
-                const li = document.createElement('li');
-                li.className = 'lifer-alert-item';
-
-                const strong = document.createElement('strong');
-                strong.textContent = lifer.comName;
-
-                const location = document.createElement('span');
-                location.className = 'lifer-alert-location';
-                location.textContent = ` at ${lifer.hotspotName}`;
-
-                const date = document.createElement('span');
-                date.className = 'lifer-alert-date';
-                date.textContent = `(${this.formatRelativeDate(lifer.lastSeen)})`;
-
-                li.appendChild(strong);
-                li.appendChild(location);
-                li.appendChild(date);
-                hiddenList.appendChild(li);
-            });
+            sortedLifers.slice(previewCount).forEach(lifer => hiddenList.appendChild(makeLiferItem(lifer)));
 
             const toggle = document.createElement('button');
             toggle.type = 'button';
             toggle.className = 'lifer-alert-toggle';
             toggle.setAttribute('aria-expanded', 'false');
+            toggle.setAttribute('aria-controls', hiddenList.id);
 
             const toggleText = document.createElement('span');
             toggleText.textContent = `View all ${lifers.length} potential lifers`;
@@ -4279,6 +4475,13 @@ class BirdingHotspotsApp {
             this.routeStartAddress = startAddress;
             this.routeEndAddressText = endAddress;
 
+            // Shareable link for this route search (replaceState avoids history spam)
+            history.replaceState(null, '', '#' + buildRouteShareHash({
+                from: startAddress,
+                to: endAddress,
+                detour: this.elements.routeMaxDetour.value
+            }));
+
             // Display hotspots for user selection
             this.displayRouteHotspotsSelection(enrichedHotspots);
 
@@ -4937,6 +5140,7 @@ class BirdingHotspotsApp {
      */
     displayRouteItinerary(itinerary, start, end) {
         // Clear previous results
+        this.hideQuickPicks();
         this.elements.rareBirdAlert.classList.add('hidden');
         this.elements.weatherSummary.classList.add('hidden');
         clearElement(this.elements.hotspotCards);
@@ -5244,6 +5448,7 @@ class BirdingHotspotsApp {
      */
     displaySpeciesResults(species, sightings, origin) {
         // Clear previous results
+        this.hideQuickPicks();
         this.elements.rareBirdAlert.classList.add('hidden');
         this.elements.weatherSummary.classList.add('hidden');
         clearElement(this.elements.hotspotCards);
@@ -5431,6 +5636,7 @@ class BirdingHotspotsApp {
     createHotspotCard(hotspot, number, origin, isFavorite = false) {
         const card = document.createElement('article');
         card.className = 'hotspot-card';
+        card.dataset.locId = hotspot.locId;
 
         // Favorite/Star button
         const favoriteBtn = document.createElement('button');
@@ -5498,6 +5704,7 @@ class BirdingHotspotsApp {
         speciesStat.className = 'stat species-count';
         speciesStat.appendChild(createSVGIcon('check', 16));
         speciesStat.appendChild(document.createTextNode(` ${hotspot.speciesCount} species`));
+        this._describe(speciesStat, 'Distinct species reported here in the last 30 days');
 
         // Straight-line distance stat
         const straightDistanceStat = document.createElement('span');
@@ -5548,12 +5755,15 @@ class BirdingHotspotsApp {
                 if (hotspot.totalChecklists >= 500) {
                     qualityBadge.className = 'quality-badge established';
                     qualityBadge.textContent = 'Well-Established';
+                    this._describe(qualityBadge, '500 or more checklists submitted here: a popular, reliable spot');
                 } else if (hotspot.totalChecklists >= 50) {
                     qualityBadge.className = 'quality-badge active';
                     qualityBadge.textContent = 'Active';
+                    this._describe(qualityBadge, '50 or more checklists submitted here: regularly birded');
                 } else {
                     qualityBadge.className = 'quality-badge new';
                     qualityBadge.textContent = 'New Spot';
+                    this._describe(qualityBadge, 'Fewer than 50 checklists so far: little data yet, possibly under-birded');
                 }
                 qualitySection.appendChild(qualityBadge);
             }
@@ -5573,6 +5783,7 @@ class BirdingHotspotsApp {
             rareBadge.className = 'rare-badge';
             rareBadge.appendChild(createSVGIcon('fire', 14));
             rareBadge.appendChild(document.createTextNode(' RARE'));
+            this._describe(rareBadge, 'Has a species flagged as rare or unusual for this area on eBird');
             header.appendChild(rareBadge);
         }
 
@@ -5591,6 +5802,7 @@ class BirdingHotspotsApp {
             starSvg.appendChild(starPath);
             liferBadge.appendChild(starSvg);
             liferBadge.appendChild(document.createTextNode(' LIFER'));
+            this._describe(liferBadge, `Has species that are not on your ${this.getLifeListLabel()}`);
             header.appendChild(liferBadge);
         }
 
@@ -6467,8 +6679,19 @@ class BirdingHotspotsApp {
         this.elements.itineraryPanel.classList.add('hidden');
         this.elements.itineraryResults.classList.remove('hidden');
 
+        // Turn-by-turn link for the whole trip (Google Maps caps waypoints at 10)
+        if (this.elements.openItineraryInMaps) {
+            const waypoints = this._capRouteWaypoints(itinerary.stops);
+            this.elements.openItineraryInMaps.href = getGoogleMapsRouteUrl(waypoints);
+        }
+
         // Hide normal hotspot cards
         this.elements.hotspotCards.classList.add('hidden');
+
+        // A live itinerary can be exported to PDF and saved (the saved-itinerary
+        // viewer hides these again after calling us)
+        this.elements.exportItineraryPdf.classList.remove('hidden');
+        if (this.elements.saveItineraryBtn) this.elements.saveItineraryBtn.classList.remove('hidden');
 
         // Render summary
         const summary = this.elements.itinerarySummary;
@@ -6665,6 +6888,13 @@ class BirdingHotspotsApp {
             this.itineraryRouteLine = null;
         }
 
+        // A saved itinerary opened with no live search behind it: close the
+        // results area entirely and restore the controls it hid.
+        if (this.viewingSavedItinerary && !this.currentResults) {
+            this.closeSavedItineraryView();
+            return;
+        }
+
         // Hide itinerary results, show normal results
         this.elements.itineraryResults.classList.add('hidden');
         this.elements.hotspotCards.classList.remove('hidden');
@@ -6673,6 +6903,89 @@ class BirdingHotspotsApp {
         if (this.currentResults) {
             this.initResultsMap(this.currentResults.origin, this.currentResults.hotspots);
         }
+    }
+
+    /**
+     * Cap an itinerary's stops to what a Google Maps directions URL accepts
+     * (origin, destination, and at most 10 waypoints). Keeps the first stops
+     * and always keeps the final one so the destination is right.
+     * @param {Array} stops
+     * @returns {Array}
+     */
+    _capRouteWaypoints(stops) {
+        const MAX_POINTS = 12;
+        if (!stops || stops.length <= MAX_POINTS) return stops || [];
+        return [...stops.slice(0, MAX_POINTS - 1), stops[stops.length - 1]];
+    }
+
+    /**
+     * Reopen a saved itinerary in the results area without re-running a
+     * search. Reuses displayItinerary() with a revived, lean itinerary; the
+     * PDF export and Save buttons are hidden because they need the bird and
+     * weather data that a saved itinerary deliberately does not keep.
+     * @param {Object} saved - Record from storage.getSavedItineraries()
+     */
+    openSavedItinerary(saved) {
+        const itinerary = reviveSavedItinerary(saved);
+        if (!itinerary.stops.length) {
+            this.showToast('This saved itinerary has no stops', 'warning');
+            return;
+        }
+
+        this.currentItinerary = itinerary;
+        this.viewingSavedItinerary = true;
+
+        // Present the results area in "itinerary only" mode
+        this.elements.mainContent.classList.add('has-results');
+        this.elements.resultsSection.classList.remove('hidden');
+        this.elements.resultsMeta.textContent = `Saved itinerary: ${saved.name}`;
+        this.hideQuickPicks();
+        for (const el of [this.elements.rareBirdAlert, this.elements.liferAlert, this.elements.migrationAlert,
+            this.elements.weatherSummary, this.elements.regionalActivityPanel]) {
+            if (el) el.classList.add('hidden');
+        }
+        this.elements.sortBySpecies.parentElement.classList.add('hidden');
+        this.elements.resultsFilterBar.classList.add('hidden');
+        this.elements.exportPdfBtn.classList.add('hidden');
+        this.elements.exportGpxBtn.classList.add('hidden');
+        this.elements.buildItineraryBtn.classList.add('hidden');
+        this.elements.itineraryPanel.classList.add('hidden');
+        clearElement(this.elements.hotspotCards);
+
+        // Map: origin plus numbered stops (no route geometry is stored)
+        const origin = itinerary.origin || itinerary.stops[0];
+        const hotspotStops = itinerary.stops.filter(s => s.type === 'hotspot');
+        this.initResultsMap(origin, hotspotStops);
+
+        this.displayItinerary(itinerary);
+
+        this.elements.exportItineraryPdf.classList.add('hidden');
+        if (this.elements.saveItineraryBtn) this.elements.saveItineraryBtn.classList.add('hidden');
+
+        if (this.elements.searchStatus) {
+            this.elements.searchStatus.textContent = `Opened saved itinerary ${saved.name} with ${hotspotStops.length} stops`;
+        }
+    }
+
+    /**
+     * Leave the saved-itinerary view and restore the controls it hid.
+     */
+    closeSavedItineraryView() {
+        this.viewingSavedItinerary = false;
+        this.currentItinerary = null;
+        this.cleanupMaps();
+        this.elements.itineraryResults.classList.add('hidden');
+        this.elements.hotspotCards.classList.remove('hidden');
+        this.elements.resultsSection.classList.add('hidden');
+        this.elements.mainContent.classList.remove('has-results');
+        this.elements.sortBySpecies.parentElement.classList.remove('hidden');
+        this.elements.resultsFilterBar.classList.remove('hidden');
+        this.elements.exportPdfBtn.classList.remove('hidden');
+        this.elements.exportGpxBtn.classList.remove('hidden');
+        this.elements.exportItineraryPdf.classList.remove('hidden');
+        if (this.elements.saveItineraryBtn) this.elements.saveItineraryBtn.classList.remove('hidden');
+        this.updateGenericItineraryButtonVisibility();
+        document.querySelector('.header').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     /**
@@ -6811,7 +7124,7 @@ class BirdingHotspotsApp {
 
             const marker = L.marker([hotspot.lat, hotspot.lng], { icon: hotspotIcon })
                 .bindPopup(`<strong>${sanitizeHTML(hotspot.name)}</strong><br>${sanitizeHTML(String(hotspot.speciesCount))} species`)
-                .on('click', () => this.scrollToHotspotCard(number));
+                .on('click', () => this.scrollToHotspotCardByLocId(hotspot.locId));
 
             marker.addTo(this.resultsMapInstance);
             this.resultsMarkers.push(marker);
@@ -6834,20 +7147,38 @@ class BirdingHotspotsApp {
      */
     scrollToHotspotCard(number) {
         const cards = this.elements.hotspotCards.querySelectorAll('.hotspot-card');
-        const card = cards[number - 1];
-        if (card) {
-            // Remove highlight from all cards
-            cards.forEach(c => c.classList.remove('highlight'));
+        this._highlightHotspotCard(cards[number - 1]);
+    }
 
-            // Scroll to card
-            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-            // Add highlight
-            card.classList.add('highlight');
-
-            // Remove highlight after animation
-            setTimeout(() => card.classList.remove('highlight'), 2000);
+    /**
+     * Scroll to and highlight a hotspot card by eBird location ID. Unlike the
+     * positional lookup this stays correct when filter chips hide cards.
+     * @param {string} locId
+     */
+    scrollToHotspotCardByLocId(locId) {
+        if (!locId) return;
+        const card = this.elements.hotspotCards.querySelector(`.hotspot-card[data-loc-id="${CSS.escape(locId)}"]`);
+        if (!card) {
+            this.showToast('That hotspot is hidden by the current filters', 'warning');
+            return;
         }
+        this._highlightHotspotCard(card);
+    }
+
+    _highlightHotspotCard(card) {
+        if (!card) return;
+        const cards = this.elements.hotspotCards.querySelectorAll('.hotspot-card');
+        // Remove highlight from all cards
+        cards.forEach(c => c.classList.remove('highlight'));
+
+        // Scroll to card
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+        // Add highlight
+        card.classList.add('highlight');
+
+        // Remove highlight after animation
+        setTimeout(() => card.classList.remove('highlight'), 2000);
     }
 
     /**
@@ -6878,7 +7209,8 @@ class BirdingHotspotsApp {
         // Hide results section
         this.elements.resultsSection.classList.add('hidden');
 
-        // Hide and clear rare bird alert
+        // Hide and clear quick picks and rare bird alert
+        this.hideQuickPicks();
         this.elements.rareBirdAlert.classList.add('hidden');
         clearElement(this.elements.rareBirdAlert);
 
@@ -6898,8 +7230,11 @@ class BirdingHotspotsApp {
         // Clear itinerary state
         this.currentItinerary = null;
         this.itineraryRouteLine = null;
+        this.viewingSavedItinerary = false;
         this.elements.itineraryPanel.classList.add('hidden');
         this.elements.itineraryResults.classList.add('hidden');
+        this.elements.exportItineraryPdf.classList.remove('hidden');
+        if (this.elements.saveItineraryBtn) this.elements.saveItineraryBtn.classList.remove('hidden');
         this.elements.hotspotCards.classList.remove('hidden');
 
         // Hide and clear route hotspots selection
@@ -7050,6 +7385,7 @@ class BirdingHotspotsApp {
         // Move focus to Cancel so keyboard users can abort, then trap focus within the overlay
         this.elements.cancelSearch.focus();
         this._loadingTrapCleanup = this._trapFocus(this.elements.loadingOverlay);
+        if (this.elements.quickStartNearMe) this.elements.quickStartNearMe.disabled = true;
         // Show skeleton cards in the results area
         this.showSkeletonCards();
     }
@@ -7074,6 +7410,7 @@ class BirdingHotspotsApp {
             this._loadingTrapCleanup = null;
         }
         this.elements.loadingOverlay.classList.add('hidden');
+        if (this.elements.quickStartNearMe) this.elements.quickStartNearMe.disabled = false;
         this.removeSkeletonCards();
         // Restore focus to the trigger element (e.g. the Generate button)
         if (this._loadingPreviousFocus) {
@@ -7368,11 +7705,19 @@ class BirdingHotspotsApp {
             this.showToast('No itinerary to save', 'warning');
             return;
         }
+        const stops = this.currentItinerary.stops || [];
+        const startStop = stops.find(s => s.type === 'start') || stops[0] || null;
         const saved = storage.addSavedItinerary({
             name: name || 'My Itinerary',
-            locationName: this.currentLocation ? (this.currentLocation.displayName || '') : '',
-            stops: this.currentItinerary.stops || [],
-            totalDistance: this.currentItinerary.totalDistance || 0
+            locationName: this.currentLocation ? (this.currentLocation.address || '') : '',
+            // Lean stops (no bird lists / weather) so the record stays small
+            // and can be reopened later from the sidebar
+            stops: toSavedItineraryStops(stops),
+            totalDistance: this.currentItinerary.summary?.totalDistance || 0,
+            summary: this.currentItinerary.summary || null,
+            legs: this.currentItinerary.legs || [],
+            origin: startStop ? { lat: startStop.lat, lng: startStop.lng, address: startStop.address || '' } : null,
+            isRoundTrip: this.currentItinerary.isRoundTrip
         });
         if (saved) {
             this.renderSavedItineraries();
@@ -7424,9 +7769,19 @@ class BirdingHotspotsApp {
             info.appendChild(name);
             info.appendChild(meta);
 
+            const actions = document.createElement('div');
+            actions.className = 'saved-itinerary-actions';
+
+            const openBtn = document.createElement('button');
+            openBtn.type = 'button';
+            openBtn.className = 'btn btn-secondary btn-small';
+            openBtn.textContent = 'Open';
+            openBtn.setAttribute('aria-label', `Open saved itinerary: ${it.name}`);
+            openBtn.addEventListener('click', () => this.openSavedItinerary(it));
+
             const deleteBtn = document.createElement('button');
             deleteBtn.type = 'button';
-            deleteBtn.className = 'btn-icon favorite-delete';
+            deleteBtn.className = 'btn-icon danger';
             // setAttribute and template literals to showConfirmDialog pass text through the DOM
             // text node — no HTML parsing occurs, so sanitizeHTML here double-encodes (&amp; etc.)
             deleteBtn.setAttribute('aria-label', `Delete saved itinerary: ${it.name}`);
@@ -7443,8 +7798,10 @@ class BirdingHotspotsApp {
                 }
             });
 
+            actions.appendChild(openBtn);
+            actions.appendChild(deleteBtn);
             item.appendChild(info);
-            item.appendChild(deleteBtn);
+            item.appendChild(actions);
             list.appendChild(item);
         });
     }

@@ -6,11 +6,15 @@ A web-based tool to discover the best birding locations near any address. Enter 
 
 - **Address or GPS Input**: Enter any address or GPS coordinates to find birding hotspots within 31 miles
 - **Current Location**: Use your device's GPS to automatically detect your location
-- **Flexible Sorting**: Sort hotspots by most species observed, closest distance, or shortest drive time
-- **Hotspot Quality Indicators**: See total species ever recorded, visit counts, and quality badges (Well-Established/Active/New) for each hotspot
-- **Route Planning**: Find birding hotspots along a driving route between two locations
-- **Itinerary Builder**: Create optimized multi-stop birding itineraries
-- **Life List Integration**: Import your eBird life list to highlight potential lifers at each hotspot
+- **Quick Start**: One "Find hotspots near me" button locates you and runs the search with your current options
+- **Find a Species**: Search for a single species and see where it has been reported nearby in the last 30 days
+- **Flexible Sorting**: Sort hotspots by most species observed, closest distance, shortest drive time, or freshest sightings (most recently reported lifers and notable species). Your sort, range, and count choices are remembered between visits
+- **Quick Picks**: A three-chip summary above the results names the hotspot with the most species, the closest one, and the freshest activity, and jumps to its card
+- **Species Confidence Dots**: Each species shows how recently it was reported at that hotspot
+- **Hotspot Quality Indicators**: See total species ever recorded, visit counts, and quality badges (Well-Established/Active/New) for each hotspot, with plain-language tooltips
+- **Route Planning**: Find birding hotspots along a driving route between two locations, with target species, an "Optimize for Lifers" mode, and a shareable link for the route
+- **Itinerary Builder**: Create optimized multi-stop birding itineraries, open the whole route in Google Maps, and save itineraries to reopen later
+- **Life List Integration**: Import your eBird life list (or a year, state, or county list) to highlight species not on it at each hotspot, see how many spots report each target, and copy the target list
 - **PDF Report Generation**: Download a comprehensive PDF report including:
   - Visual map showing all hotspot locations
   - Species count for each hotspot (last 30 days)
@@ -20,6 +24,8 @@ A web-based tool to discover the best birding locations near any address. Enter 
   - Complete bird species lists with rare/notable species highlighted
 - **GPX Export**: Export waypoints for use in GPS devices
 - **Saved Locations**: Save frequently-used starting locations for quick access
+- **Favorite Hotspots and Recent Searches**: Star hotspots for quick reference and reuse recent search locations
+- **Share Links**: Copy a link that reproduces a location search or a route search
 - **Notable Species**: Rare and uncommon species are automatically highlighted
 - **Migration Alerts**: Seasonal migration information based on time of year
 - **Weather Integration**: Current conditions and birding weather scores for each hotspot
@@ -43,10 +49,12 @@ You'll need a free eBird API key to use this tool:
    - Enter GPS coordinates (latitude/longitude), OR
    - Click "Use My Current Location" to use your device's GPS
 3. **Enter Your API Key**: Paste your eBird API key (optionally check "Remember" to save it)
-4. **Choose Sorting Method**:
+4. **Choose Sorting Method** (under Advanced Options):
    - **Most Species**: Prioritizes hotspots with the highest bird diversity
    - **Closest Distance**: Prioritizes hotspots nearest to your location
-5. **Generate Report**: Click the button to create and download your PDF report
+   - **Shortest Drive**: Sorts by actual driving distance and time
+   - **Freshest Sightings**: Prioritizes hotspots with the most recently reported lifers and notable species
+5. **Find Hotspots**: Click the button to see results on the page, then use "Export to PDF" or "Export GPX" if you want a file. New to the area? "Find hotspots near me" does steps 2 and 5 in one click.
 
 ### Saving Favorite Locations
 

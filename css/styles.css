@@ -5631,3 +5631,96 @@ details.about-section[open] .about-chevron {
         scrollbar-color: var(--border-color) transparent;
     }
 }
+
+
+/* ==========================================================================
+   Persona additions: quick start, quick picks, list name, lifer targets,
+   saved-itinerary actions
+   ========================================================================== */
+
+.quick-start-btn {
+    width: 100%;
+    margin-top: var(--spacing-sm, 16px);
+    justify-content: center;
+}
+
+.quick-start-hint {
+    text-align: center;
+    margin-top: 6px;
+}
+
+.quick-picks {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.quick-picks-label {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.quick-pick-chip {
+    min-height: 36px;
+    text-align: left;
+}
+
+.quick-pick-chip strong {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.lifer-alert-header {
+    flex-wrap: wrap;
+}
+
+.lifer-alert-copy {
+    margin-left: 4px;
+}
+
+.lifer-alert-more {
+    color: var(--text-light);
+    font-size: 0.8rem;
+    margin-left: 4px;
+}
+
+.life-list-label-group {
+    display: block;
+    margin-bottom: 12px;
+}
+
+.about-glossary {
+    margin-bottom: 8px !important;
+}
+
+.saved-itinerary-actions .btn-small {
+    min-height: 32px;
+    padding: 4px 10px;
+}
+
+/* .btn-icon is absolutely positioned for the API-key eye button; inside the
+   saved-itinerary row it must flow with its siblings */
+.saved-itinerary-actions .btn-icon {
+    position: static;
+    transform: none;
+    min-width: 36px;
+    min-height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Anchor styled as a button (Open route in Google Maps) */
+.itinerary-export-buttons a.btn {
+    text-decoration: none;
+}
+
+@media (max-width: 480px) {
+    .lifer-alert-count {
+        margin-left: 0;
+        width: 100%;
+    }
+}

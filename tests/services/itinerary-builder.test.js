@@ -1,5 +1,5 @@
 import { assert } from '../run-tests.js';
-import { selectHotspots, canShowGenericItineraryButton, buildItinerary } from '../../js/services/itinerary-builder.js';
+import { selectHotspots, canShowGenericItineraryButton, buildItinerary, toSavedItineraryStops, reviveSavedItinerary } from '../../js/services/itinerary-builder.js';
 
 /**
  * Mocks global fetch with a single successful OSRM Trip API response for a
@@ -109,4 +109,65 @@ export async function testBuildItineraryArrivalTimeIncludesTravelFromPreviousSto
 
     assert(hotspotStop.arrivalTime.getHours() === 9 && hotspotStop.arrivalTime.getMinutes() === 25,
         `Expected hotspot arrival at 9:25 AM (9:15 start + 10 min travel), got ${hotspotStop.arrivalTime.toTimeString()}`);
+}
+
+export async function testToSavedItineraryStopsStripsHeavyFieldsAndSerializesDates() {
+    const arrival = new Date('2026-09-04T13:30:00Z');
+    const lean = toSavedItineraryStops([
+        { type: 'start', name: 'Start', lat: 0, lng: 0, address: 'Home', stopNumber: 1, arrivalTime: null },
+        { type: 'hotspot', name: 'Marsh', locId: 'L1', lat: 1, lng: 1, speciesCount: 12, stopNumber: 2,
+          suggestedVisitTime: 32, arrivalTime: arrival, birds: [{}], weather: {}, recentObservations: [{}], legToNext: {} }
+    ]);
+    assert(lean.length === 2, 'All stops are kept');
+    assert(lean[1].birds === undefined && lean[1].weather === undefined && lean[1].recentObservations === undefined,
+        'Heavy per-stop fields must be dropped');
+    assert(lean[1].legToNext === undefined, 'legToNext must be dropped');
+    assert(lean[1].arrivalTime === arrival.toISOString(), 'arrivalTime is serialised to ISO');
+    assert(lean[0].arrivalTime === null, 'Null arrival stays null');
+    assert(lean[1].locId === 'L1' && lean[1].speciesCount === 12, 'Identity fields are kept');
+}
+
+export async function testReviveSavedItineraryRestoresDatesAndDefaults() {
+    // Legacy record: no summary, no legs, no isRoundTrip
+    const legacy = {
+        name: 'Old trip',
+        totalDistance: 5000,
+        stops: [
+            { type: 'start', name: 'Start', lat: 0, lng: 0 },
+            { type: 'hotspot', name: 'A', lat: 1, lng: 1, speciesCount: 10, suggestedVisitTime: 31, arrivalTime: '2026-09-04T13:30:00.000Z' },
+            { type: 'hotspot', name: 'B', lat: 2, lng: 2, speciesCount: 20, suggestedVisitTime: 32, arrivalTime: '2026-09-04T14:30:00.000Z' }
+        ]
+    };
+    const it = reviveSavedItinerary(legacy);
+    assert(Array.isArray(it.legs) && it.legs.length === 0, 'legs defaults to an empty array');
+    assert(it.geometry === null, 'geometry is null for a saved itinerary');
+    assert(it.summary.totalStops === 2, `totalStops should count hotspot stops, got ${it.summary.totalStops}`);
+    assert(it.summary.totalDistance === 5000, 'totalDistance falls back to the legacy field');
+    assert(it.summary.totalVisitTime === 63, `totalVisitTime should sum visits, got ${it.summary.totalVisitTime}`);
+    assert(it.stops[1].arrivalTime instanceof Date, 'arrivalTime is revived to a Date');
+    assert(it.stops[0].stopNumber === 1 && it.stops[2].stopNumber === 3, 'stopNumber is filled in');
+    assert(it.isRoundTrip === true, 'No end stop means round trip');
+    assert(it.origin.lat === 0 && it.origin.lng === 0, 'Origin falls back to the first stop');
+}
+
+export async function testReviveSavedItineraryUsesStoredSummaryAndLegs() {
+    const saved = {
+        name: 'New trip',
+        stops: [
+            { type: 'start', name: 'Start', lat: 0, lng: 0 },
+            { type: 'hotspot', name: 'A', lat: 1, lng: 1, speciesCount: 10, suggestedVisitTime: 31 },
+            { type: 'end', name: 'End', lat: 3, lng: 3 }
+        ],
+        legs: [{ distance: 1000, duration: 600 }, { distance: 2000, duration: 900 }],
+        summary: { totalStops: 1, totalDistance: 3000, totalTravelTime: 25, totalVisitTime: 31, totalTripTime: 56,
+            estimatedEndTime: '2026-09-04T15:00:00.000Z' },
+        origin: { lat: 0, lng: 0, address: 'Hotel' },
+        isRoundTrip: false
+    };
+    const it = reviveSavedItinerary(saved);
+    assert(it.legs.length === 2 && it.legs[1].duration === 900, 'Stored legs are used');
+    assert(it.summary.totalTripTime === 56, 'Stored summary is used');
+    assert(it.summary.estimatedEndTime instanceof Date, 'estimatedEndTime is revived');
+    assert(it.isRoundTrip === false, 'Stored isRoundTrip wins');
+    assert(it.origin.address === 'Hotel', 'Stored origin wins');
 }

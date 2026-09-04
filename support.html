@@ -127,6 +127,21 @@
                 <h2 class="section-title">Search Options</h2>
 
                 <details class="faq-item">
+                    <summary class="faq-question">What does "Find hotspots near me" do?</summary>
+                    <div class="faq-answer">
+                        <p>It is a one-click shortcut for the most common search. Clicking it switches to a plain hotspot search, asks your browser for your current location, and immediately runs the search using whatever sort, range, and count you have set under Advanced Options.</p>
+                        <p>You still need an eBird API key in the field at the top of the page. If the key is missing you will see the usual "API key required" message.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">Are my Advanced Options remembered?</summary>
+                    <div class="faq-answer">
+                        <p>Yes. Your sort method, search range, and number of hotspots are saved in your browser and restored the next time you open the tool. A shared link that specifies its own options takes precedence for that visit.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
                     <summary class="faq-question">What's the difference between "Search a Location" and "Plan a Route"?</summary>
                     <div class="faq-answer">
                         <p>The tool offers two main search types:</p>
@@ -210,6 +225,28 @@
                 <h2 class="section-title">Understanding Results</h2>
 
                 <details class="faq-item">
+                    <summary class="faq-question">What are Quick picks?</summary>
+                    <div class="faq-answer">
+                        <p>Quick picks is the short strip at the top of the results. It names up to three hotspots: the one with the <strong>most species</strong> in the last 30 days, the <strong>closest</strong> one, and the one with the <strong>freshest activity</strong> (the most recently reported rare or lifer species). Click a chip to jump to that hotspot's card.</p>
+                        <p>If one hotspot wins in more than one category the chips are combined, and the freshness chip is left out when no hotspot has a recent rare or lifer sighting. If a filter hides the winning hotspot you will see a short notice instead.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">What do the RARE, LIFER, and quality badges mean?</summary>
+                    <div class="faq-answer">
+                        <ul>
+                        <li><strong>RARE</strong>: the hotspot has at least one species that eBird flagged as rare or unusual for that place and season.</li>
+                        <li><strong>LIFER</strong>: the hotspot has species that are not on the list you imported.</li>
+                        <li><strong>Well-Established</strong>: 500 or more checklists have been submitted there, so it is a popular, reliable spot.</li>
+                        <li><strong>Active</strong>: 50 or more checklists. Regularly birded.</li>
+                        <li><strong>New Spot</strong>: fewer than 50 checklists. Little data yet, and possibly under-birded.</li>
+                        </ul>
+                        <p>Hover over any badge or the species count for the same explanation. A <strong>hotspot</strong> is a public birding location tracked on eBird, a <strong>checklist</strong> is one birder's report of a visit, and a <strong>lifer</strong> is a species you have never seen before.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
                     <summary class="faq-question">How are hotspots ranked?</summary>
                     <div class="faq-answer">
                         <p>You can sort results by three different methods:</p>
@@ -287,6 +324,14 @@
                 <h2 class="section-title">Itinerary Building</h2>
 
                 <details class="faq-item">
+                    <summary class="faq-question">How do I reopen a saved itinerary?</summary>
+                    <div class="faq-answer">
+                        <p>Expand <strong>Saved Itineraries</strong> in the sidebar and click <strong>Open</strong> next to the one you want. The stops, arrival times, and drive legs appear in the results area along with a map, an <strong>Open route in Google Maps</strong> link for turn-by-turn directions, and <strong>Export GPX</strong> for a GPS unit or offline maps app.</p>
+                        <p>A saved itinerary keeps only the stops and timing, not the bird lists or weather, so the PDF export is not available until you run a fresh search. Click <strong>Back to Results</strong> to close it.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
                     <summary class="faq-question">What is the Build Itinerary feature?</summary>
                     <div class="faq-answer">
                         <p>After finding hotspots, you can create an optimized birding itinerary that plans the best route to visit multiple hotspots in a single trip. The tool calculates driving distances and suggests an efficient order for your stops.</p>
@@ -328,6 +373,13 @@
             <!-- Route Planning -->
             <section class="card" id="route-planning">
                 <h2 class="section-title">Route Planning</h2>
+
+                <details class="faq-item">
+                    <summary class="faq-question">Can I share a route search?</summary>
+                    <div class="faq-answer">
+                        <p>Yes. After you click <strong>Plan Route</strong> the page address is updated with your start, end, and maximum detour. Copy it from the address bar, or use the <strong>Share Link</strong> button once you have built the itinerary. Whoever opens the link sees route mode with both addresses filled in and the route preview drawn, and can then run the search with their own eBird key.</p>
+                    </div>
+                </details>
 
                 <details class="faq-item">
                     <summary class="faq-question">How does route planning work?</summary>
@@ -533,13 +585,14 @@
                     <div class="faq-answer">
                         <p>To import your life list from eBird:</p>
                         <ol>
-                            <li>Log in to <a href="https://ebird.org" target="_blank" rel="noopener noreferrer">eBird.org</a></li>
-                            <li>Go to "My eBird" and click "Download My Data"</li>
-                            <li>Download your Life List as a CSV file</li>
+                            <li>Log in to eBird and open <a href="https://ebird.org/lifelist" target="_blank" rel="noopener noreferrer">My eBird &gt; Life List</a></li>
+                            <li>At the top of that page choose the region (world, country, state, or county) and time period (all years, this year, and so on) you want the list to cover</li>
+                            <li>Scroll to the bottom and click the <strong>Download</strong> button to save a CSV file</li>
                             <li>In this tool, expand the "My Life List" section</li>
                             <li>Click "Import from eBird" and select your downloaded CSV file</li>
                         </ol>
-                        <p>The tool will parse the CSV and extract all species from your life list. You'll see a confirmation showing how many species were imported.</p>
+                        <p>The tool matches each row against the eBird taxonomy and shows how many species were imported.</p>
+                        <p><strong>Do not use "Download My Data".</strong> That export is your complete checklist history, one row per species per checklist, and the importer rejects it because it is far too large to be a list.</p>
                     </div>
                 </details>
 
@@ -556,6 +609,22 @@
                     </div>
                 </details>
 
+
+                <details class="faq-item">
+                    <summary class="faq-question">Can I use a year list or a state list instead of my full life list?</summary>
+                    <div class="faq-answer">
+                        <p>Yes. On the eBird Life List page pick the region and time period first (for example your state and the current year), then download. Import that file here and the tool flags species that are not on it: your year birds, state birds, or county birds rather than only lifers.</p>
+                        <p>Type a name in <strong>List name</strong> (for example "2026 Minnesota list") so the badges and the Potential Lifers banner say which list they are comparing against. Importing a different list replaces the current one.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">What does "Copy targets" copy?</summary>
+                    <div class="faq-answer">
+                        <p>The <strong>Copy targets</strong> button in the Potential Lifers banner copies every species in the banner as a plain-text checklist, one line each: <code>[ ] Species - Hotspot (+N more spots) (last seen)</code>. Paste it into a notes app or a message to plan your day. "+N more spots" means the same species was also reported at that many other hotspots in your results.</p>
+                    </div>
+                </details>
+
                 <details class="faq-item">
                     <summary class="faq-question">Where is my life list stored?</summary>
                     <div class="faq-answer">
@@ -568,7 +637,7 @@
                     <summary class="faq-question">How do I clear or update my life list?</summary>
                     <div class="faq-answer">
                         <p>To clear your life list, expand the "My Life List" section and click the "Clear" button.</p>
-                        <p>To update your list with new species, simply import a fresh CSV export from eBird. The tool will add any new species and skip duplicates that are already in your list.</p>
+                        <p>To update your list, import a fresh CSV export from eBird. Because an eBird export is already complete, the new file <strong>replaces</strong> the current list after you confirm, so species you removed on eBird do not linger here.</p>
                     </div>
                 </details>
             </section>
