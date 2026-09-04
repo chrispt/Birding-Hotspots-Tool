@@ -2714,7 +2714,7 @@ class BirdingHotspotsApp {
      * @param {Object} data - Results data object
      */
     /**
-     * Synchronize sort-toggle button states with the current sort method.
+     * Synchronize the sort select with the current sort method.
      * Extracted so that both the initial display and cheap card-only re-renders
      * can keep buttons in sync without duplicating the six toggle/aria lines.
      * @param {string} method - 'species', 'distance', or 'driving'
@@ -2737,7 +2737,7 @@ class BirdingHotspotsApp {
         if (!this.currentResults) return;
         const { hotspots, sortMethod, origin } = this.currentResults;
 
-        // Keep sort-toggle buttons in sync
+        // Keep the sort select in sync
         this.syncSortToggles(sortMethod);
 
         // View-only filter; exports always use the full, unfiltered hotspots list
@@ -2825,7 +2825,7 @@ class BirdingHotspotsApp {
 
         // Update meta information
         this.setResultsTitle(`${hotspots.length} hotspots near ${this._shortPlaceName()}`,
-            `Within ${formatDistance(this.getSearchRange())} · ${generatedDate}`);
+            `Within ${Math.round(this.getSearchRange() * 0.621371)} mi · ${generatedDate}`);
 
         // Quick picks: a one-glance answer to "which one should I go to?"
         this.renderQuickPicks(hotspots);
