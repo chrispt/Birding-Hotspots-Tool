@@ -162,3 +162,40 @@ export async function testFormatLiferTargetsTextIncludesMoreSpotsSuffix() {
     assert(lines[1] === '[ ] Bird A - Marsh (+2 more spots) (today)', `Unexpected line: ${lines[1]}`);
     assert(lines[2] === '[ ] Bird B - Lake (today)', `Unexpected line: ${lines[2]}`);
 }
+
+export async function testImportFromCSVStripsBomAndAcceptsBareCarriageReturns() {
+    clearLifeList();
+    const service = new LifeListService();
+    const csv = '\uFEFFCommon Name,Scientific Name\rAmerican Crow,Corvus brachyrhynchos\rNorthern Cardinal,Cardinalis cardinalis\r';
+
+    const result = service.importFromCSV(csv, TAXONOMY);
+
+    assert(result.errors.length === 0, `Expected no errors, got: ${result.errors.join(', ')}`);
+    assert(result.imported === 2, `Expected 2 species imported, got ${result.imported}`);
+    assert(service.isOnLifeList('amecro') && service.isOnLifeList('norcar'), 'Both species should be matched to taxonomy codes');
+}
+
+export async function testImportFromCSVFindsHeaderAfterTitleLine() {
+    clearLifeList();
+    const service = new LifeListService();
+    const csv = 'My eBird life list\n\nRow #,Taxon Order,Category,Common Name,Scientific Name,Count\n1,1,species,American Crow,Corvus brachyrhynchos,3\n';
+
+    const result = service.importFromCSV(csv, TAXONOMY);
+
+    assert(result.errors.length === 0, `Expected no errors, got: ${result.errors.join(', ')}`);
+    assert(result.imported === 1, `Expected 1 species imported, got ${result.imported}`);
+    assert(result.header.includes('Common Name'), 'Detected header should be reported');
+    assert(result.rows === 1, `Expected 1 data row counted, got ${result.rows}`);
+}
+
+export async function testImportFromCSVReportsHeaderWhenRowsHaveNoNames() {
+    clearLifeList();
+    const service = new LifeListService();
+    const csv = 'Common Name,Scientific Name\n,\n , \n';
+
+    const result = service.importFromCSV(csv, TAXONOMY);
+
+    assert(result.imported === 0 && result.errors.length === 0, 'Blank rows import nothing and are not an error');
+    assert(result.rows === 2, `Expected 2 blank data rows counted, got ${result.rows}`);
+    assert(result.header.join(',') === 'Common Name,Scientific Name', `Header should be reported, got ${result.header}`);
+}

@@ -31,7 +31,7 @@ function openDatabase() {
  * Get cached taxonomy from IndexedDB
  * @returns {Promise<Array|null>}
  */
-async function getCachedTaxonomy() {
+export async function getCachedTaxonomy() {
     let db = null;
     try {
         db = await openDatabase();
@@ -74,7 +74,7 @@ async function getCachedTaxonomy() {
  * Save taxonomy to IndexedDB cache
  * @param {Array} taxonomy
  */
-async function cacheTaxonomy(taxonomy) {
+export async function cacheTaxonomy(taxonomy) {
     let db = null;
     try {
         db = await openDatabase();

@@ -93,7 +93,7 @@ export class LifeListService {
      * @returns {Object} Result with count and any errors
      */
     importFromCSV(csvContent, taxonomy = [], { replace = false } = {}) {
-        const result = { imported: 0, errors: [], duplicates: 0, notMatched: [], replaced: false };
+        const result = { imported: 0, errors: [], duplicates: 0, notMatched: [], replaced: false, header: [], rows: 0 };
 
         // Validate file size
         if (csvContent.length > LIFE_LIST_IMPORT.MAX_FILE_SIZE_BYTES) {
@@ -134,26 +134,45 @@ export class LifeListService {
 
         console.log(`[LifeList] Built lookup maps - Common names: ${taxonomyByCommonName.size}, Scientific names: ${taxonomyBySciName.size}`);
 
-        // Parse CSV
-        const lines = csvContent.split(/\r?\n/);
-        if (lines.length < 2) {
+        // Parse CSV. Strip a UTF-8 byte-order mark (Excel and some phones
+        // add one) and accept CRLF, LF, or bare CR line endings.
+        const lines = csvContent.replace(/^\uFEFF/, '').split(/\r\n|\r|\n/);
+        if (lines.filter(l => l.trim()).length < 2) {
             result.errors.push('CSV file appears to be empty');
             return result;
         }
 
-        // Parse header row
-        const header = this._parseCSVLine(lines[0]);
-        const commonNameIdx = header.findIndex(h =>
-            h.toLowerCase().includes('common name') || h.toLowerCase() === 'species'
-        );
-        const sciNameIdx = header.findIndex(h =>
-            h.toLowerCase().includes('scientific name') || h.toLowerCase() === 'sci. name'
-        );
+        // Find the header row. eBird puts it on line 1, but some exports and
+        // spreadsheet re-saves add a title line first, so scan the first few.
+        const isNameHeader = h => {
+            const l = h.trim().toLowerCase();
+            return l.includes('common name') || l === 'species' || l.includes('scientific name') || l === 'sci. name';
+        };
+        let headerLineIdx = -1;
+        let header = [];
+        for (let i = 0; i < Math.min(lines.length, 10); i++) {
+            const cells = this._parseCSVLine(lines[i]);
+            if (cells.some(isNameHeader)) {
+                headerLineIdx = i;
+                header = cells;
+                break;
+            }
+        }
+        result.header = header.map(h => h.trim());
 
-        if (commonNameIdx === -1 && sciNameIdx === -1) {
+        if (headerLineIdx === -1) {
             result.errors.push('Could not find species name columns in CSV');
             return result;
         }
+
+        const commonNameIdx = header.findIndex(h => {
+            const l = h.trim().toLowerCase();
+            return l.includes('common name') || l === 'species';
+        });
+        const sciNameIdx = header.findIndex(h => {
+            const l = h.trim().toLowerCase();
+            return l.includes('scientific name') || l === 'sci. name';
+        });
 
         console.log(`[LifeList] CSV columns detected - Header: ${JSON.stringify(header)}`);
         console.log(`[LifeList] Common name column index: ${commonNameIdx}, Scientific name column index: ${sciNameIdx}`);
@@ -163,9 +182,10 @@ export class LifeListService {
         const newSpecies = [];
 
         // Process data rows
-        for (let i = 1; i < lines.length; i++) {
+        for (let i = headerLineIdx + 1; i < lines.length; i++) {
             const line = lines[i].trim();
             if (!line) continue;
+            result.rows++;
 
             const values = this._parseCSVLine(line);
             const commonName = commonNameIdx !== -1 ? values[commonNameIdx]?.trim() : null;

@@ -14,7 +14,7 @@ import { EBirdAPI, processObservations } from './api/ebird.js';
 import { generatePDFReport, downloadPDF, generateRoutePDFReport, downloadRoutePDF } from './services/pdf-generator.js';
 import { getDrivingRoutes, getRouteThrough } from './api/routing.js';
 import { getWeatherForLocations, getOverallBirdingConditions, getBirdingConditionScore, getGoldenHourStatus } from './api/weather.js';
-import { SpeciesSearch } from './services/species-search.js';
+import { SpeciesSearch, getCachedTaxonomy, cacheTaxonomy } from './services/species-search.js';
 import { getSeasonalInsights, getOptimalBirdingTimes, getCurrentSeason, analyzeHotspotActivity } from './services/seasonal-insights.js';
 import { buildItinerary, formatItineraryDuration, formatItineraryTime, calculateUniquenessScore, getSeenSpeciesFromHotspots, canShowGenericItineraryButton, toSavedItineraryStops, reviveSavedItinerary } from './services/itinerary-builder.js';
 import { buildRouteSamplePoints, dedupeHotspotsById, filterHotspotsByRouteDistance, rankHotspotsForEnrichment, sortEnrichedRouteHotspots } from './services/route-hotspot-search.js';
@@ -1641,16 +1641,10 @@ class BirdingHotspotsApp {
         try {
             const content = await file.text();
 
-            // Fetch taxonomy if not cached (needed to resolve species codes)
-            if (this.taxonomy.length === 0 && this.ebirdApi) {
-                this.showSuccessToast('Loading eBird taxonomy...');
-                try {
-                    this.taxonomy = await this.ebirdApi.getTaxonomy();
-                } catch (err) {
-                    console.warn('Could not fetch taxonomy:', err);
-                    this.showError('Could not load eBird taxonomy. Some species may not be matched.');
-                }
-            }
+            // Resolve species codes against the eBird taxonomy. The taxonomy is
+            // optional: lifer detection also matches by common name, so a
+            // failed download degrades to name matching rather than an error.
+            await this.ensureTaxonomyForImport();
 
             const result = this.lifeListService.importFromCSV(content, this.taxonomy, { replace });
 
@@ -1664,7 +1658,15 @@ class BirdingHotspotsApp {
             } else if (result.errors.length > 0) {
                 this.showError(result.errors.join('. '), { report: false });
             } else {
-                this.showError('No species found in the CSV file');
+                // The file had a species-name column but no usable rows: a
+                // user-data problem, so explain it and do not auto-report it.
+                const columns = result.header.filter(Boolean).slice(0, 8).join(', ');
+                this.showError(
+                    `No species found in the CSV file (${result.rows} data ${result.rows === 1 ? 'row' : 'rows'} under columns: ${columns || 'none'}). ` +
+                    'Expected one species per row with a "Common Name" or "Scientific Name" value. ' +
+                    'On eBird, open My eBird > Life List and use the Download button at the bottom of the page.',
+                    { report: false }
+                );
             }
         } catch (err) {
             console.error('Life list import error:', err);
@@ -1673,6 +1675,49 @@ class BirdingHotspotsApp {
 
         // Reset the file input so the same file can be selected again
         e.target.value = '';
+    }
+
+    /**
+     * Make sure this.taxonomy is populated for a CSV import when possible.
+     * Order: in-memory, then the IndexedDB cache shared with species search,
+     * then a download using the key in the form (a search need not have run
+     * yet). Any failure is a warning, not an error: names still match.
+     */
+    async ensureTaxonomyForImport() {
+        if (this.taxonomy.length > 0) return;
+
+        try {
+            const cached = await getCachedTaxonomy();
+            if (cached && cached.length > 0) {
+                this.taxonomy = cached;
+                return;
+            }
+        } catch (err) {
+            console.warn('Taxonomy cache unavailable:', err);
+        }
+
+        let api = this.ebirdApi;
+        if (!api) {
+            const validation = validateApiKey(this.elements.apiKey.value);
+            if (validation.valid) api = new EBirdAPI(validation.apiKey);
+        }
+        if (!api) {
+            this.showToast('No eBird key yet, so species are matched by name only', 'warning');
+            return;
+        }
+
+        this.showSuccessToast('Loading eBird taxonomy...');
+        try {
+            this.taxonomy = await api.getTaxonomy();
+            try {
+                await cacheTaxonomy(this.taxonomy);
+            } catch (err) {
+                console.warn('Could not cache taxonomy:', err);
+            }
+        } catch (err) {
+            console.warn('Could not fetch taxonomy:', err);
+            this.showToast('Could not download the eBird taxonomy, so species are matched by name only', 'warning');
+        }
     }
 
     /**
