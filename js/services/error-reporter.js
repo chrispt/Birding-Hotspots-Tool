@@ -1,24 +1,16 @@
 /**
  * Error Reporter Service
- * Captures runtime errors, queues them client-side, and automatically
- * reports them to GitHub via a serverless API endpoint (/api/report-error).
- *
- * Auto-reporting is debounced: after the last error, waits 5 seconds of
- * quiet before sending. This batches cascading failures into fewer API calls.
- * Falls back to manual reporting via pre-filled GitHub issue URLs if the
- * API is unavailable.
+ * Captures runtime errors and queues them client-side. Errors leave the
+ * browser only when the user chooses Report, which opens a GitHub issue draft.
  */
 
 import { CONFIG, ErrorTypes } from '../utils/constants.js';
 
 const REPO_URL = 'https://github.com/chrispt/Birding-Hotspots-Tool';
-const API_ENDPOINT = '/api/report-error';
 const MAX_QUEUE_SIZE = 20;
 const MAX_URL_BODY_CHARS = 6000;
 const MAX_STACK_LINES = 10;
 const EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
-const AUTO_REPORT_DELAY_MS = 5000; // Debounce: wait 5s of quiet before auto-reporting
-const MAX_AUTO_REPORTS_PER_SESSION = 10; // Prevent runaway reporting
 
 /**
  * Normalize an error message for fingerprinting by stripping variable data
@@ -53,6 +45,37 @@ function truncateStack(stack, maxLines = MAX_STACK_LINES) {
     const lines = stack.split('\n');
     if (lines.length <= maxLines) return stack;
     return lines.slice(0, maxLines).join('\n') + `\n    ... (${lines.length - maxLines} more frames)`;
+}
+
+/**
+ * Make untrusted text inert when inserted into GitHub Markdown.
+ * HTML entities prevent mentions and Markdown links while preserving readable
+ * text in both HTML code elements and fenced code blocks.
+ */
+function sanitizeGithubContent(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/@/g, '&#64;')
+        .replace(/\[/g, '&#91;')
+        .replace(/\]/g, '&#93;')
+        .replace(/\(/g, '&#40;')
+        .replace(/\)/g, '&#41;');
+}
+
+/**
+ * Choose a Markdown fence longer than any backtick run in the content.
+ */
+function codeFenceFor(content) {
+    const runs = content.match(/`+/g) || [];
+    const longestRun = runs.reduce((longest, run) => Math.max(longest, run.length), 0);
+    return '`'.repeat(Math.max(3, longestRun + 1));
+}
+
+function inlineCode(value) {
+    const safeValue = sanitizeGithubContent(value).replace(/[\r\n]+/g, ' ');
+    return `<code>${safeValue}</code>`;
 }
 
 /**
@@ -94,9 +117,6 @@ class ErrorReporter {
         this._queue = [];
         this._listeners = [];
         this._initialized = false;
-        this._autoReportTimer = null;
-        this._autoReportsThisSession = 0;
-        this._reportedFingerprints = new Set(); // Track what's already been sent to API
     }
 
     /**
@@ -152,7 +172,6 @@ class ErrorReporter {
             existing.lastSeen = new Date().toISOString();
             this._persist();
             this._notifyListeners();
-            this._scheduleAutoReport();
             return;
         }
 
@@ -179,7 +198,6 @@ class ErrorReporter {
 
         this._persist();
         this._notifyListeners();
-        this._scheduleAutoReport();
     }
 
     /**
@@ -198,26 +216,30 @@ class ErrorReporter {
      */
     buildIssueUrl(error) {
         const meta = collectMetadata();
-        const title = `[Auto] ${error.type}: ${error.message.substring(0, 80)}`;
+        const titleType = sanitizeGithubContent(error.type).replace(/[\r\n]+/g, ' ');
+        const titleMessage = sanitizeGithubContent(error.message).replace(/[\r\n]+/g, ' ');
+        const title = `[Report] ${titleType}: ${titleMessage.substring(0, 80)}`;
 
         let body = `## Error\n`;
-        body += `- **Type:** \`${error.type}\`\n`;
-        body += `- **Message:** ${error.message}\n`;
-        body += `- **Occurrences:** ${error.count}\n`;
-        if (error.source) body += `- **Source:** \`${error.source}:${error.line}\`\n`;
-        body += `- **First seen:** ${error.firstSeen}\n`;
-        if (error.count > 1) body += `- **Last seen:** ${error.lastSeen}\n`;
+        body += `- **Type:** ${inlineCode(error.type)}\n`;
+        body += `- **Message:** ${inlineCode(error.message)}\n`;
+        body += `- **Occurrences:** ${inlineCode(error.count)}\n`;
+        if (error.source) body += `- **Source:** ${inlineCode(`${error.source}:${error.line}`)}\n`;
+        body += `- **First seen:** ${inlineCode(error.firstSeen)}\n`;
+        if (error.count > 1) body += `- **Last seen:** ${inlineCode(error.lastSeen)}\n`;
 
         if (error.stack) {
-            body += `\n## Stack trace\n\`\`\`\n${error.stack}\n\`\`\`\n`;
+            const safeStack = sanitizeGithubContent(error.stack);
+            const fence = codeFenceFor(safeStack);
+            body += `\n## Stack trace\n${fence}\n${safeStack}\n${fence}\n`;
         }
 
         body += `\n## Environment\n`;
-        body += `- **Browser:** ${meta.browser} / ${meta.os}\n`;
-        body += `- **Screen:** ${meta.screenSize}\n`;
-        body += `- **Theme:** ${meta.theme}\n`;
-        body += `- **URL:** ${meta.url}\n`;
-        body += `- **Reported:** ${meta.timestamp}\n`;
+        body += `- **Browser:** ${inlineCode(`${meta.browser} / ${meta.os}`)}\n`;
+        body += `- **Screen:** ${inlineCode(meta.screenSize)}\n`;
+        body += `- **Theme:** ${inlineCode(meta.theme)}\n`;
+        body += `- **URL:** ${inlineCode(meta.url)}\n`;
+        body += `- **Reported:** ${inlineCode(meta.timestamp)}\n`;
 
         // Truncate body if needed to stay within URL limits
         if (body.length > MAX_URL_BODY_CHARS) {
@@ -227,7 +249,7 @@ class ErrorReporter {
         const params = new URLSearchParams({
             title,
             body,
-            labels: 'bug,auto-reported'
+            labels: 'bug'
         });
 
         return `${REPO_URL}/issues/new?${params.toString()}`;
@@ -291,71 +313,6 @@ class ErrorReporter {
         this._listeners.forEach(fn => {
             try { fn(count); } catch (e) { /* ignore listener errors */ }
         });
-    }
-
-    /**
-     * Schedule an auto-report after a debounce period.
-     * Resets the timer on each new error so cascading failures batch together.
-     */
-    _scheduleAutoReport() {
-        if (this._autoReportTimer) {
-            clearTimeout(this._autoReportTimer);
-        }
-
-        // Don't auto-report if we've hit the session limit
-        if (this._autoReportsThisSession >= MAX_AUTO_REPORTS_PER_SESSION) return;
-
-        this._autoReportTimer = setTimeout(() => {
-            this._autoReportTimer = null;
-            this._autoReport();
-        }, AUTO_REPORT_DELAY_MS);
-    }
-
-    /**
-     * Automatically report unreported errors to the serverless API.
-     * Each error is sent individually so the server can deduplicate by title.
-     */
-    async _autoReport() {
-        const unreported = this._queue.filter(e => !this._reportedFingerprints.has(e.fingerprint));
-        if (unreported.length === 0) return;
-
-        const metadata = collectMetadata();
-
-        for (const error of unreported) {
-            if (this._autoReportsThisSession >= MAX_AUTO_REPORTS_PER_SESSION) break;
-
-            try {
-                const response = await fetch(API_ENDPOINT, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        type: error.type,
-                        message: error.message,
-                        stack: error.stack,
-                        source: error.source,
-                        line: error.line,
-                        count: error.count,
-                        metadata
-                    })
-                });
-
-                if (response.ok) {
-                    this._reportedFingerprints.add(error.fingerprint);
-                    this._autoReportsThisSession++;
-                    const result = await response.json();
-                    console.info(`[ErrorReporter] Auto-reported to GitHub: ${result.action} #${result.issueNumber}`);
-                } else {
-                    // API not available (e.g., no GITHUB_TOKEN configured, or running locally)
-                    // Silently fall back to manual reporting via badge
-                    console.info('[ErrorReporter] Auto-report API unavailable, manual reporting available via badge');
-                    break; // Don't retry other errors if the API is down
-                }
-            } catch (e) {
-                // Network error or running on a non-Vercel host — fall back silently
-                console.info('[ErrorReporter] Auto-report failed (likely running locally), manual reporting available');
-                break;
-            }
-        }
     }
 
     /**

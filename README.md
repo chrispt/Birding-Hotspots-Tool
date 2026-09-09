@@ -123,13 +123,14 @@ Requires JavaScript enabled and an internet connection for API calls.
 
 ## Privacy
 
-- Your eBird API key is stored only in your browser's localStorage (if you choose "Remember")
-- Location data is sent only to eBird and OpenStreetMap for API queries
-- No data is collected or stored on any server
+- If you choose "Remember," your eBird API key is stored in browser localStorage with reversible obfuscation. This is not encryption and does not protect the key from scripts, extensions, or people with access to that browser profile.
+- Features send only the data they need to their provider: addresses or coordinates to LocationIQ for geocoding, coordinates and eBird credentials or identifiers to eBird, map tile requests to OpenStreetMap, coordinates to the public OSRM service for routing, and coordinates to Open-Meteo for weather. Google Maps receives addresses or coordinates only when you choose an Open in Google Maps link. Each provider applies its own data practices.
+- Runtime error details are stored in browser localStorage and are never reported automatically. Entries whose last occurrence is more than 24 hours old are discarded the next time diagnostics are restored on page load. Choosing **Report** sends a pre-filled draft to GitHub's new issue page containing the error message, stack trace, source, browser details, and full page URL. Review or remove sensitive details, including addresses in a share URL, before submitting. The issue becomes public only if you submit it.
+- Saved locations, imported life lists, and saved itineraries remain in browser storage unless you explicitly share or export them.
 
 ## Data Attribution
 
-Bird observation data provided by [eBird](https://ebird.org), a project of the Cornell Lab of Ornithology. Maps and geocoding powered by [OpenStreetMap](https://www.openstreetmap.org) contributors.
+Bird observation data is provided by [eBird](https://ebird.org), a project of the Cornell Lab of Ornithology. Maps use [OpenStreetMap](https://www.openstreetmap.org) contributor data, geocoding uses LocationIQ, routing uses the public OSRM service, and weather data comes from Open-Meteo.
 
 ## Non-Commercial Use
 

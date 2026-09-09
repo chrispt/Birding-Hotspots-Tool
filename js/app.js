@@ -343,16 +343,21 @@ class BirdingHotspotsApp {
         // Track if address has been validated
         this.addressValidated = false;
         this.validatedCoords = null;
+        this.validatedAddressInput = null;
+        this.addressValidationGeneration = 0;
 
         // Track if end address has been validated (for itinerary)
         this.endAddressValidated = false;
         this.validatedEndCoords = null;
+        this.endAddressValidationGeneration = 0;
 
         // Track if route addresses have been validated
         this.routeStartValidated = false;
         this.validatedRouteStartCoords = null;
+        this.routeStartValidationGeneration = 0;
         this.routeEndValidated = false;
         this.validatedRouteEndCoords = null;
+        this.routeEndValidationGeneration = 0;
 
         // Store route hotspots for selection
         this.routeHotspots = [];
@@ -385,6 +390,16 @@ class BirdingHotspotsApp {
         this.loadSavedData();
         this.loadFromURL();
         this.updateSearchOptionsSummary();
+    }
+
+    _advanceValidationGeneration(generationKey) {
+        this[generationKey] += 1;
+        return this[generationKey];
+    }
+
+    _isValidationRequestCurrent(generationKey, inputKey, generation, inputValue = null) {
+        if (this[generationKey] !== generation) return false;
+        return inputValue === null || this.elements[inputKey].value.trim() === inputValue;
     }
 
     /**
@@ -852,6 +867,7 @@ class BirdingHotspotsApp {
      * Toggle between address and GPS input modes
      */
     toggleInputMode(mode) {
+        this._advanceValidationGeneration('addressValidationGeneration');
         if (mode === 'address') {
             this.elements.addressInput.classList.remove('hidden');
             this.elements.gpsInput.classList.add('hidden');
@@ -900,6 +916,10 @@ class BirdingHotspotsApp {
      * Handle use current location button
      */
     async handleUseCurrentLocation() {
+        const validationGeneration = this._advanceValidationGeneration('addressValidationGeneration');
+        this.addressValidated = false;
+        this.validatedCoords = null;
+        this.validatedAddressInput = null;
         this.elements.useCurrentLocation.disabled = true;
         this.elements.useCurrentLocation.textContent = 'Getting location...';
 
@@ -918,6 +938,8 @@ class BirdingHotspotsApp {
                 console.warn('Reverse geocoding failed:', e);
             }
 
+            if (validationGeneration !== this.addressValidationGeneration) return;
+
             // Switch to Address mode and fill in the address
             document.querySelector('[name="inputMode"][value="address"]').checked = true;
             this.toggleInputMode('address');
@@ -930,6 +952,12 @@ class BirdingHotspotsApp {
                 this.elements.address.value = `${position.lat.toFixed(6)}, ${position.lng.toFixed(6)}`;
             }
 
+            this.addressValidated = true;
+            this.validatedCoords = { lat: position.lat, lng: position.lng };
+            this.validatedAddressInput = this.elements.address.value.trim();
+            this.clearAddressError();
+            this.showValidationIndicator(this.elements.addressValidationIcon, this.elements.address, 'success');
+
             this.currentLocation = {
                 lat: position.lat,
                 lng: position.lng,
@@ -940,6 +968,7 @@ class BirdingHotspotsApp {
             this.showMapPreview(position.lat, position.lng);
 
         } catch (error) {
+            if (validationGeneration !== this.addressValidationGeneration) return;
             this.showError(error.message);
         } finally {
             this.elements.useCurrentLocation.disabled = false;
@@ -962,10 +991,12 @@ class BirdingHotspotsApp {
      * Reset the location search section to its initial state
      */
     resetLocationSearch() {
+        this._advanceValidationGeneration('addressValidationGeneration');
         // Clear address input
         this.elements.address.value = '';
         this.addressValidated = false;
         this.validatedCoords = null;
+        this.validatedAddressInput = null;
         this.clearAddressError();
         this.hideValidationIndicator(this.elements.addressValidationIcon, this.elements.address);
 
@@ -1008,6 +1039,8 @@ class BirdingHotspotsApp {
      * Reset the route search section to its initial state
      */
     resetRouteSearch() {
+        this._advanceValidationGeneration('routeStartValidationGeneration');
+        this._advanceValidationGeneration('routeEndValidationGeneration');
         // Clear start address
         this.elements.routeStartAddress.value = '';
         this.routeStartValidated = false;
@@ -1077,6 +1110,8 @@ class BirdingHotspotsApp {
      * don't carry over while the user is typing. Actual geocoding fires on blur.
      */
     handleAddressInputChange() {
+        this._advanceValidationGeneration('addressValidationGeneration');
+
         // Cancel any pending blur-geocode if the user re-focuses and keeps typing
         if (this.addressDebounceTimer) {
             clearTimeout(this.addressDebounceTimer);
@@ -1085,6 +1120,7 @@ class BirdingHotspotsApp {
         // Clear validation state and error when user types
         this.addressValidated = false;
         this.validatedCoords = null;
+        this.validatedAddressInput = null;
         this.clearAddressError();
         this.hideValidationIndicator(this.elements.addressValidationIcon, this.elements.address);
     }
@@ -1093,12 +1129,14 @@ class BirdingHotspotsApp {
      * Handle address input blur - geocode and show map
      */
     async handleAddressBlur() {
+        const validationGeneration = this._advanceValidationGeneration('addressValidationGeneration');
         const address = this.elements.address.value.trim();
 
         if (address.length < 3) {
             this.hideMapPreview();
             this.addressValidated = false;
             this.validatedCoords = null;
+            this.validatedAddressInput = null;
             this.hideValidationIndicator(this.elements.addressValidationIcon, this.elements.address);
             return;
         }
@@ -1109,16 +1147,20 @@ class BirdingHotspotsApp {
 
         try {
             const result = await geocodeAddress(address);
+            if (!this._isValidationRequestCurrent('addressValidationGeneration', 'address', validationGeneration, address)) return;
             this.addressValidated = true;
             this.validatedCoords = { lat: result.lat, lng: result.lng };
             // Show resolved address so user can verify correct location was found
             this.elements.address.value = result.address;
+            this.validatedAddressInput = this.elements.address.value.trim();
             this.showValidationIndicator(this.elements.addressValidationIcon, this.elements.address, 'success');
             this.showMapPreview(result.lat, result.lng);
         } catch (error) {
+            if (!this._isValidationRequestCurrent('addressValidationGeneration', 'address', validationGeneration, address)) return;
             // Show error on blur if geocoding fails
             this.addressValidated = false;
             this.validatedCoords = null;
+            this.validatedAddressInput = null;
             this.showValidationIndicator(this.elements.addressValidationIcon, this.elements.address, 'error');
             this.showAddressError('Could not find this address. Please check the spelling or try a more specific address.');
             this.hideMapPreview();
@@ -2302,7 +2344,16 @@ class BirdingHotspotsApp {
         const inputMode = this._checkedValue(this.elements.inputModeRadios, 'address');
 
         if (inputMode === 'address') {
-            const addressValidation = validateAddress(this.elements.address.value);
+            const address = this.elements.address.value.trim();
+            if (this.addressValidated && this.validatedCoords && this.validatedAddressInput === address) {
+                return {
+                    lat: this.validatedCoords.lat,
+                    lng: this.validatedCoords.lng,
+                    address: address || 'Current Location'
+                };
+            }
+
+            const addressValidation = validateAddress(address);
             if (!addressValidation.valid) {
                 throw new Error(addressValidation.error);
             }
@@ -2408,12 +2459,16 @@ class BirdingHotspotsApp {
 
                 // If address hasn't been validated yet, try to validate it now
                 if (!this.addressValidated) {
+                    const validationGeneration = this._advanceValidationGeneration('addressValidationGeneration');
                     try {
                         const result = await geocodeAddress(address);
+                        if (!this._isValidationRequestCurrent('addressValidationGeneration', 'address', validationGeneration, address)) return;
                         this.addressValidated = true;
                         this.validatedCoords = { lat: result.lat, lng: result.lng };
+                        this.validatedAddressInput = address;
                         this.clearAddressError();
                     } catch (error) {
+                        if (!this._isValidationRequestCurrent('addressValidationGeneration', 'address', validationGeneration, address)) return;
                         this.showAddressError('Could not find this address. Please check the spelling or try a more specific address.');
                         this.isProcessing = false;
                         return;
@@ -4528,12 +4583,16 @@ class BirdingHotspotsApp {
 
                 // If address hasn't been validated yet, try to validate it now
                 if (!this.addressValidated) {
+                    const validationGeneration = this._advanceValidationGeneration('addressValidationGeneration');
                     try {
                         const result = await geocodeAddress(address);
+                        if (!this._isValidationRequestCurrent('addressValidationGeneration', 'address', validationGeneration, address)) return null;
                         this.addressValidated = true;
                         this.validatedCoords = { lat: result.lat, lng: result.lng };
+                        this.validatedAddressInput = address;
                         this.clearAddressError();
                     } catch (error) {
+                        if (!this._isValidationRequestCurrent('addressValidationGeneration', 'address', validationGeneration, address)) return null;
                         this.showAddressError('Could not find this address. Please check the spelling or try a more specific address.');
                         return null;
                     }
@@ -4641,6 +4700,7 @@ class BirdingHotspotsApp {
     async handleRouteSearch() {
         // Validate start address
         const startAddress = this.elements.routeStartAddress.value.trim();
+        let startValidationGeneration = this.routeStartValidationGeneration;
         if (startAddress.length < 3) {
             this.showRouteStartError('Please enter a starting address.');
             this.isProcessing = false;
@@ -4649,6 +4709,7 @@ class BirdingHotspotsApp {
 
         // Validate end address
         const endAddress = this.elements.routeEndAddress.value.trim();
+        let endValidationGeneration = this.routeEndValidationGeneration;
         if (endAddress.length < 3) {
             this.showRouteEndError('Please enter a destination address.');
             this.isProcessing = false;
@@ -4662,13 +4723,18 @@ class BirdingHotspotsApp {
         if (this.routeStartValidated && this.validatedRouteStartCoords) {
             startCoords = this.validatedRouteStartCoords;
         } else {
+            startValidationGeneration = this._advanceValidationGeneration('routeStartValidationGeneration');
             try {
                 const result = await geocodeAddress(startAddress);
+                if (!this._isValidationRequestCurrent('routeStartValidationGeneration', 'routeStartAddress', startValidationGeneration, startAddress)
+                    || !this._isValidationRequestCurrent('routeEndValidationGeneration', 'routeEndAddress', endValidationGeneration, endAddress)) return;
                 startCoords = { lat: result.lat, lng: result.lng };
                 this.routeStartValidated = true;
                 this.validatedRouteStartCoords = startCoords;
                 this.clearRouteStartError();
             } catch (error) {
+                if (!this._isValidationRequestCurrent('routeStartValidationGeneration', 'routeStartAddress', startValidationGeneration, startAddress)
+                    || !this._isValidationRequestCurrent('routeEndValidationGeneration', 'routeEndAddress', endValidationGeneration, endAddress)) return;
                 this.hideLoading();
                 this.showRouteStartError('Could not find start address. Please check and try again.');
                 this.isProcessing = false;
@@ -4681,13 +4747,18 @@ class BirdingHotspotsApp {
         if (this.routeEndValidated && this.validatedRouteEndCoords) {
             endCoords = this.validatedRouteEndCoords;
         } else {
+            endValidationGeneration = this._advanceValidationGeneration('routeEndValidationGeneration');
             try {
                 const result = await geocodeAddress(endAddress);
+                if (!this._isValidationRequestCurrent('routeStartValidationGeneration', 'routeStartAddress', startValidationGeneration, startAddress)
+                    || !this._isValidationRequestCurrent('routeEndValidationGeneration', 'routeEndAddress', endValidationGeneration, endAddress)) return;
                 endCoords = { lat: result.lat, lng: result.lng };
                 this.routeEndValidated = true;
                 this.validatedRouteEndCoords = endCoords;
                 this.clearRouteEndError();
             } catch (error) {
+                if (!this._isValidationRequestCurrent('routeStartValidationGeneration', 'routeStartAddress', startValidationGeneration, startAddress)
+                    || !this._isValidationRequestCurrent('routeEndValidationGeneration', 'routeEndAddress', endValidationGeneration, endAddress)) return;
                 this.hideLoading();
                 this.showRouteEndError('Could not find destination address. Please check and try again.');
                 this.isProcessing = false;
@@ -6708,6 +6779,7 @@ class BirdingHotspotsApp {
         if (value === 'different') {
             this.elements.endLocationInputs.classList.remove('hidden');
         } else {
+            this._advanceValidationGeneration('endAddressValidationGeneration');
             this.elements.endLocationInputs.classList.add('hidden');
             // Clear validation state when switching back to round trip
             this.endAddressValidated = false;
@@ -6720,6 +6792,7 @@ class BirdingHotspotsApp {
      * Handle end address input change - clear validation state
      */
     handleEndAddressInputChange() {
+        this._advanceValidationGeneration('endAddressValidationGeneration');
         this.endAddressValidated = false;
         this.validatedEndCoords = null;
         this.clearEndAddressError();
@@ -6730,6 +6803,7 @@ class BirdingHotspotsApp {
      * Handle end address blur - validate and geocode
      */
     async handleEndAddressBlur() {
+        const validationGeneration = this._advanceValidationGeneration('endAddressValidationGeneration');
         const address = this.elements.endAddress.value.trim();
 
         if (address.length < 3) {
@@ -6745,10 +6819,12 @@ class BirdingHotspotsApp {
 
         try {
             const result = await geocodeAddress(address);
+            if (!this._isValidationRequestCurrent('endAddressValidationGeneration', 'endAddress', validationGeneration, address)) return;
             this.endAddressValidated = true;
             this.validatedEndCoords = { lat: result.lat, lng: result.lng };
             this.showValidationIndicator(this.elements.endAddressValidationIcon, this.elements.endAddress, 'success');
         } catch (error) {
+            if (!this._isValidationRequestCurrent('endAddressValidationGeneration', 'endAddress', validationGeneration, address)) return;
             this.endAddressValidated = false;
             this.validatedEndCoords = null;
             this.showValidationIndicator(this.elements.endAddressValidationIcon, this.elements.endAddress, 'error');
@@ -6763,6 +6839,7 @@ class BirdingHotspotsApp {
      * Handle route start address input change - clear validation state
      */
     handleRouteStartInputChange() {
+        this._advanceValidationGeneration('routeStartValidationGeneration');
         this.routeStartValidated = false;
         this.validatedRouteStartCoords = null;
         this.clearRouteStartError();
@@ -6774,6 +6851,7 @@ class BirdingHotspotsApp {
      * Handle route start address blur - validate and geocode
      */
     async handleRouteStartBlur() {
+        const validationGeneration = this._advanceValidationGeneration('routeStartValidationGeneration');
         const address = this.elements.routeStartAddress.value.trim();
 
         if (address.length < 3) {
@@ -6789,6 +6867,7 @@ class BirdingHotspotsApp {
 
         try {
             const result = await geocodeAddress(address);
+            if (!this._isValidationRequestCurrent('routeStartValidationGeneration', 'routeStartAddress', validationGeneration, address)) return;
             this.routeStartValidated = true;
             this.validatedRouteStartCoords = { lat: result.lat, lng: result.lng };
             // Show resolved address so user can verify correct location was found
@@ -6797,6 +6876,7 @@ class BirdingHotspotsApp {
             // Try to show route preview if both addresses are validated
             this.tryShowRoutePreview();
         } catch (error) {
+            if (!this._isValidationRequestCurrent('routeStartValidationGeneration', 'routeStartAddress', validationGeneration, address)) return;
             this.routeStartValidated = false;
             this.validatedRouteStartCoords = null;
             this.showValidationIndicator(this.elements.routeStartValidationIcon, this.elements.routeStartAddress, 'error');
@@ -6811,6 +6891,7 @@ class BirdingHotspotsApp {
      * Handle route end address input change - clear validation state
      */
     handleRouteEndInputChange() {
+        this._advanceValidationGeneration('routeEndValidationGeneration');
         this.routeEndValidated = false;
         this.validatedRouteEndCoords = null;
         this.clearRouteEndError();
@@ -6822,6 +6903,7 @@ class BirdingHotspotsApp {
      * Handle route end address blur - validate and geocode
      */
     async handleRouteEndBlur() {
+        const validationGeneration = this._advanceValidationGeneration('routeEndValidationGeneration');
         const address = this.elements.routeEndAddress.value.trim();
 
         if (address.length < 3) {
@@ -6837,6 +6919,7 @@ class BirdingHotspotsApp {
 
         try {
             const result = await geocodeAddress(address);
+            if (!this._isValidationRequestCurrent('routeEndValidationGeneration', 'routeEndAddress', validationGeneration, address)) return;
             this.routeEndValidated = true;
             this.validatedRouteEndCoords = { lat: result.lat, lng: result.lng };
             // Show resolved address so user can verify correct location was found
@@ -6845,6 +6928,7 @@ class BirdingHotspotsApp {
             // Try to show route preview if both addresses are validated
             this.tryShowRoutePreview();
         } catch (error) {
+            if (!this._isValidationRequestCurrent('routeEndValidationGeneration', 'routeEndAddress', validationGeneration, address)) return;
             this.routeEndValidated = false;
             this.validatedRouteEndCoords = null;
             this.showValidationIndicator(this.elements.routeEndValidationIcon, this.elements.routeEndAddress, 'error');
@@ -6988,6 +7072,18 @@ class BirdingHotspotsApp {
         const input = target === 'start'
             ? this.elements.routeStartAddress
             : this.elements.routeEndAddress;
+        const generationKey = target === 'start'
+            ? 'routeStartValidationGeneration'
+            : 'routeEndValidationGeneration';
+        const validationGeneration = this._advanceValidationGeneration(generationKey);
+
+        if (target === 'start') {
+            this.routeStartValidated = false;
+            this.validatedRouteStartCoords = null;
+        } else {
+            this.routeEndValidated = false;
+            this.validatedRouteEndCoords = null;
+        }
 
         button.disabled = true;
 
@@ -7005,6 +7101,8 @@ class BirdingHotspotsApp {
             } catch (e) {
                 console.warn('Reverse geocoding failed:', e);
             }
+
+            if (validationGeneration !== this[generationKey]) return;
 
             // Fill input with address or coordinates
             input.value = address || `${position.lat.toFixed(6)}, ${position.lng.toFixed(6)}`;
@@ -7026,6 +7124,7 @@ class BirdingHotspotsApp {
             this.tryShowRoutePreview();
 
         } catch (error) {
+            if (validationGeneration !== this[generationKey]) return;
             const showError = target === 'start' ? this.showRouteStartError.bind(this) : this.showRouteEndError.bind(this);
             const iconElement = target === 'start' ? this.elements.routeStartValidationIcon : this.elements.routeEndValidationIcon;
             const inputElement = target === 'start' ? this.elements.routeStartAddress : this.elements.routeEndAddress;
@@ -7070,10 +7169,13 @@ class BirdingHotspotsApp {
             if (this.endAddressValidated && this.validatedEndCoords) {
                 end = { lat: this.validatedEndCoords.lat, lng: this.validatedEndCoords.lng, address: endAddr };
             } else {
+                const validationGeneration = this._advanceValidationGeneration('endAddressValidationGeneration');
                 try {
                     const endCoords = await geocodeAddress(endAddr);
+                    if (!this._isValidationRequestCurrent('endAddressValidationGeneration', 'endAddress', validationGeneration, endAddr)) return;
                     end = { lat: endCoords.lat, lng: endCoords.lng, address: endAddr };
                 } catch (e) {
+                    if (!this._isValidationRequestCurrent('endAddressValidationGeneration', 'endAddress', validationGeneration, endAddr)) return;
                     this.showError('Could not find end address. Please check and try again.');
                     return;
                 }

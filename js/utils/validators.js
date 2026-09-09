@@ -9,8 +9,13 @@
  * @returns {Object} Validation result with valid flag and parsed values or error
  */
 export function validateCoordinates(lat, lng) {
-    const latNum = parseFloat(lat);
-    const lngNum = parseFloat(lng);
+    const toNumber = value => {
+        if (typeof value === 'number') return value;
+        if (typeof value !== 'string' || value.trim() === '') return NaN;
+        return Number(value);
+    };
+    const latNum = toNumber(lat);
+    const lngNum = toNumber(lng);
 
     if (isNaN(latNum) || latNum < -90 || latNum > 90) {
         return {

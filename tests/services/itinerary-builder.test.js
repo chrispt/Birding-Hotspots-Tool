@@ -1,5 +1,5 @@
 import { assert } from '../run-tests.js';
-import { selectHotspots, canShowGenericItineraryButton, buildItinerary, toSavedItineraryStops, reviveSavedItinerary } from '../../js/services/itinerary-builder.js';
+import { selectHotspots, scoreHotspot, canShowGenericItineraryButton, buildItinerary, toSavedItineraryStops, reviveSavedItinerary } from '../../js/services/itinerary-builder.js';
 
 /**
  * Mocks global fetch with a single successful OSRM Trip API response for a
@@ -68,6 +68,18 @@ export async function testSelectHotspotsRespectsDistancePriority() {
     assert(selected[0].locId === 'poorNear', 'Distance priority should favor the nearest hotspot even with low species count');
 }
 
+export async function testScoreHotspotHandlesZeroMaximumSpecies() {
+    const score = scoreHotspot({ speciesCount: 0, distance: 5 }, 0, 10, 'balanced');
+
+    assert(score === 0.25, `Expected zero species contribution without NaN, got ${score}`);
+}
+
+export async function testScoreHotspotHandlesZeroMaximumDistance() {
+    const score = scoreHotspot({ speciesCount: 10, distance: 0 }, 20, 0, 'balanced');
+
+    assert(score === 0.75, `Expected zero distance to receive full distance contribution without NaN, got ${score}`);
+}
+
 export async function testCanShowGenericItineraryButtonOnlyForLocationHotspotMode() {
     assert(canShowGenericItineraryButton('location', 'hotspot') === true, 'location+hotspot should show the button');
     assert(canShowGenericItineraryButton('route', 'hotspot') === false, 'route mode should hide the button');
@@ -109,6 +121,17 @@ export async function testBuildItineraryArrivalTimeIncludesTravelFromPreviousSto
 
     assert(hotspotStop.arrivalTime.getHours() === 9 && hotspotStop.arrivalTime.getMinutes() === 25,
         `Expected hotspot arrival at 9:25 AM (9:15 start + 10 min travel), got ${hotspotStop.arrivalTime.toTimeString()}`);
+}
+
+export async function testBuildItineraryEstimatedEndIncludesTravelAndVisitTime() {
+    installOptimizedTripMock();
+    const { start, end, hotspots } = roundTripArgs();
+
+    const itinerary = await buildItinerary(start, end, hotspots, { maxStops: 5, startTime: '09:15' });
+    const estimatedEnd = itinerary.summary.estimatedEndTime;
+
+    assert(estimatedEnd.getHours() === 10 && estimatedEnd.getMinutes() === 6,
+        `Expected estimated end at 10:06 AM (20 min travel + 31 min visit), got ${estimatedEnd.toTimeString()}`);
 }
 
 export async function testToSavedItineraryStopsStripsHeavyFieldsAndSerializesDates() {

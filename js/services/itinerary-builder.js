@@ -77,8 +77,8 @@ export function getSeenSpeciesFromHotspots(selectedHotspots) {
  * @returns {number} Score (higher is better)
  */
 export function scoreHotspot(hotspot, maxSpecies, maxDistance, priority = 'balanced') {
-    const normalizedSpecies = hotspot.speciesCount / maxSpecies;
-    const normalizedDistance = 1 - (hotspot.distance / maxDistance);
+    const normalizedSpecies = maxSpecies > 0 ? hotspot.speciesCount / maxSpecies : 0;
+    const normalizedDistance = maxDistance > 0 ? 1 - (hotspot.distance / maxDistance) : 1;
 
     switch (priority) {
         case 'species':
@@ -281,7 +281,7 @@ export async function buildItinerary(start, end, hotspots, options = {}) {
             totalTravelTime,
             totalVisitTime,
             totalTripTime: totalTravelTime + totalVisitTime,
-            estimatedEndTime: new Date(stops[0].departureTime?.getTime() || Date.now() +
+            estimatedEndTime: new Date((stops[0].departureTime?.getTime() || Date.now()) +
                 (totalTravelTime + totalVisitTime) * 60 * 1000)
         },
         isRoundTrip

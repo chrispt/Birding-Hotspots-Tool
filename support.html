@@ -775,10 +775,11 @@
                     <div class="faq-answer">
                         <p>This tool is designed with privacy in mind. Here's what happens with your data:</p>
                         <ul>
-                            <li><strong>Location data</strong> - Your coordinates are sent only to eBird (for hotspot data), LocationIQ (for address lookup), and OpenStreetMap (for maps and routing). No location data is stored on any server.</li>
+                            <li><strong>Location and search data</strong> - Addresses or coordinates are sent to LocationIQ for geocoding. Coordinates and relevant eBird credentials or identifiers are sent to eBird for hotspot and observation data. OpenStreetMap tile servers receive requests for the map areas displayed, the public OSRM service receives coordinates for route calculations, and Open-Meteo receives coordinates for weather. Google Maps receives addresses or coordinates only when you choose an Open in Google Maps link. The project does not store search locations on a project-owned server.</li>
                             <li><strong>API key</strong> - Your eBird API key is stored only in your browser's local storage if you choose "Remember". It is lightly obfuscated but not encrypted (client-side security limitation).</li>
                             <li><strong>Life list</strong> - Your imported life list is stored only in your browser's local storage. It never leaves your device.</li>
                             <li><strong>Saved locations</strong> - Stored only in your browser's local storage.</li>
+                            <li><strong>Error diagnostics</strong> - Unexpected runtime errors are stored in your browser's local storage and are never sent automatically. Entries whose last occurrence is more than 24 hours old are discarded the next time diagnostics are restored on page load. If you choose <strong>Report</strong>, the tool sends a pre-filled draft to GitHub's new issue page for you to review. The issue becomes public only if you submit it.</li>
                         </ul>
                     </div>
                 </details>
@@ -788,20 +789,24 @@
                     <div class="faq-answer">
                         <p>To function, this tool sends data to the following services:</p>
                         <ul>
-                            <li><strong>eBird API</strong> (Cornell Lab) - Receives your coordinates to return nearby hotspots and bird observations</li>
-                            <li><strong>LocationIQ</strong> - Receives addresses for geocoding (converting to coordinates)</li>
-                            <li><strong>OpenStreetMap</strong> - Receives coordinates to display map tiles</li>
-                            <li><strong>OSRM</strong> (Open Source Routing Machine) - Receives coordinates for driving route calculations</li>
-                            <li><strong>Open-Meteo</strong> - Receives coordinates for weather data</li>
+                            <li><strong>eBird API</strong> (Cornell Lab) - Receives your eBird API key plus coordinates, hotspot identifiers, species identifiers, or region identifiers needed for the bird data you request</li>
+                            <li><strong>LocationIQ</strong> - Receives addresses for forward geocoding and coordinates for reverse geocoding</li>
+                            <li><strong>OpenStreetMap tile servers</strong> - Receive tile requests corresponding to map areas displayed in the app</li>
+                            <li><strong>OSRM</strong> (Open Source Routing Machine) - Receives coordinates for driving route calculations and route optimization</li>
+                            <li><strong>Open-Meteo</strong> - Receives coordinates and forecast parameters for weather data</li>
+                            <li><strong>Google Maps</strong> - Receives addresses or coordinates only when you choose an Open in Google Maps link</li>
+                            <li><strong>GitHub</strong> - Receives an error-report draft when you choose <strong>Report</strong>. The draft includes the error message, stack trace, source, browser details, and full page URL, which may contain shared addresses. Review or remove sensitive details before submitting. The issue becomes public only if you submit it.</li>
+                            <li><strong>Vercel</strong> - Hosts the deployed site and serves its Web Analytics script, so page visits and standard network request information are sent to Vercel. The app does not intentionally add entered addresses or API keys to analytics events.</li>
+                            <li><strong>Google Fonts, unpkg, and cdnjs</strong> - Serve fonts and application libraries and receive standard network request information when those resources load</li>
                         </ul>
-                        <p>Each service has its own privacy policy. No data is sent to any other servers.</p>
+                        <p>Each service has its own privacy policy. Runtime errors are not sent to a project-owned reporting server.</p>
                     </div>
                 </details>
 
                 <details class="faq-item">
                     <summary class="faq-question">Is my eBird API key secure?</summary>
                     <div class="faq-answer">
-                        <p>Your API key is stored in your browser's local storage with basic obfuscation, but it's not fully encrypted. This is a limitation of client-side web applications. For better security:</p>
+                        <p>Your API key is stored in your browser's local storage with reversible obfuscation, not encryption. Scripts, extensions, or people with access to that browser profile may be able to recover it. This is a limitation of a client-side web application. For better security:</p>
                         <ul>
                             <li>Don't share your browser's local storage or developer console output</li>
                             <li>Use "Remember" only on private devices you trust</li>
@@ -816,7 +821,7 @@
                         <p>To remove all stored data:</p>
                         <ul>
                             <li><strong>Quick method</strong> - Clear your browser's local storage for this site</li>
-                            <li><strong>Manual method</strong> - Clear saved locations, life list, and uncheck "Remember" for your API key</li>
+                            <li><strong>Manual method</strong> - Clear saved locations and life list, dismiss captured errors from the error dialog, and uncheck "Remember" for your API key</li>
                         </ul>
                         <p>Data sent to third-party APIs (like search queries) follows each service's data retention policies.</p>
                     </div>

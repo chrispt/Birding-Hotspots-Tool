@@ -188,15 +188,19 @@ export async function getOptimizedTrip(waypoints, options = {}, retries = 3) {
             }
 
             const trip = data.trips[0];
-            const orderedWaypoints = data.waypoints;
+            // OSRM returns waypoints in input order. waypoint_index identifies
+            // each waypoint's position in the optimized trip order.
+            const orderedWaypoints = data.waypoints
+                .map((wp, originalIndex) => ({ wp, originalIndex }))
+                .sort((a, b) => a.wp.waypoint_index - b.wp.waypoint_index);
 
             // Build result with optimized order
-            const optimizedStops = orderedWaypoints.map((wp, index) => {
-                const originalWp = waypoints[wp.waypoint_index];
+            const optimizedStops = orderedWaypoints.map(({ wp, originalIndex }, index) => {
+                const originalWp = waypoints[originalIndex];
                 return {
                     ...originalWp,
                     optimizedOrder: index,
-                    originalIndex: wp.waypoint_index,
+                    originalIndex,
                     snappedLocation: {
                         lat: wp.location[1],
                         lng: wp.location[0]

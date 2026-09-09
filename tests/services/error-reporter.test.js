@@ -26,10 +26,132 @@ const { errorReporter } = await import('../../js/services/error-reporter.js');
 
 /** Reset state between tests */
 function resetReporter() {
+    if (errorReporter._autoReportTimer) {
+        clearTimeout(errorReporter._autoReportTimer);
+    }
     errorReporter._queue = [];
     errorReporter._listeners = [];
     errorReporter._initialized = false;
+    errorReporter._autoReportTimer = null;
+    errorReporter._autoReportsThisSession = 0;
+    errorReporter._reportedFingerprints = new Set();
     delete storage['birding_error_queue'];
+}
+
+export async function testCaptureNeverAutomaticallyTransmitsErrors() {
+    resetReporter();
+    const originalSetTimeout = global.setTimeout;
+    const originalFetch = global.fetch;
+    let scheduledCallback = null;
+    let fetchCalls = 0;
+
+    global.setTimeout = (callback) => {
+        scheduledCallback = callback;
+        return 1;
+    };
+    global.fetch = async () => {
+        fetchCalls++;
+        return { ok: true, json: async () => ({}) };
+    };
+
+    try {
+        errorReporter.capture({
+            type: 'app_error',
+            message: 'Failed near 40.7128,-74.0060',
+            stack: 'Error: failed\n    at private-route.js:10:2',
+            context: { address: '123 Private Street' }
+        });
+
+        if (scheduledCallback) scheduledCallback();
+
+        assert(fetchCalls === 0, 'Capturing an error must not schedule an automatic network report');
+    } finally {
+        global.setTimeout = originalSetTimeout;
+        global.fetch = originalFetch;
+        resetReporter();
+    }
+}
+
+export async function testManualIssueBodyContainsOnlyInertUserControlledMarkdown() {
+    resetReporter();
+    const originalHref = global.location.href;
+    global.location.href = 'https://birdinghotspotstool.com/?start=123%20Private%20Street';
+
+    try {
+        errorReporter.capture({
+            type: 'app_error @maintainers',
+            message: '[open me](javascript:alert(1)) @everyone',
+            stack: 'first frame\n```\n@security [unsafe](javascript:alert(2))',
+            source: '` [source](javascript:alert(3)) @owners',
+            line: 42
+        });
+
+        const issueUrl = new URL(errorReporter.buildIssueUrl(errorReporter.getQueue()[0]));
+        const title = issueUrl.searchParams.get('title');
+        const body = issueUrl.searchParams.get('body');
+
+        assert(!title.includes('@maintainers'), 'Issue titles must not create GitHub mentions');
+        assert(!body.includes('@everyone'), 'Messages must not create GitHub mentions');
+        assert(!body.includes('@security'), 'Stack traces must not create GitHub mentions');
+        assert(!body.includes('@owners'), 'Sources must not create GitHub mentions');
+        assert(!body.includes('[open me](javascript:'), 'Messages must not create unsafe Markdown links');
+        assert(!body.includes('[unsafe](javascript:'), 'Stack traces must not create unsafe Markdown links');
+        assert(!body.includes('[source](javascript:'), 'Sources must not create unsafe Markdown links');
+        assert(body.includes('````\nfirst frame\n```'), 'A stack containing triple backticks must use a longer code fence');
+    } finally {
+        global.location.href = originalHref;
+        resetReporter();
+    }
+}
+
+export async function testManualIssueBodyContainsOnlyInertEnvironmentMetadata() {
+    resetReporter();
+    const originalDocument = global.document;
+    const originalHref = global.location.href;
+    global.document = {
+        documentElement: {
+            getAttribute: () => 'dark @maintainers [unsafe](javascript:alert(1))'
+        }
+    };
+    global.location.href = 'https://example.test/@owners/[open](javascript:alert(2))';
+
+    try {
+        errorReporter.capture({ type: 'app_error', message: 'Test error' });
+        const issueUrl = new URL(errorReporter.buildIssueUrl(errorReporter.getQueue()[0]));
+        const body = issueUrl.searchParams.get('body');
+
+        assert(!body.includes('@maintainers'), 'Theme metadata must not create GitHub mentions');
+        assert(!body.includes('@owners'), 'URL metadata must not create GitHub mentions');
+        assert(!body.includes('[unsafe](javascript:'), 'Theme metadata must not create unsafe Markdown links');
+        assert(!body.includes('[open](javascript:'), 'URL metadata must not create unsafe Markdown links');
+    } finally {
+        global.document = originalDocument;
+        global.location.href = originalHref;
+        resetReporter();
+    }
+}
+
+export async function testRestoredCountCannotInjectActiveMarkdown() {
+    resetReporter();
+    storage['birding_error_queue'] = JSON.stringify([{
+        type: 'app_error',
+        message: 'Restored error',
+        stack: '',
+        source: '',
+        line: 0,
+        context: {},
+        fingerprint: 'restored-error',
+        count: '@maintainers [unsafe](javascript:alert(1))',
+        firstSeen: new Date().toISOString(),
+        lastSeen: new Date().toISOString()
+    }]);
+
+    errorReporter._restore();
+    const issueUrl = new URL(errorReporter.buildIssueUrl(errorReporter.getQueue()[0]));
+    const body = issueUrl.searchParams.get('body');
+
+    assert(!body.includes('@maintainers'), 'A restored count must not create GitHub mentions');
+    assert(!body.includes('[unsafe](javascript:'), 'A restored count must not create unsafe Markdown links');
 }
 
 export async function testCaptureAddsToQueue() {
