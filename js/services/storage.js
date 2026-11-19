@@ -27,6 +27,9 @@ function filterSearchOptions(options) {
     return clean;
 }
 
+// eBird keys: legacy alphanumeric or UUID format (hyphens)
+const API_KEY_PATTERN = /^[a-zA-Z0-9-]+$/;
+
 // Simple obfuscation key (not cryptographically secure, but prevents casual viewing)
 const OBFUSCATION_KEY = 'BirdingHotspots2024';
 
@@ -78,12 +81,12 @@ export const storage = {
 
             // Try to deobfuscate first
             const deobfuscated = deobfuscate(stored);
-            if (deobfuscated && /^[a-zA-Z0-9]+$/.test(deobfuscated)) {
+            if (deobfuscated && API_KEY_PATTERN.test(deobfuscated)) {
                 return deobfuscated;
             }
 
             // Fall back to plain text (legacy) and migrate to obfuscated
-            if (/^[a-zA-Z0-9]+$/.test(stored)) {
+            if (API_KEY_PATTERN.test(stored)) {
                 // Migrate old plain text key to obfuscated format
                 this.setApiKey(stored);
                 return stored;

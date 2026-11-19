@@ -62,7 +62,7 @@ export function validateApiKey(apiKey) {
     }
 
     // eBird API keys are alphanumeric
-    if (!/^[a-zA-Z0-9]+$/.test(trimmed)) {
+    if (!/^[a-zA-Z0-9-]+$/.test(trimmed)) {
         return {
             valid: false,
             error: 'API key should only contain letters and numbers'

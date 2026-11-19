@@ -86,3 +86,12 @@ export async function testAddSavedItineraryStoresSummaryAndLegs() {
     const back = storage.getSavedItineraries()[0];
     assert(back.legs[0].duration === 600, 'Legs should survive the JSON round trip');
 }
+
+// eBird issues UUID-format keys; a saved one must survive repeated reloads
+export async function testHyphenatedApiKeyRoundTrips() {
+    reset();
+    const key = '00000000-1111-2222-3333-444444444444';
+    storage.setApiKey(key);
+    assert(storage.getApiKey() === key, `First read returned ${storage.getApiKey()}`);
+    assert(storage.getApiKey() === key, 'Second read (next reload) changed the key');
+}
